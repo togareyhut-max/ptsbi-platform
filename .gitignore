@@ -1,25 +1,53 @@
-# Python / Tarombo
+# ---- Python / Tarombo ----
 .venv/
 __pycache__/
 *.pyc
 .env
 tarombo.db
-backups/
 *.log
+build_log.txt
+setup_out.txt
 
-# Upload lokal (jangan commit file user)
+# Backup & upload lokal
+backups/
 data/uploads/*
 !data/uploads/.gitkeep
 
-# Cursor / IDE (opsional)
+# ---- Cursor / IDE / agent ----
+.cursor/
 terminals/
 mcps/
 agent-transcripts/
+agent-tools/
 
-# WordPress plugin — build sementara
-wordpress/ptsbi-premium/*.zip
+# ---- Arsip & build (jangan commit binary) ----
+*.zip
+*.7z
+*.tar.gz
 
-# OS
+# ---- Draft / duplikat plugin (simpan lokal, jangan Git) ----
+Proyek Draft Lama (bugs)/
+Premium Plugins/ARSIP/
+Premium Plugins/ptsbi-members/
+Premium Plugins/*.zip
+Premium Plugins.zip
+
+# ---- Deploy artefak hasil build ----
+deploy/tarombo-app.zip
+deploy-ubuntu.zip
+wordpress/*.zip
+
+# ---- Situs WordPress lain (bukan PTSBI) ----
+deploy/wordpress/
+
+# ---- Temp / diag ----
+_gen_ulos_temp.mjs
+_run_diag.cmd
+test_hasil_result.txt
+collect-inventory.sh
+extract-inventory.py
+
+# ---- OS ----
 Thumbs.db
 Desktop.ini
 .DS_Store

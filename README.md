@@ -1,4 +1,19 @@
-# Tarombo PTSBI — Development (Lokal Windows)
+# PTSBI Platform — Tarombo + WordPress
+
+Monorepo untuk **ptsbi.org** dan **tarombo.ptsbi.org**.
+
+| Folder | Isi |
+|--------|-----|
+| `/` (root) | Aplikasi Tarombo (Flask): `app.py`, `services/`, `templates/` |
+| `wordpress/ptsbi-premium/` | Plugin WordPress resmi (Premium Organization) |
+| `deploy/tarombo-app/` | Paket production Tarombo (hasil `PACK-UBUNTU.bat`) |
+| `deploy-ubuntu/` | Script backup/restore server |
+
+Arsip ZIP, draft lama, dan situs WordPress lain **tidak** di-commit (lihat `.gitignore`).
+
+---
+
+# Tarombo — Development (Lokal Windows)
 
 Aplikasi silsilah marga Batak Samosir (PTSBI): pendaftaran, admin, pohon `/tarombo` (member aktif), panggoaran Opung, sundut.
 
