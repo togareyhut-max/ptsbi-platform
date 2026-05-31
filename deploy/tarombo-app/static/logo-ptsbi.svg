@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-label="PTSBI">
+  <circle cx="60" cy="60" r="58" fill="#0a1628" stroke="#c9a227" stroke-width="4"/>
+  <circle cx="60" cy="60" r="46" fill="#ffffff"/>
+  <path fill="#b91c1c" d="M48 88 L60 28 L72 88 Z"/>
+  <text x="60" y="72" text-anchor="middle" font-size="7" fill="#fff" font-family="Arial,sans-serif" font-weight="700">TOGA</text>
+  <text x="60" y="82" text-anchor="middle" font-size="6" fill="#fff" font-family="Arial,sans-serif">SAMOSIR</text>
+</svg>

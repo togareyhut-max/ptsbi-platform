@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Dashboard {{ role_label }}</h2>
+<p>Halo, {{ session.get('full_name') }}.</p>
+<p>Peran: <strong>{{ role_label }}</strong> | Status member: <strong>{{ session.get('member_status') }}</strong></p>
+
+<div class="actions">
+  {% if can_view_tarombo %}
+  <a class="btn btn-gold" href="{{ url_for('tarombo') }}">Lihat Tarombo</a>
+  {% elif session.get('role') == 'member' %}
+  <p class="hint">Tarombo akan tersedia setelah admin menyetujui pendaftaran Anda.</p>
+  {% endif %}
+  {% if is_staff %}
+  <a class="btn btn-dark" href="{{ url_for('admin') }}">Panel Admin</a>
+  {% endif %}
+  {% if is_developer %}
+  <a class="btn btn-dark" href="{{ url_for('admin_form_config') }}">Pengaturan Form</a>
+  <a class="btn btn-dark" href="{{ url_for('admin_database') }}">Database</a>
+  {% endif %}
+  <a class="btn btn-gold" href="{{ url_for('profile') }}">Lengkapi / Edit Profil</a>
+  <a class="btn btn-outline" href="{{ url_for('change_password') }}">Ganti Password</a>
+</div>
+{% endblock %}

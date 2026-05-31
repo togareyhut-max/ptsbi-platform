@@ -1,0 +1,191 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Admin Panel — Tarombo PTSBI</h2>
+<div class="actions" style="margin-bottom:1rem;flex-wrap:wrap">
+  <a href="{{ url_for('admin_add_tarombo_person') }}" class="btn btn-gold">+ Tambah Anggota Tarombo</a>
+  <a href="{{ url_for('admin_pohon') }}" class="btn btn-gold">Editor Pohon</a>
+  <a href="{{ url_for('admin_sundut') }}" class="btn btn-gold">Kelola Sundut</a>
+  {% if is_developer %}
+  <a href="{{ url_for('admin_database') }}" class="btn btn-dark">Backup / Restore DB</a>
+  <a href="{{ url_for('admin_form_config') }}" class="btn btn-dark">Pengaturan Form</a>
+  <a href="{{ url_for('admin_logo') }}" class="btn btn-gold">Logo Situs</a>
+  <a href="{{ url_for('admin_audit') }}" class="btn btn-dark">Log Audit</a>
+  {% endif %}
+  <form method="post" style="display:inline">
+    <input type="hidden" name="action" value="resync_all" />
+    <button type="submit" class="btn btn-dark">Sinkron Tarombo</button>
+  </form>
+  <form method="post" style="display:inline" onsubmit="return confirm('Gabung duplikat (nama+ayah+ibu sama) dan hapus entri yang tidak ada di pohon?');">
+    <input type="hidden" name="action" value="merge_duplicates" />
+    <button type="submit" class="btn btn-gold">Gabung &amp; Bersihkan Pohon</button>
+  </form>
+  <a href="{{ url_for('admin_import_members') }}" class="btn btn-dark">Impor CSV Anggota</a>
+  <a href="{{ url_for('admin_export_members') }}" class="btn btn-dark">Unduh XLSX Anggota</a>
+  <a href="{{ url_for('change_password') }}" class="btn btn-outline">Ganti Password</a>
+</div>
+{% if off_tree_count and off_tree_count > 0 %}
+<p class="hint">Ada <strong>{{ off_tree_count }}</strong> entri approved di luar pohon. Gunakan <strong>Gabung &amp; Bersihkan Pohon</strong> untuk membersihkan.</p>
+{% endif %}
+
+<h3 id="pendaftaran-pending">Pendaftaran Menunggu Konfirmasi
+  {% if pending_members %}<span class="badge-pending">{{ pending_members|length }}</span>{% endif %}
+</h3>
+<p class="hint">Setujui agar member bisa login dan melihat Tarombo. Tolak jika data tidak sesuai.</p>
+{% if pending_members %}
+<div class="cards admin-pending-cards">
+  {% for row in pending_members %}
+  <article class="card card-pending">
+    <h3>{{ row["account_name"] }}</h3>
+    <p><strong>Email:</strong> {{ row["email"] }}</p>
+    <p><strong>Terdaftar:</strong> {{ row["registered_at"] }}</p>
+    {% if row["full_name"] %}
+    <hr class="card-divider" />
+    <p><strong>Data tarombo:</strong> {{ row["full_name"] }} ({{ row["tarombo_status"] or "-" }})</p>
+    <p>Gender: {{ row["gender"] or "-" }} | Marga: {{ row["marga"] or "-" }}</p>
+    <p>Ayah: {{ row["father_name"] or "-" }} | Ibu: {{ row["mother_name"] or "-" }}</p>
+    <p>Pasangan: {{ row["spouse_name"] or "-" }}{% if row["spouse_marga"] %} ({{ row["spouse_marga"] }}){% endif %}</p>
+    <p>Jumlah anak diinput: {{ row["child_count"] or 0 }}</p>
+    {% else %}
+    <p class="hint">Belum ada data tarombo terlampir pada akun ini.</p>
+    {% endif %}
+    <div class="actions admin-approve-actions">
+      <form method="post">
+        <input type="hidden" name="user_id" value="{{ row['user_id'] }}" />
+        <input type="hidden" name="action" value="approve_member" />
+        <button type="submit" class="btn btn-gold">Setujui Pendaftaran</button>
+      </form>
+      <form method="post" onsubmit="return confirm('Tolak pendaftaran {{ row['account_name'] }}?');">
+        <input type="hidden" name="user_id" value="{{ row['user_id'] }}" />
+        <input type="hidden" name="action" value="reject_member" />
+        <button type="submit" class="btn btn-dark">Tolak</button>
+      </form>
+      {% if row["person_id"] %}
+      <a class="btn btn-outline" href="{{ url_for('admin_edit_person', person_id=row['person_id']) }}">Periksa Data</a>
+      {% endif %}
+    </div>
+  </article>
+  {% endfor %}
+</div>
+{% else %}
+<p>Tidak ada pendaftaran member yang menunggu konfirmasi.</p>
+{% endif %}
+
+<h3>Data Tarombo Belum Disetujui</h3>
+{% if pending %}
+<div class="cards">
+  {% for row in pending %}
+  <article class="card">
+    <h3>{{ row["full_name"] }} ({{ row["tarombo_status"] }})</h3>
+    <p>Pengaju: {{ row["submitter_name"] }}</p>
+    <p>Gender: {{ row["gender"] }} | Marga: {{ row["marga"] }}</p>
+    <p>Ayah: {{ row["father_name"] }} | Ibu: {{ row["mother_name"] }}</p>
+    <p>Acuan garis perempuan: {{ row["reference_female_line_name"] or "-" }}</p>
+    <p>Pasangan: {{ row["spouse_name"] or "-" }}{% if row["spouse_marga"] %} ({{ row["spouse_marga"] }}){% endif %}</p>
+    <p>Jumlah anak diinput: {{ row["child_count"] or 0 }}</p>
+    <div class="actions admin-approve-actions">
+      <form method="post">
+        <input type="hidden" name="person_id" value="{{ row['id'] }}" />
+        <input type="hidden" name="action" value="approve" />
+        <button type="submit" class="btn btn-gold">Setujui</button>
+      </form>
+      <form method="post" onsubmit="return confirm('Tolak data ini?');">
+        <input type="hidden" name="person_id" value="{{ row['id'] }}" />
+        <input type="hidden" name="action" value="reject" />
+        <button type="submit" class="btn btn-dark">Tolak</button>
+      </form>
+      <a class="btn btn-outline" href="{{ url_for('admin_edit_person', person_id=row['id']) }}">Periksa Data</a>
+    </div>
+  </article>
+  {% endfor %}
+</div>
+{% else %}
+<p>Tidak ada data pending.</p>
+{% endif %}
+
+<h3>Manajemen Member</h3>
+<form method="get" class="member-search-form" style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:1rem">
+  <input type="search" name="q" value="{{ member_query or '' }}" placeholder="Cari anggota (nama atau email)..." style="flex:1;min-width:220px" />
+  <button type="submit" class="btn btn-gold">Cari</button>
+  {% if member_query %}<a href="{{ url_for('admin') }}" class="btn btn-outline">Reset</a>{% endif %}
+</form>
+{% if member_query %}<p class="hint">Hasil pencarian untuk "<strong>{{ member_query }}</strong>": {{ members|length }} anggota.</p>{% endif %}
+{% if members %}
+<div class="cards">
+  {% for m in members %}
+  <article class="card">
+    <h3>{{ m["full_name"] }}</h3>
+    <p>Email: {{ m["email"] }}</p>
+    <p>Status: <strong>{{ m["member_status"] }}</strong></p>
+    <div class="actions admin-approve-actions">
+      {% if m["member_status"] == 'pending' %}
+      <form method="post">
+        <input type="hidden" name="user_id" value="{{ m['id'] }}" />
+        <input type="hidden" name="action" value="approve_member" />
+        <button type="submit" class="btn btn-gold">Setujui</button>
+      </form>
+      <form method="post" onsubmit="return confirm('Tolak pendaftaran member ini?');">
+        <input type="hidden" name="user_id" value="{{ m['id'] }}" />
+        <input type="hidden" name="action" value="reject_member" />
+        <button type="submit" class="btn btn-dark">Tolak</button>
+      </form>
+      {% endif %}
+      <form method="post" onsubmit="return confirm('Yakin hapus member ini beserta data tarombo terkait?');">
+        <input type="hidden" name="user_id" value="{{ m['id'] }}" />
+        <input type="hidden" name="action" value="delete_member" />
+        <button type="submit" class="btn btn-dark">Hapus Member</button>
+      </form>
+    </div>
+  </article>
+  {% endfor %}
+</div>
+{% else %}
+<p>Belum ada member terdaftar.</p>
+{% endif %}
+
+<h3>Data Tarombo Aktif (di pohon silsilah)</h3>
+<p class="hint">Hanya anggota yang <strong>tampil di pohon</strong> ({{ tree_people_count }} orang). Sama dengan pohon di <a href="{{ url_for('tarombo') }}">halaman Tarombo</a>.</p>
+{% if approved_people %}
+<div class="cards">
+  {% for p in approved_people %}
+  <article class="card">
+    <h3>{{ p["full_name"] }} ({{ p["tarombo_status"] }})</h3>
+    <p>Marga: {{ p["marga"] }} | Gender: {{ p["gender"] }}</p>
+    <p>Ayah: {{ p["father_name"] }} | Ibu: {{ p["mother_name"] }}</p>
+    <p>Input oleh: {{ p["submitter_name"] or "admin/manual" }}</p>
+    <div class="actions">
+      <a class="btn btn-gold" href="{{ url_for('admin_edit_person', person_id=p['id']) }}">Edit Data</a>
+    </div>
+    <form method="post" onsubmit="return confirm('Yakin hapus data tarombo ini?');">
+      <input type="hidden" name="person_id" value="{{ p['id'] }}" />
+      <input type="hidden" name="action" value="delete_person" />
+      <button class="btn btn-dark">Hapus Data</button>
+    </form>
+  </article>
+  {% endfor %}
+</div>
+{% else %}
+<p>Belum ada data tarombo yang approved.</p>
+{% endif %}
+
+<h3>Kandidat Data Duplikat</h3>
+<p class="hint">
+  Kriteria gabung: <strong>nama orang</strong> + <strong>nama ayah</strong> + <strong>nama ibu</strong> pada kartu yang sama.
+  Bukan marga. Nama saja yang kebetulan sama (ayah/ibu beda) tidak digabung.
+  Ayah/ibu harus terisi — yang digabung adalah record orang yang sama, bukan menggabungkan ayah/ibu sebagai orang terpisah.
+</p>
+{% if duplicate_people %}
+<div class="cards">
+  {% for d in duplicate_people %}
+  <article class="card">
+    <h3>{{ d["sample_name"] }}</h3>
+    <p>Ayah: {{ d["sample_father"] or "-" }}</p>
+    <p>Ibu: {{ d["sample_mother"] or "-" }}</p>
+    <p><strong>{{ d["total"] }}</strong> entri duplikat</p>
+  </article>
+  {% endfor %}
+</div>
+<p>Gunakan tombol <strong>Gabung &amp; Bersihkan Pohon</strong> di atas untuk menggabungkan otomatis (relasi &amp; anak draft ikut pindah).</p>
+{% else %}
+<p>Tidak ada kandidat data duplikat saat ini.</p>
+{% endif %}
+{% endblock %}

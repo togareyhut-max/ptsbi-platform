@@ -1,0 +1,143 @@
+.kk-admin {
+  --kk-admin-brand: #1e3a5f;
+  --kk-admin-accent: #c9a227;
+  max-width: 1100px;
+  margin-top: 12px;
+}
+
+.kk-admin__hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.5rem 1.75rem;
+  margin-bottom: 1.25rem;
+  background: linear-gradient(135deg, var(--kk-admin-brand) 0%, #2d5a87 100%);
+  color: #fff;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(30, 58, 95, 0.25);
+}
+
+.kk-admin__hero h1 {
+  margin: 0;
+  color: #fff;
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.kk-admin__hero p {
+  margin: 0.35rem 0 0;
+  opacity: 0.9;
+}
+
+.kk-badge {
+  display: inline-block;
+  font-size: 0.65em;
+  font-weight: 600;
+  padding: 0.15em 0.5em;
+  background: var(--kk-admin-accent);
+  color: #1a1a1a;
+  border-radius: 4px;
+  vertical-align: middle;
+  margin-left: 0.35rem;
+}
+
+.kk-admin__status {
+  padding: 0.4rem 0.9rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.kk-admin__status--ok {
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+}
+
+.kk-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 1rem;
+  padding-bottom: 0;
+  border-bottom: 2px solid #dcdcde;
+}
+
+.kk-tabs__btn {
+  margin: 0;
+  padding: 0.55rem 1rem;
+  border: none;
+  background: transparent;
+  color: #50575e;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  border-radius: 6px 6px 0 0;
+  transition: color 0.15s, background 0.15s;
+}
+
+.kk-tabs__btn:hover {
+  color: var(--kk-admin-brand);
+  background: #f6f7f7;
+}
+
+.kk-tabs__btn.is-active {
+  color: var(--kk-admin-brand);
+  background: #fff;
+  box-shadow: inset 0 -2px 0 var(--kk-admin-accent);
+}
+
+.kk-panel {
+  display: none;
+}
+
+.kk-panel.is-active {
+  display: block;
+}
+
+.kk-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.kk-card {
+  background: #fff;
+  border: 1px solid #dcdcde;
+  border-radius: 10px;
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1rem;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.kk-card h2 {
+  margin: 0 0 1rem;
+  font-size: 1rem;
+  color: var(--kk-admin-brand);
+  border-bottom: 1px solid #f0f0f1;
+  padding-bottom: 0.5rem;
+}
+
+.kk-check {
+  display: block;
+  margin: 0.4rem 0;
+}
+
+.kk-submit.button-primary {
+  background: var(--kk-admin-brand) !important;
+  border-color: var(--kk-admin-brand) !important;
+  padding: 0.5rem 1.5rem !important;
+  height: auto !important;
+  font-size: 14px !important;
+}
+
+.kk-shortcodes-ref table code {
+  font-size: 12px;
+}
+
+.kk-color {
+  max-width: 120px;
+}

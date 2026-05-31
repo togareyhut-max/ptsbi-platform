@@ -1,0 +1,5 @@
+# Hanya untuk dev lokal tanpa PostgreSQL (USE_SQLITE=1)
+Flask==3.0.3
+Werkzeug==3.0.3
+python-dotenv>=1.0.1,<2
+openpyxl>=3.1,<4

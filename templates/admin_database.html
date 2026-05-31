@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Backup &amp; Restore Database</h2>
+<p><a href="{{ url_for('admin') }}">← Kembali ke Admin Panel</a></p>
+<p class="lead">
+  Backend saat ini: <strong>{{ db_backend }}</strong>.
+  Folder backup: <code>{{ backup_dir }}</code>
+</p>
+
+<section class="card" style="margin-bottom:1.5rem">
+  <h3>Buat Backup</h3>
+  <p class="hint">
+    SQLite: salinan file <code>.db</code>.
+    PostgreSQL: butuh <code>pg_dump</code> di server.
+  </p>
+  <form method="post">
+    <input type="hidden" name="action" value="backup" />
+    <button type="submit" class="btn btn-gold">Buat Backup Sekarang</button>
+  </form>
+</section>
+
+<section class="card" style="margin-bottom:1.5rem">
+  <h3>Pulihkan dari Backup</h3>
+  {% if backups %}
+  <form method="post" class="form-grid compact-grid">
+    <input type="hidden" name="action" value="restore" />
+    <label>Pilih file backup
+      <select name="filename" required>
+        {% for b in backups %}
+        <option value="{{ b['filename'] }}">
+          {{ b['filename'] }} — {{ b['backend'] }} — {{ (b['size_bytes'] / 1024)|round(1) }} KB
+        </option>
+        {% endfor %}
+      </select>
+    </label>
+    <button type="submit" class="btn btn-dark" onclick="return confirm('Pulihkan database dari backup ini? Data saat ini akan diganti.');">
+      Pulihkan
+    </button>
+  </form>
+  <ul class="hint" style="margin-top:1rem">
+    {% for b in backups %}
+    <li>
+      <a href="{{ url_for('admin_database_download', filename=b['filename']) }}">{{ b['filename'] }}</a>
+      ({{ b['created_at'] }})
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p>Belum ada file backup.</p>
+  {% endif %}
+
+  <hr />
+  <h4>Upload file backup</h4>
+  <form method="post" enctype="multipart/form-data" class="form-grid compact-grid">
+    <input type="hidden" name="action" value="restore_upload" />
+    <label>File .db atau .sql
+      <input type="file" name="backup_file" accept=".db,.sql" required />
+    </label>
+    <button type="submit" class="btn btn-dark" onclick="return confirm('Pulihkan database dari file upload? Data saat ini akan diganti.');">
+      Upload &amp; Pulihkan
+    </button>
+  </form>
+</section>
+
+<section class="card danger-zone">
+  <h3>Reset Database</h3>
+  <p class="hint">
+    Mengosongkan seluruh data tarombo dan member. Tersisa empat akun bawaan
+    (<strong>admin</strong>, <strong>pengurus</strong>, <strong>anggota</strong>,
+    <strong>developer</strong>)<strong>@ptsbi.org</strong> dengan password
+    <strong>12345678</strong>. Sundut dan pengaturan form diisi ulang ke default.
+  </p>
+  <form method="post" class="form-grid compact-grid" onsubmit="return confirm('Yakin reset database? Semua data akan hilang.');">
+    <input type="hidden" name="action" value="reset" />
+    <label>Ketik <strong>RESET</strong> untuk konfirmasi
+      <input name="confirm_text" placeholder="RESET" required autocomplete="off" />
+    </label>
+    <button type="submit" class="btn btn-dark">Reset ke Default</button>
+  </form>
+</section>
+{% endblock %}

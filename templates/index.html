@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block body_class %}page-home{% endblock %}
+{% block content %}
+<div class="ulos-overlay" role="presentation" aria-hidden="true">
+  <div class="ulos-lis ulos-lis--left"></div>
+  <div class="ulos-lis ulos-lis--right"></div>
+</div>
+<div class="home-stage">
+  <div class="home-stage__inner">
+    <section class="hero hero--premium">
+      <p class="eyebrow eyebrow--ulos">Keluarga Besar Marga Samosir</p>
+      <h1>Platform Tarombo ini untuk mendaftarkan dan menemukan posisi kita dalam silsilah Keluarga Besar Samosir</h1>
+      <p class="lead">
+        Akses silsilah (tarombo) eksklusif hanya untuk member aktif. Sistem ini menjaga keteraturan data
+        generasi berdasarkan garis keturunan serta posisi partuturan dalam Marga Samosir.
+      </p>
+      <div class="actions">
+        <a href="https://ptsbi.org" class="btn btn-outline" rel="noopener">← Kembali ke PTSBI.org</a>
+        {% if can_view_tarombo %}
+        <a href="{{ url_for('tarombo') }}" class="btn btn-gold">Lihat Tarombo</a>
+        {% elif session.get('user_id') %}
+        <a href="{{ url_for('dashboard') }}" class="btn btn-gold">Status di Dashboard</a>
+        <p class="hint" style="margin-top:.75rem">Pohon silsilah tersedia setelah admin menyetujui pendaftaran Anda (member aktif).</p>
+        {% else %}
+        <a href="{{ url_for('login') }}" class="btn btn-gold">Masuk untuk Lihat Tarombo</a>
+        {% endif %}
+        <a href="{{ url_for('register') }}" class="btn btn-dark">Daftar Member</a>
+      </div>
+    </section>
+
+    <section class="cards cards--premium">
+      <article class="card card--premium">
+        <h3>Akses Khusus Member</h3>
+        <p>Tarombo lengkap hanya bisa dibuka setelah status member aktif.</p>
+      </article>
+      <article class="card card--premium">
+        <h3>Validasi Adat & Generasi</h3>
+        <p>Form disusun sesuai status Anak, Boru, Bere, dan Ibebere.</p>
+      </article>
+      <article class="card card--premium">
+        <h3>Kontrol Admin Penuh</h3>
+        <p>Hanya admin yang boleh menyetujui dan menambah data ke tree resmi.</p>
+      </article>
+    </section>
+  </div>
+</div>
+{% endblock %}

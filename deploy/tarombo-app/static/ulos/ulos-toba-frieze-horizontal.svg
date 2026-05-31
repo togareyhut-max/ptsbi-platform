@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="24" viewBox="0 0 320 24" fill="none">
+  <!-- Pita horizontal: bintang maratur / turun naik + ketupat -->
+  <rect width="320" height="24" fill="#0f2238"/>
+  <path d="M0 12 H320" stroke="#d4af37" stroke-width="0.6" opacity="0.4"/>
+  <path d="M0 12 Q20 4 40 12 T80 12 T120 12 T160 12 T200 12 T240 12 T280 12 T320 12" stroke="#f5e6b8" stroke-width="1.1" opacity="0.65" fill="none"/>
+  <g fill="none" stroke="#d4af37" stroke-width="0.85" opacity="0.75">
+    <path d="M24 12 l5 5 l-5 5 l-5-5z"/>
+    <path d="M72 12 l5 5 l-5 5 l-5-5z"/>
+    <path d="M120 12 l5 5 l-5 5 l-5-5z"/>
+    <path d="M168 12 l5 5 l-5 5 l-5-5z"/>
+    <path d="M216 12 l5 5 l-5 5 l-5-5z"/>
+    <path d="M264 12 l5 5 l-5 5 l-5-5z"/>
+  </g>
+  <circle cx="160" cy="12" r="2.5" fill="#f5e6b8" opacity="0.5"/>
+</svg>

@@ -1,0 +1,32 @@
+# Dibuat otomatis oleh redeploy-belajar.sh — jangan edit manual kecuali perlu.
+# Akses: http://wp-belajar.local (hosts -> 5.175.245.78)
+
+services:
+  wordpress-belajar:
+    image: wordpress:6.9.1-php8.2-apache
+    container_name: wordpress-belajar
+    restart: unless-stopped
+    environment:
+      WORDPRESS_DB_HOST: mysql
+      WORDPRESS_DB_NAME: wp_belajar
+      WORDPRESS_DB_USER: belajar
+      WORDPRESS_DB_PASSWORD: ${BELAJAR_DB_PASS:-PasswordBelajarWordpress}
+    volumes:
+      - wordpress_belajar:/var/www/html
+    networks:
+      - traefik
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=traefik
+      - traefik.http.routers.belajar.rule=Host(`wp-belajar.local`) || Host(`www.wp-belajar.local`)
+      - traefik.http.routers.belajar.entrypoints=http
+      - traefik.http.routers.belajar.priority=200
+      - traefik.http.routers.belajar.service=belajar
+      - traefik.http.services.belajar.loadbalancer.server.port=80
+
+volumes:
+  wordpress_belajar:
+
+networks:
+  traefik:
+    external: true

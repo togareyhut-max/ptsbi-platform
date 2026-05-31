@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120">
+  <defs>
+    <pattern id="lat" x="0" y="0" width="32" height="32" patternUnits="userSpaceOnUse">
+      <path d="M0 32 L32 0" stroke="#C9A44C" stroke-width="0.7" opacity="0.16"/>
+      <path d="M-8 8 L8 -8 M24 40 L40 24" stroke="#C9A44C" stroke-width="0.7" opacity="0.12"/>
+    </pattern>
+  </defs>
+  <rect width="120" height="120" fill="url(#lat)"/>
+</svg>

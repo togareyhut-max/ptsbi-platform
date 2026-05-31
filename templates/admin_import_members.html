@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Impor Anggota CSV — Tarombo PTSBI{% endblock %}
+{% block content %}
+<h2>Impor Akun Anggota (CSV)</h2>
+<p class="hint">
+  Unggah berkas CSV untuk membuat akun login anggota secara massal. Kolom yang dikenali:
+  <code>{{ columns | join(', ') }}</code>. Minimal <strong>full_name</strong> dan <strong>email</strong>.
+</p>
+<ul class="partuturan-legend">
+  <li><strong>password</strong> opsional — default <code>12345678</code> bila kosong/kurang dari 6 karakter.</li>
+  <li><strong>role</strong> opsional — <code>member</code> (default) atau <code>pengurus</code>.</li>
+  <li><strong>member_status</strong> opsional — <code>active</code> (default), <code>pending</code>, atau <code>rejected</code>.</li>
+  <li>Email yang sudah terdaftar akan <strong>dilewati</strong> (tidak menimpa).</li>
+</ul>
+
+<div class="actions" style="margin-bottom:1rem">
+  <a href="{{ url_for('admin_import_members_template') }}" class="btn btn-outline">Unduh Template CSV</a>
+  <a href="{{ url_for('admin') }}" class="btn btn-dark">Kembali ke Admin</a>
+</div>
+
+<form method="post" enctype="multipart/form-data" class="form-grid compact">
+  <label>Berkas CSV
+    <input type="file" name="csv_file" accept=".csv,text/csv" required />
+  </label>
+  <div class="actions">
+    <button type="submit" class="btn btn-gold">Impor Sekarang</button>
+  </div>
+</form>
+
+{% if summary %}
+<h3>Ringkasan Impor</h3>
+<p>
+  Total baris: <strong>{{ summary.total }}</strong> ·
+  Dibuat: <strong>{{ summary.created }}</strong> ·
+  Dilewati: <strong>{{ summary.skipped }}</strong> ·
+  Error: <strong>{{ summary.errors | length }}</strong>
+</p>
+{% if summary.errors %}
+<ul class="partuturan-legend">
+  {% for err in summary.errors %}
+  <li>{{ err }}</li>
+  {% endfor %}
+</ul>
+{% endif %}
+{% endif %}
+{% endblock %}

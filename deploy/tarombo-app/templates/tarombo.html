@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="tarombo-page">
+<div class="heritage-toolbar">
+  <input id="tree-search" type="search" placeholder="Cari nama anggota keluarga..." />
+  <button type="button" class="btn btn-dark" id="expand-all-btn">Buka Semua</button>
+  <button type="button" class="btn btn-dark" id="collapse-all-btn">Tutup Semua</button>
+  <a href="{{ url_for('tarombo_layar_penuh') }}" class="btn btn-gold" target="_blank" rel="noopener">Layar Penuh</a>
+</div>
+
+<div class="heritage-stats" id="heritage-stats"></div>
+
+<div class="heritage-layout heritage-layout--fullwidth">
+  <div id="tarombo-tree-root" class="heritage-tree-mount"></div>
+  <aside id="person-detail-panel" class="person-detail-panel person-detail-panel--hover" aria-hidden="true">
+    <h3>Detail Anggota</h3>
+    <p class="hint">Arahkan kursor ke kotak nama di pohon.</p>
+  </aside>
+</div>
+</div>
+
+<script>
+  window.TAROMBO_TREE = {{ tree_json | safe }};
+  window.TAROMBO_STATS = {{ stats_json | safe }};
+  window.TAROMBO_INDEX = {{ index_json | safe }};
+  window.TAROMBO_API_URL = "/api/tarombo-tree";
+</script>
+<script src="{{ url_for('static', filename='tarombo-tree.js') }}?v=21"></script>
+{% endblock %}

@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Kelola Sundut (Generasi)</h2>
+<p><a href="{{ url_for('admin') }}">← Kembali ke Admin Panel</a></p>
+
+<p class="lead">
+  Isi <strong>sundut manual</strong> per orang (mis. Op. Doli Ramot = <strong>XV</strong>) — tidak perlu dikunci.
+  Sinkron melengkapi keturunan: anak <strong>XVI</strong>, cucu <strong>XVII</strong>, dst. (+1 per lapisan ayah).
+  Pendaftar generasi di atas juga diisi manual; yang di bawah mengikuti urutan angka.
+  Centang <em>Kunci sundut</em> hanya jika nilai tidak boleh ditimpa sinkron.
+</p>
+
+<div class="actions" style="margin:1rem 0;flex-wrap:wrap">
+  <form method="post" style="display:inline">
+    <input type="hidden" name="action" value="sync_sundut" />
+    <button type="submit" class="btn btn-gold">Sinkron Sundut ke Seluruh Pohon</button>
+  </form>
+</div>
+
+<h3>Daftar Entri Sundut</h3>
+{% if entries %}
+<table class="admin-table">
+  <thead>
+    <tr>
+      <th>No.</th>
+      <th>Judul</th>
+      <th>Keterangan</th>
+      <th>Anggota</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for e in entries %}
+    <tr>
+      <td><strong>{{ e['sundut_number'] }}</strong></td>
+      <td colspan="2">
+        <form method="post" class="sundut-entry-form">
+          <input type="hidden" name="action" value="update_entry" />
+          <input type="hidden" name="entry_id" value="{{ e['id'] }}" />
+          <input name="title" value="{{ e['title'] }}" required />
+          <input name="description" value="{{ e['description'] or '' }}" placeholder="Keterangan generasi" />
+      </td>
+      <td>{{ assigned_map.get(e['sundut_number'], 0) }}</td>
+      <td class="actions">
+          <button type="submit" class="btn btn-dark btn-sm">Simpan</button>
+        </form>
+        <form method="post" style="display:inline" onsubmit="return confirm('Hapus entri sundut ini?');">
+          <input type="hidden" name="action" value="delete_entry" />
+          <input type="hidden" name="entry_id" value="{{ e['id'] }}" />
+          <button type="submit" class="btn btn-dark btn-sm">Hapus</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p>Belum ada entri sundut. Tambahkan di bawah.</p>
+{% endif %}
+
+<h3>Tambah Entri Sundut</h3>
+<form method="post" class="form-grid compact">
+  <input type="hidden" name="action" value="add_entry" />
+  <label>Nomor Sundut<input name="sundut_number" type="number" min="1" max="99" required placeholder="1 = leluhur" /></label>
+  <label>Judul<input name="title" required placeholder="Sundut I — Leluhur" /></label>
+  <label>Keterangan<textarea name="description" rows="2" placeholder="Deskripsi generasi"></textarea></label>
+  <button type="submit" class="btn btn-gold">+ Tambah Entri</button>
+</form>
+
+<section class="card" style="margin-top:1.5rem">
+  <h3>Partuturan — Status Tarombo</h3>
+  <ul class="partuturan-legend">
+    <li><strong>Anak</strong> — Laki-laki bermarga Samosir.</li>
+    <li><strong>Boru</strong> — Perempuan bermarga Samosir beserta pasangannya (marga lain).</li>
+    <li><strong>Bere</strong> — Anak dari perempuan bermarga Samosir (beserta pasangan jika sudah menikah).</li>
+    <li><strong>Ibebere</strong> — Cucu dari perempuan bermarga Samosir (beserta pasangan jika sudah menikah).</li>
+  </ul>
+</section>
+{% endblock %}

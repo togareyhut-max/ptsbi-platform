@@ -1,0 +1,201 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Edit Data Tarombo</h2>
+<p><a href="{{ url_for('admin') }}">← Kembali ke Admin Panel</a> · <a href="{{ url_for('admin_sundut') }}">Kelola Sundut</a></p>
+
+<form method="post" class="form-grid">
+  <input type="hidden" name="action" value="save_person" />
+  <label>Nama Lengkap<input name="full_name" value="{{ person['full_name'] }}" required /></label>
+  <label>Jenis Kelamin
+    <select name="gender" required>
+      <option value="male" {% if person['gender'] == 'male' %}selected{% endif %}>Laki-laki</option>
+      <option value="female" {% if person['gender'] == 'female' %}selected{% endif %}>Perempuan</option>
+    </select>
+  </label>
+  <label>Marga<input name="marga" value="{{ person['marga'] }}" required /></label>
+  <label>Tahun Lahir<input name="birth_year" type="number" value="{{ person['birth_year'] or '' }}" min="1800" max="2100" /></label>
+  <label>Urutan anak (antar saudara, satu ayah)
+    <input name="child_order" type="number" min="1" max="99" value="{{ person['child_order'] or '' }}" placeholder="1 = sulung, kosongkan jika belum pasti" />
+  </label>
+  <label>Nama Ayah<input name="father_name" value="{{ person['father_name'] }}" required /></label>
+  <label>Nama Ibu<input name="mother_name" value="{{ person['mother_name'] }}" required /></label>
+  <label>Status Partuturan (Tarombo)
+    <select name="tarombo_status" required>
+      {% for code, info in partuturan_options.items() %}
+      <option value="{{ code }}" {% if person['tarombo_status'] == code %}selected{% endif %} title="{{ info['description'] }}">
+        {{ info['label'] }} — {{ info['summary'] }}
+      </option>
+      {% endfor %}
+    </select>
+  </label>
+  <p class="hint partuturan-hint">
+    {% set cur = partuturan_options.get(person['tarombo_status']) %}
+    {% if cur %}{{ cur['description'] }}{% endif %}
+  </p>
+  <label>Acuan Saudari Perempuan<input name="reference_female_line_name" value="{{ person['reference_female_line_name'] or '' }}" /></label>
+  <label>Nama Pasangan<input name="spouse_name" value="{{ person['spouse_name'] or '' }}" /></label>
+  <label>Marga Pasangan<input name="spouse_marga" value="{{ person['spouse_marga'] or '' }}" /></label>
+  <label>Sundut (manual)
+    <select name="sundut">
+      <option value="">— Belum diisi —</option>
+      {% for e in sundut_entries %}
+      <option value="{{ e['sundut_number'] }}" {% if person['sundut'] == e['sundut_number'] %}selected{% endif %}>
+        {{ e['sundut_number'] }} — {{ e['title'] }}
+      </option>
+      {% endfor %}
+    </select>
+  </label>
+  <label class="checkbox-row">
+    <input type="checkbox" name="sundut_locked" value="1" {% if person['sundut_locked'] %}checked{% endif %} />
+    Kunci sundut (tidak ditimpa saat sinkron otomatis)
+  </label>
+  <p class="hint">
+    Isi sundut manual (mis. XV untuk generasi ini). Sinkron Sundut mengisi keturunan di bawah: XVI, XVII, … (+1 per ayah).
+    Generasi di atas diisi manual saat ada pendaftar baru. Kunci sundut opsional — jangan dicentang kecuali nilai tidak boleh diubah otomatis.
+  </p>
+  <label>Status Data
+    <select name="approved">
+      <option value="1" {% if person['approved'] == 1 or person['approved'] is true %}selected{% endif %}>Approved</option>
+      <option value="0" {% if not person['approved'] %}selected{% endif %}>Pending</option>
+    </select>
+  </label>
+  <button class="btn btn-gold" type="submit">Simpan Perubahan Individu</button>
+</form>
+
+<div class="actions" style="margin:1rem 0;flex-wrap:wrap">
+  <form method="post" style="display:inline">
+    <input type="hidden" name="action" value="resync" />
+    <button type="submit" class="btn btn-dark">Sinkron relasi, panggoaran &amp; sundut</button>
+  </form>
+</div>
+
+{% if person['panggoaran'] %}
+<p class="hint">Panggoaran: <strong>{{ person['panggoaran'] }}</strong>
+  {% if person['panggoaran_type'] %}({{ person['panggoaran_type'] }}){% endif %}
+</p>
+{% endif %}
+{% if person['sundut'] %}
+<p class="hint">Sundut saat ini: <strong>{{ person['sundut'] }}</strong></p>
+{% endif %}
+
+<hr />
+<h3>Urutan Saudara (satu ayah: {{ person['father_name'] }})</h3>
+<p class="hint">
+  Isi <strong>Urutan</strong> untuk menempatkan posisi (mis. anak ke-3). Yang daftar belakangan tetap bisa
+  mengisi slot kosong. Jika urutan kosong, sistem mengurutkan dari tahun lahir.
+</p>
+{% if siblings %}
+<form method="post" class="sibling-order-form">
+  <input type="hidden" name="action" value="save_sibling_orders" />
+  <table class="sibling-order-table">
+    <thead>
+      <tr>
+        <th>Urutan</th>
+        <th>Nama</th>
+        <th>L/P</th>
+        <th>Tahun lahir</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for s in siblings %}
+      <tr class="{% if s['id'] == person['id'] %}is-self{% endif %}">
+        <td>
+          <input type="number" name="sibling_order" min="1" max="99" value="{{ s['child_order'] or '' }}" />
+          <input type="hidden" name="sibling_id" value="{{ s['id'] }}" />
+        </td>
+        <td>{{ s['full_name'] }}{% if s['id'] == person['id'] %} <em>(orang ini)</em>{% endif %}</td>
+        <td>{{ 'L' if s['gender'] == 'male' else 'P' }}</td>
+        <td>{{ s['birth_year'] or '—' }}</td>
+        <td>
+          {% if s['id'] != person['id'] %}
+          <a href="{{ url_for('admin_edit_person', person_id=s['id']) }}">Edit</a>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <div class="actions">
+    <button type="submit" class="btn btn-gold">Simpan Urutan Saudara</button>
+  </div>
+</form>
+<form method="post" style="display:inline;margin-left:0.5rem">
+  <input type="hidden" name="action" value="auto_sibling_orders" />
+  <button type="submit" class="btn btn-dark">Isi urutan otomatis dari tahun lahir</button>
+</form>
+{% else %}
+<p>Belum ada saudara terdaftar dengan ayah yang sama, atau ayah belum terhubung di database.</p>
+{% endif %}
+
+<hr />
+<h3>Kelola Daftar Anak</h3>
+<p class="hint">Tambah anak akan memicu sinkron sundut jika Anda menjalankan sinkron setelahnya.</p>
+
+<h4>Anak Terdaftar di Tarombo</h4>
+{% if children %}
+  {% for c in children %}
+  <article class="card child-admin-card">
+    <form method="post" class="form-grid compact-grid">
+      <input type="hidden" name="action" value="update_child" />
+      <input type="hidden" name="child_id" value="{{ c['id'] }}" />
+      <label>Nama Anak<input name="child_name" value="{{ c['full_name'] }}" required /></label>
+      <label>Jenis Kelamin
+        <select name="child_gender">
+          <option value="male" {% if c['gender'] == 'male' %}selected{% endif %}>Laki-laki</option>
+          <option value="female" {% if c['gender'] == 'female' %}selected{% endif %}>Perempuan</option>
+        </select>
+      </label>
+      <label>Tahun Lahir<input name="child_birth_year" type="number" value="{{ c['birth_year'] or '' }}" min="1800" max="2100" /></label>
+      <label>Urutan<input name="child_order" type="number" min="1" max="99" value="{{ c['child_order'] or '' }}" /></label>
+      <div class="actions">
+        <button class="btn btn-gold" type="submit">Simpan Anak</button>
+      </div>
+    </form>
+    <form method="post" onsubmit="return confirm('Hapus anak ini dari tarombo?');">
+      <input type="hidden" name="action" value="delete_child" />
+      <input type="hidden" name="child_id" value="{{ c['id'] }}" />
+      <button class="btn btn-dark" type="submit">Hapus Anak</button>
+    </form>
+  </article>
+  {% endfor %}
+{% else %}
+<p>Belum ada anak terhubung.</p>
+{% endif %}
+
+<h4>Tambah Anak Baru</h4>
+<form method="post" class="form-grid compact-grid">
+  <input type="hidden" name="action" value="add_child" />
+  <label>Nama Anak<input name="child_name" required /></label>
+  <label>Jenis Kelamin
+    <select name="child_gender">
+      <option value="male">Laki-laki</option>
+      <option value="female">Perempuan</option>
+    </select>
+  </label>
+  <label>Tahun Lahir<input name="child_birth_year" type="number" min="1800" max="2100" /></label>
+  <label>Urutan Anak<input name="child_order" type="number" min="1" max="99" placeholder="1 = sulung" /></label>
+  <button class="btn btn-gold" type="submit">+ Tambah Anak ke Tarombo</button>
+</form>
+
+{% if submitted_children %}
+<h4>Anak Draft (belum masuk tree)</h4>
+{% for sc in submitted_children %}
+<article class="card child-admin-card">
+  <p>{{ sc['child_name'] }} ({{ sc['child_gender'] }}){% if sc['child_birth_year'] %} — lahir {{ sc['child_birth_year'] }}{% endif %}{% if sc['child_order'] %} — urutan {{ sc['child_order'] }}{% endif %}</p>
+  <div class="actions">
+    <form method="post">
+      <input type="hidden" name="action" value="promote_submitted_child" />
+      <input type="hidden" name="submitted_child_id" value="{{ sc['id'] }}" />
+      <button class="btn btn-gold" type="submit">Masukkan ke Tarombo</button>
+    </form>
+    <form method="post" onsubmit="return confirm('Hapus draft anak ini?');">
+      <input type="hidden" name="action" value="delete_submitted_child" />
+      <input type="hidden" name="submitted_child_id" value="{{ sc['id'] }}" />
+      <button class="btn btn-dark" type="submit">Hapus Draft</button>
+    </form>
+  </div>
+</article>
+{% endfor %}
+{% endif %}
+{% endblock %}

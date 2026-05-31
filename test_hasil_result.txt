@@ -1,0 +1,7 @@
+[anon] / -> 200
+[anon] /hasil -> 302
+[anon] /tarombo -> 302
+[anon] /api/tarombo-tree -> 302
+[admin] /tarombo -> 200
+[admin] /api/tarombo-tree -> 200
+[admin] /hasil -> 302

@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Tambah Anggota Tarombo</h2>
+<p><a href="{{ url_for('admin') }}">← Kembali ke Admin Panel</a></p>
+<p class="lead">
+  Menambah data silsilah saja — <strong>tidak membuat akun login</strong> baru.
+  Data langsung disetujui dan disinkronkan ke pohon.
+</p>
+
+<form method="post" class="form-grid" id="tarombo-form">
+  {% for section, fields in form_sections.items() %}
+  <h3>{{ section_titles.get(section, section) }}</h3>
+  {% for field in fields %}
+  {% set key = field.field_key %}
+  {% set wrap_id = {
+    'reference_female_line_name': 'line-ref-wrap',
+    'spouse_name': 'spouse-name-wrap',
+    'spouse_marga': 'spouse-marga-wrap',
+    'tarombo_status': 'status-wrap',
+    'is_married': 'married-wrap'
+  }.get(key, key ~ '-wrap') %}
+  {% set input_id = {
+    'reference_female_line_name': 'line_ref',
+    'tarombo_status': 'status',
+    'is_married': 'is_married',
+    'spouse_name': 'spouse_name',
+    'spouse_marga': 'spouse_marga'
+  }.get(key, key) %}
+  {% set hidden_class = 'hidden' if key in ('reference_female_line_name','spouse_name','spouse_marga') else '' %}
+  {% if field.field_type == 'select' %}
+  <label id="{{ wrap_id }}" class="{{ hidden_class }}" data-field-key="{{ key }}">
+    {{ field.label }}
+    <select name="{{ key }}" id="{{ input_id }}" {% if field.is_required and not hidden_class %}required{% endif %}>
+      {% for opt in field.options %}
+      <option value="{{ opt.value }}">{{ opt.label }}</option>
+      {% endfor %}
+    </select>
+    {% if field.help_text %}<small class="hint">{{ field.help_text }}</small>{% endif %}
+  </label>
+  {% else %}
+  <label id="{{ wrap_id }}" class="{{ hidden_class }}" data-field-key="{{ key }}">
+    {{ field.label }}
+    <input
+      name="{{ key }}"
+      id="{{ input_id }}"
+      type="{% if field.field_type == 'number' %}number{% else %}text{% endif %}"
+      {% if field.field_type == 'number' %}min="1800" max="2100"{% endif %}
+      value="{{ field.default_value or '' }}"
+      {% if field.is_required and not hidden_class %}required{% endif %}
+      placeholder="{{ field.placeholder or '' }}"
+    />
+    {% if field.help_text %}<small class="hint">{{ field.help_text }}</small>{% endif %}
+  </label>
+  {% endif %}
+  {% endfor %}
+  {% endfor %}
+
+  <label>Urutan anak (antar saudara, satu ayah)
+    <input name="child_order" type="number" min="1" max="99" placeholder="1 = sulung, kosongkan jika belum pasti" />
+  </label>
+
+  <h3>Data Anak (opsional)</h3>
+  <p class="hint">Anak akan langsung diproses ke pohon setelah disimpan.</p>
+  <div id="children-list"></div>
+  <button type="button" class="btn btn-dark" id="add-child-btn">+ Tambah Anak</button>
+
+  <button class="btn btn-gold" type="submit">Simpan ke Tarombo</button>
+</form>
+<script src="{{ url_for('static', filename='app.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block title %}Profil Saya — Tarombo PTSBI{% endblock %}
+{% block content %}
+<h2>Profil Saya</h2>
+<p class="hint">
+  Peran: <strong>{{ role_label }}</strong>
+  {% if account and account['member_status'] %} · Status: <strong>{{ account['member_status'] }}</strong>{% endif %}
+</p>
+
+<section class="profile-section">
+  <h3>Akun</h3>
+  <form method="post" class="form-grid compact">
+    <input type="hidden" name="action" value="save_account" />
+    <label>Nama lengkap (akun)
+      <input name="account_full_name" type="text" required
+             value="{{ account['full_name'] if account else session.get('full_name', '') }}" />
+    </label>
+    <label>Email (tidak dapat diubah)
+      <input type="email" value="{{ account['email'] if account else '' }}" disabled />
+    </label>
+    <div class="actions">
+      <button class="btn btn-gold" type="submit">Simpan Nama Akun</button>
+      <a class="btn btn-outline" href="{{ url_for('change_password') }}">Ganti Password</a>
+    </div>
+  </form>
+</section>
+
+<section class="profile-section">
+  <h3>Data Tarombo Saya</h3>
+  {% if person and person['approved'] %}
+  <p class="hint">Data Anda sudah disetujui dan tampil di pohon. Perubahan akan langsung memperbarui pohon.</p>
+  {% elif person %}
+  <p class="hint">Data Anda menunggu persetujuan admin. Anda masih bisa melengkapi/memperbaiki di bawah ini.</p>
+  {% else %}
+  <p class="hint">Anda belum memiliki data tarombo. Lengkapi formulir berikut untuk diajukan ke admin.</p>
+  {% endif %}
+
+  <form method="post" class="form-grid">
+    <input type="hidden" name="action" value="save_profile" />
+    <label>Nama lengkap
+      <input name="full_name" type="text" required value="{{ person['full_name'] if person else '' }}" />
+    </label>
+    <label>Jenis kelamin
+      <select name="gender" required>
+        <option value="male" {% if person and person['gender'] == 'male' %}selected{% endif %}>Laki-laki</option>
+        <option value="female" {% if person and person['gender'] == 'female' %}selected{% endif %}>Perempuan</option>
+      </select>
+    </label>
+    <label>Marga
+      <input name="marga" type="text" required value="{{ person['marga'] if person else '' }}" />
+    </label>
+    <label>Tahun lahir
+      <input name="birth_year" type="number" min="1800" max="2100"
+             value="{{ person['birth_year'] if person and person['birth_year'] else '' }}" />
+    </label>
+    <label>Status tarombo
+      <select name="tarombo_status" required>
+        {% for key, info in partuturan_options.items() %}
+        <option value="{{ key }}" {% if person and person['tarombo_status'] == key %}selected{% endif %}>{{ info['label'] }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Nama ayah
+      <input name="father_name" type="text" required value="{{ person['father_name'] if person else '' }}" />
+    </label>
+    <label>Nama ibu
+      <input name="mother_name" type="text" required value="{{ person['mother_name'] if person else '' }}" />
+    </label>
+    <label>Acuan garis perempuan (untuk Bere/Ibebere)
+      <input name="reference_female_line_name" type="text"
+             value="{{ person['reference_female_line_name'] if person and person['reference_female_line_name'] else '' }}" />
+    </label>
+    <label>Nama pasangan (kosongkan bila belum menikah)
+      <input name="spouse_name" type="text" value="{{ person['spouse_name'] if person and person['spouse_name'] else '' }}" />
+    </label>
+    <label>Marga pasangan
+      <input name="spouse_marga" type="text" value="{{ person['spouse_marga'] if person and person['spouse_marga'] else '' }}" />
+    </label>
+    <div class="actions">
+      <button class="btn btn-gold" type="submit">Simpan Data Tarombo</button>
+      <a class="btn btn-dark" href="{{ url_for('dashboard') }}">Kembali ke Dashboard</a>
+    </div>
+  </form>
+</section>
+{% endblock %}

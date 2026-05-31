@@ -1,0 +1,57 @@
+# Production — PostgreSQL + Traefik (tarombo.ptsbi.org)
+# Jalankan: docker compose -f docker-compose.server.yml up -d --build
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: tarombo-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-tarombo}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-tarombo_ptsbi}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - tarombo-internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-tarombo} -d ${POSTGRES_DB:-tarombo_ptsbi}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  web:
+    build: .
+    container_name: tarombo-web
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      USE_SQLITE: "0"
+      DATABASE_URL: postgresql://${POSTGRES_USER:-tarombo}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-tarombo_ptsbi}
+    volumes:
+      - ./data:/app/data
+    networks:
+      - tarombo-internal
+      - traefik
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=traefik"
+      - "traefik.http.routers.tarombo-ptsbi.rule=Host(`tarombo.ptsbi.org`)"
+      - "traefik.http.routers.tarombo-ptsbi.entrypoints=https"
+      - "traefik.http.routers.tarombo-ptsbi.tls=true"
+      - "traefik.http.routers.tarombo-ptsbi.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.tarombo-ptsbi.middlewares=https_redirect@docker"
+      - "traefik.http.services.tarombo-ptsbi.loadbalancer.server.port=5000"
+
+networks:
+  traefik:
+    external: true
+  tarombo-internal:
+    driver: bridge
+
+volumes:
+  pgdata:

@@ -1,0 +1,29 @@
+# Kotakita — service terpisah (tidak edit compose ptsbi/lpmpjk)
+# Pakai: docker compose -f docker-compose.yml -f docker-compose.kotakita.yml up -d
+
+services:
+  wordpress-kotakita:
+    image: wordpress:6.9.1-php8.2-apache
+    container_name: wordpress-kotakita
+    restart: unless-stopped
+    # Tanpa ports — hanya lewat Traefik (https://kotakita.net)
+    environment:
+      WORDPRESS_DB_HOST: mysql
+      WORDPRESS_DB_NAME: wp_kotakita
+      WORDPRESS_DB_USER: kotakita
+      WORDPRESS_DB_PASSWORD: ${KOTAKITA_DB_PASS:-PasswordKotakitaKuat}
+    volumes:
+      - wordpress_kotakita:/var/www/html
+    networks:
+      - traefik
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.kotakita.rule=Host(`kotakita.net`) || Host(`www.kotakita.net`)
+      - traefik.http.routers.kotakita.entrypoints=https
+      - traefik.http.routers.kotakita.tls=true
+      - traefik.http.routers.kotakita.tls.certresolver=letsencrypt
+      - traefik.http.routers.kotakita.middlewares=https_redirect@docker,non_www@docker
+      - traefik.http.services.kotakita.loadbalancer.server.port=80
+
+volumes:
+  wordpress_kotakita:

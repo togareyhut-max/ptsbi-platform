@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Editor Pohon Tarombo</h2>
+<p class="lead">
+  <a href="{{ url_for('admin') }}">← Admin</a> · Seret kartu ke orang lain untuk menempatkan di pohon.
+  Simpan setelah selesai menyusun.
+</p>
+
+<div class="tree-editor-toolbar" id="tree-editor-toolbar">
+  <span class="tree-editor-badge" id="tree-pending-badge">0 perubahan belum disimpan</span>
+  <button type="button" class="btn btn-gold" id="tree-save-btn" disabled>Simpan Perubahan</button>
+  <button type="button" class="btn btn-dark" id="tree-discard-btn" disabled>Batalkan</button>
+  <a href="{{ url_for('tarombo_layar_penuh') }}" class="btn btn-dark" target="_blank" rel="noopener">Layar Penuh</a>
+</div>
+
+<div class="heritage-toolbar">
+  <input id="tree-search" type="search" placeholder="Cari nama..." />
+  <button type="button" class="btn btn-dark" id="expand-all-btn">Buka Semua</button>
+  <button type="button" class="btn btn-dark" id="collapse-all-btn">Tutup Semua</button>
+</div>
+
+<div class="heritage-stats" id="heritage-stats"></div>
+
+<div class="tree-editor-layout">
+  <div id="tarombo-tree-root" class="heritage-tree-mount"></div>
+  <aside id="person-detail-panel" class="person-detail-panel tree-editor-panel">
+    <h3>Edit Anggota</h3>
+    <p class="hint">Klik kartu di pohon atau seret ⋮⋮ ke target.</p>
+    <div id="tree-edit-form-host"></div>
+  </aside>
+</div>
+
+<div id="tree-drop-dialog" class="tree-drop-dialog" hidden>
+  <div class="tree-drop-dialog-inner">
+    <h4 id="tree-drop-title">Letakkan di sini</h4>
+    <p class="hint" id="tree-drop-hint"></p>
+    <div class="tree-drop-actions">
+      <button type="button" class="btn btn-gold" id="tree-drop-reparent">Jadikan anak dari target (ayah)</button>
+      <button type="button" class="btn btn-dark" id="tree-drop-replace">Tukar posisi (replace)</button>
+      <button type="button" class="btn btn-dark" id="tree-drop-cancel">Batal</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  window.TAROMBO_TREE = {{ tree_json | safe }};
+  window.TAROMBO_STATS = {{ stats_json | safe }};
+  window.TAROMBO_INDEX = {{ index_json | safe }};
+  window.TAROMBO_API_URL = "/api/tarombo-tree";
+  window.TAROMBO_EDIT_MODE = true;
+  window.TAROMBO_PERSON_API = "/api/admin/person";
+  window.TAROMBO_SAVE_API = "/api/admin/tree-changes";
+  window.TAROMBO_PARTUTURAN = {{ partuturan_options | tojson }};
+</script>
+<script src="{{ url_for('static', filename='tarombo-tree.js') }}?v=21"></script>
+<script src="{{ url_for('static', filename='tarombo-tree-editor.js') }}?v=1"></script>
+{% endblock %}

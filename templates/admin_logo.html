@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Logo Situs — Admin{% endblock %}
+{% block content %}
+<h2>Logo Situs</h2>
+<p class="hint">
+  Unggah logo organisasi dalam format <strong>PNG</strong> (maks. 2 MB).
+  Logo tampil di header semua halaman. Simpan di folder <code>data/uploads</code> (tetap ada setelah deploy/backup).
+</p>
+
+<div class="admin-logo-panel">
+  <div class="admin-logo-preview">
+    <p><strong>Logo saat ini</strong></p>
+    <img src="{{ logo.url }}" alt="Logo PTSBI" class="admin-logo-img" />
+    {% if logo.has_custom %}
+    <p class="hint">{{ logo.filename }} — {{ logo.size_kb }} KB (kustom)</p>
+    {% else %}
+    <p class="hint">Logo bawaan (SVG). Unggah PNG untuk mengganti.</p>
+    {% endif %}
+  </div>
+
+  <form method="post" enctype="multipart/form-data" class="admin-logo-form">
+    <input type="hidden" name="action" value="upload" />
+    <label>
+      Berkas logo (PNG)
+      <input type="file" name="logo_file" accept="image/png,.png" required />
+    </label>
+    <button type="submit" class="btn btn-gold">Simpan Logo</button>
+  </form>
+
+  {% if logo.has_custom %}
+  <form method="post" class="admin-logo-reset" onsubmit="return confirm('Kembalikan logo bawaan?');">
+    <input type="hidden" name="action" value="reset" />
+    <button type="submit" class="btn btn-dark">Kembalikan Logo Bawaan</button>
+  </form>
+  {% endif %}
+</div>
+
+<p style="margin-top:1.5rem"><a href="{{ url_for('admin') }}" class="btn btn-dark">← Kembali ke Admin</a></p>
+{% endblock %}

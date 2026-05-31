@@ -1,0 +1,25 @@
+# Python / Tarombo
+.venv/
+__pycache__/
+*.pyc
+.env
+tarombo.db
+backups/
+*.log
+
+# Upload lokal (jangan commit file user)
+data/uploads/*
+!data/uploads/.gitkeep
+
+# Cursor / IDE (opsional)
+terminals/
+mcps/
+agent-transcripts/
+
+# WordPress plugin — build sementara
+wordpress/ptsbi-premium/*.zip
+
+# OS
+Thumbs.db
+Desktop.ini
+.DS_Store

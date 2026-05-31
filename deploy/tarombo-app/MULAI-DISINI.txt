@@ -1,0 +1,35 @@
+Tarombo PTSBI — paket deploy Ubuntu 24.04
+==========================================
+
+PRODUCTION vm21197 (Traefik) — mode yang dipakai sekarang:
+
+1. Upload folder ini (atau file tarombo-app.zip) ke server.
+
+2. Unzip ke /home/togaa/tarombo-app:
+   unzip -o tarombo-app.zip -d /home/togaa
+   cd /home/togaa/tarombo-app
+   cp .env.example .env
+   nano .env
+   # Ganti POSTGRES_PASSWORD dan SECRET_KEY (USE_SQLITE=0)
+
+3. Pasang Docker (jika belum):
+   sudo apt update
+   sudo apt install -y docker.io docker-compose-plugin
+   sudo usermod -aG docker $USER
+   # logout/login
+
+4. Jalankan via Traefik (tarombo.ptsbi.org):
+   docker compose -f docker-compose.server.yml up -d --build
+   docker compose -f docker-compose.server.yml logs -f web
+
+5. Buka https://tarombo.ptsbi.org
+
+(Alternatif STANDALONE tanpa Traefik: unzip ke /opt, lalu
+ `docker compose up -d --build` -> http://IP:5000 + Nginx. Lihat DEPLOY-UBUNTU.md)
+
+Di .env wajib: USE_SQLITE=0 dan DATABASE_URL PostgreSQL
+
+Akun awal (password 12345678, ganti setelah login):
+  admin@ptsbi.org / pengurus@ptsbi.org / anggota@ptsbi.org / developer@ptsbi.org
+
+Panduan lengkap: DEPLOY-UBUNTU.md

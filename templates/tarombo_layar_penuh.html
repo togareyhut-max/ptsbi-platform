@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tarombo PTSBI — Layar Penuh</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}?v=21" />
+  </head>
+  <body class="tarombo-fs-page">
+    <header class="fs-topbar">
+      <a href="{{ url_for('tarombo') }}" class="btn btn-dark btn-sm">← Kembali</a>
+      <span class="fs-title">Tarombo PTSBI</span>
+      <div class="fs-actions">
+        <input id="tree-search" type="search" placeholder="Cari nama..." class="fs-search" />
+        <button type="button" class="btn btn-dark btn-sm" id="expand-all-btn">Buka Semua</button>
+        <button type="button" class="btn btn-dark btn-sm" id="collapse-all-btn">Tutup Semua</button>
+        <button type="button" class="btn btn-gold btn-sm" id="native-fullscreen-btn" title="Fullscreen browser">⛶ Layar Penuh</button>
+      </div>
+    </header>
+
+    <div class="fs-stats-wrap">
+      <div class="heritage-stats" id="heritage-stats"></div>
+    </div>
+
+    <main class="fs-main">
+      <div id="tarombo-tree-root" class="heritage-tree-mount fs-tree-mount"></div>
+      <aside id="person-detail-panel" class="person-detail-panel person-detail-panel--hover fs-detail-panel" aria-hidden="true">
+        <h3>Detail Anggota</h3>
+        <p class="hint">Arahkan kursor ke kotak nama di pohon.</p>
+      </aside>
+    </main>
+
+    <script>
+      window.TAROMBO_TREE = {{ tree_json | safe }};
+      window.TAROMBO_STATS = {{ stats_json | safe }};
+      window.TAROMBO_INDEX = {{ index_json | safe }};
+      window.TAROMBO_API_URL = "/api/tarombo-tree";
+      window.TAROMBO_FULLSCREEN_PAGE = true;
+    </script>
+    <script src="{{ url_for('static', filename='tarombo-tree.js') }}?v=21"></script>
+    <script>
+      document.getElementById("native-fullscreen-btn")?.addEventListener("click", () => {
+        if (document.fullscreenElement) {
+          document.exitFullscreen?.();
+        } else {
+          document.documentElement.requestFullscreen?.().catch(() => {});
+        }
+      });
+    </script>
+  </body>
+</html>

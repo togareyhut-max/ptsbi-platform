@@ -1,0 +1,1008 @@
+SERVER INVENTORY REPORT
+Generated : 2026-05-22T08:04:19+02:00
+Hostname  : vm21197
+Source    : /home/aagit (user: aagit)
+Target    : /home/togaa (user: togaa)
+Mask secrets: 1
+
+================================================================================
+  1. SYSTEM
+================================================================================
+
+### OS release
+$ cat /etc/os-release
+---
+PRETTY_NAME="Ubuntu 24.04.4 LTS"
+NAME="Ubuntu"
+VERSION_ID="24.04"
+VERSION="24.04.4 LTS (Noble Numbat)"
+VERSION_CODENAME=noble
+ID=ubuntu
+ID_LIKE=debian
+HOME_URL="https://www.ubuntu.com/"
+SUPPORT_URL="https://help.ubuntu.com/"
+BUG_REPORT_URL="https://bugs.launchpad.net/ubuntu/"
+PRIVACY_POLICY_URL="https://www.ubuntu.com/legal/terms-and-policies/privacy-policy"
+UBUNTU_CODENAME=noble
+LOGO=ubuntu-logo
+
+### Kernel
+$ uname -a
+---
+Linux vm21197 6.8.0-117-generic #117-Ubuntu SMP PREEMPT_DYNAMIC Tue May  5 19:26:24 UTC 2026 x86_64 x86_64 x86_64 GNU/Linux
+
+### Timezone
+$ timedatectl status
+---
+               Local time: Fri 2026-05-22 08:04:19 CEST
+           Universal time: Fri 2026-05-22 06:04:19 UTC
+                 RTC time: Fri 2026-05-22 06:04:19
+                Time zone: Europe/Berlin (CEST, +0200)
+System clock synchronized: yes
+              NTP service: active
+          RTC in local TZ: no
+
+### Disk usage
+$ df -hT
+---
+Filesystem     Type     Size  Used Avail Use% Mounted on
+tmpfs          tmpfs    795M  1.6M  793M   1% /run
+/dev/sda1      ext4      77G  9.1G   68G  12% /
+tmpfs          tmpfs    3.9G     0  3.9G   0% /dev/shm
+tmpfs          tmpfs    5.0M     0  5.0M   0% /run/lock
+/dev/sda16     ext4     881M  117M  703M  15% /boot
+/dev/sda15     vfat     105M  6.2M   99M   6% /boot/efi
+overlay        overlay   77G  9.1G   68G  12% /var/lib/docker/rootfs/overlayfs/041cc3bed8d6b40cb47e967fd024b5101ca4d0bc7e5cbc9a670b12ff168d4ebc
+overlay        overlay   77G  9.1G   68G  12% /var/lib/docker/rootfs/overlayfs/be89040275fb34dbbd93dc9ea54d1ce2ea7bab40a3a83405508b091d7a151746
+overlay        overlay   77G  9.1G   68G  12% /var/lib/docker/rootfs/overlayfs/4a516af31b0784543eb75e9dfd67b951e48f601543c885175d7626c9a1e2764f
+overlay        overlay   77G  9.1G   68G  12% /var/lib/docker/rootfs/overlayfs/68e6733ad006111adaf400c6c78f84676b93a380ce8d0ace66e7de620262c8fd
+overlay        overlay   77G  9.1G   68G  12% /var/lib/docker/rootfs/overlayfs/f891dd62fc37a8b1d7dbeb6dafcbea17147a6d51c30156de47f46ca0daafeae7
+tmpfs          tmpfs    795M   16K  795M   1% /run/user/0
+
+### Memory
+$ free -h
+---
+               total        used        free      shared  buff/cache   available
+Mem:           7.8Gi       1.6Gi       4.1Gi       175Mi       2.4Gi       6.1Gi
+Swap:             0B          0B          0B
+
+### Public IP (if available)
+$ bash -c curl -fsS --max-time 3 ifconfig.me 2>/dev/null || echo "N/A"
+---
+2a14:7c0:1300:1049::
+
+================================================================================
+  2. USERS & SSH
+================================================================================
+
+### Passwd entries
+$ bash -c getent passwd aagit togaa root 2>/dev/null || true
+---
+aagit:x:1000:1000:agitanggriawan,,,:/home/aagit:/bin/bash
+root:x:0:0:root:/root:/bin/bash
+
+### Groups aagit
+$ groups aagit
+---
+aagit : aagit sudo users docker
+
+### Groups togaa
+$ groups togaa
+---
+groups: ‘togaa’: no such user
+[exit code: 1]
+
+### SSH directory aagit
+$ ls -la /home/aagit/.ssh
+---
+total 12
+drwx------  2 aagit aagit 4096 Mar  8 13:58 .
+drwxr-x--- 10 aagit aagit 4096 May 20 13:19 ..
+-rw-------  1 aagit aagit  964 Mar  8 13:58 authorized_keys
+
+### SSH directory togaa
+$ ls -la /home/togaa/.ssh
+---
+ls: cannot access '/home/togaa/.ssh': No such file or directory
+[exit code: 2]
+
+### SSHd security lines
+$ grep -E ^(Port|PermitRootLogin|PasswordAuthentication|PubkeyAuthentication|AllowUsers|AllowGroups) /etc/ssh/sshd_config
+---
+Port 22
+PermitRootLogin yes
+PubkeyAuthentication yes
+PasswordAuthentication yes
+
+
+================================================================================
+  3. HOME STRUCTURE (/home/aagit)
+================================================================================
+
+### Top-level listing
+$ ls -la /home/aagit
+---
+total 64
+drwxr-x--- 10 aagit aagit 4096 May 20 13:19 .
+drwxr-xr-x  4 root  root  4096 May 22 07:59 ..
+-rw-------  1 aagit aagit 3547 Apr 10 05:25 .bash_history
+-rw-r--r--  1 aagit aagit  220 Mar  8 13:55 .bash_logout
+-rw-r--r--  1 aagit aagit 3771 Mar  8 13:55 .bashrc
+drwx------  2 aagit aagit 4096 Mar  8 13:59 .cache
+drwx------  3 aagit aagit 4096 Mar  8 21:53 .config
+drwxr-xr-x  3 root  root  4096 Mar  8 15:02 docker
+-rw-------  1 aagit aagit   20 Mar 11 05:15 .lesshst
+drwxr-xr-x  3 root  root  4096 Mar  8 16:48 mysql
+-rw-r--r--  1 aagit aagit  807 Mar  8 13:55 .profile
+drwx------  2 aagit aagit 4096 Mar  8 13:58 .ssh
+-rw-r--r--  1 aagit aagit    0 Mar  8 13:59 .sudo_as_admin_successful
+drwxr-xr-x  8 root  root  4096 May 20 12:58 tarombo-app
+drwxrwxr-x  3 aagit aagit 4096 Mar  8 15:43 traefik
+-rw-------  1 aagit aagit 2085 Mar 25 17:28 .viminfo
+drwxr-xr-x  3 root  root  4096 Mar  8 17:27 wordpress
+
+### Depth-3 tree (dirs + compose + env)
+$ find /home/aagit -maxdepth 3 ( -type d -o -name docker-compose.yml -o -name compose.yml -o -name .env )
+---
+/home/aagit
+/home/aagit/mysql
+/home/aagit/mysql/mysql-conf
+/home/aagit/mysql/docker-compose.yml
+/home/aagit/.config
+/home/aagit/.config/htop
+/home/aagit/docker
+/home/aagit/docker/volumes
+/home/aagit/docker/volumes/mysqldata
+/home/aagit/tarombo-app
+/home/aagit/tarombo-app/.env
+/home/aagit/tarombo-app/scripts
+/home/aagit/tarombo-app/services
+/home/aagit/tarombo-app/deploy
+/home/aagit/tarombo-app/data
+/home/aagit/tarombo-app/data/uploads
+/home/aagit/tarombo-app/templates
+/home/aagit/tarombo-app/docker-compose.yml
+/home/aagit/tarombo-app/static
+/home/aagit/wordpress
+/home/aagit/wordpress/php.ini
+/home/aagit/wordpress/docker-compose.yml
+/home/aagit/traefik
+/home/aagit/traefik/.env
+/home/aagit/traefik/data
+/home/aagit/traefik/data/letsencrypt
+/home/aagit/traefik/docker-compose.yml
+/home/aagit/.ssh
+/home/aagit/.cache
+
+### Full permissions (first 400 lines)
+$ bash -c find '/home/aagit' -printf '%M %u:%g %9s %TY-%Tm-%Td %TH:%TM %p\n' 2>/dev/null | head -400
+---
+drwxr-x--- aagit:aagit      4096 2026-05-20 13:19 /home/aagit
+drwxr-xr-x root:root      4096 2026-03-08 16:48 /home/aagit/mysql
+drwxr-xr-x root:root      4096 2026-03-08 15:02 /home/aagit/mysql/mysql-conf
+-rw-r--r-- root:root       469 2026-03-08 16:48 /home/aagit/mysql/docker-compose.yml
+drwx------ aagit:aagit      4096 2026-03-08 21:53 /home/aagit/.config
+drwx------ aagit:aagit      4096 2026-03-08 21:53 /home/aagit/.config/htop
+-rw------- aagit:aagit      1669 2026-03-08 21:53 /home/aagit/.config/htop/htoprc
+-rw------- aagit:aagit      2085 2026-03-25 17:28 /home/aagit/.viminfo
+-rw-r--r-- aagit:aagit      3771 2026-03-08 13:55 /home/aagit/.bashrc
+drwxr-xr-x root:root      4096 2026-03-08 15:02 /home/aagit/docker
+drwxr-xr-x root:root      4096 2026-03-08 15:02 /home/aagit/docker/volumes
+drwxr-xr-x 999:root      4096 2026-05-21 19:44 /home/aagit/docker/volumes/mysqldata
+-rw-r----- 999:systemd-journal  11912412 2026-05-09 02:56 /home/aagit/docker/volumes/mysqldata/binlog.000016
+-rw-r--r-- 999:systemd-journal      1108 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/client-cert.pem
+-rw-r----- 999:systemd-journal  32505856 2026-05-22 08:03 /home/aagit/docker/volumes/mysqldata/mysql.ibd
+-rw-r----- 999:systemd-journal   5670434 2026-05-08 16:39 /home/aagit/docker/volumes/mysqldata/binlog.000015
+-rw-r----- 999:systemd-journal       192 2026-05-21 19:44 /home/aagit/docker/volumes/mysqldata/binlog.index
+-rw-r----- 999:systemd-journal  12582912 2026-05-22 04:29 /home/aagit/docker/volumes/mysqldata/#ib_16384_1.dblwr
+-rw-r----- 999:systemd-journal    290508 2026-05-09 03:22 /home/aagit/docker/volumes/mysqldata/binlog.000018
+drwxr-x--- 999:systemd-journal      4096 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/mysql
+-rw-r----- 999:systemd-journal     12505 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/mysql/slow_log_215.sdi
+-rw-r----- 999:systemd-journal      5972 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/mysql/general_log_214.sdi
+-rw-r----- 999:systemd-journal        35 2026-03-11 03:23 /home/aagit/docker/volumes/mysqldata/mysql/slow_log.CSM
+-rw-r----- 999:systemd-journal        35 2026-03-11 03:23 /home/aagit/docker/volumes/mysqldata/mysql/general_log.CSM
+-rw-r----- 999:systemd-journal         0 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/mysql/general_log.CSV
+-rw-r----- 999:systemd-journal         0 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/mysql/slow_log.CSV
+-rw-r----- 999:systemd-journal       158 2026-05-09 03:14 /home/aagit/docker/volumes/mysqldata/binlog.000017
+-rw-r----- 999:systemd-journal 240866407 2026-05-07 19:47 /home/aagit/docker/volumes/mysqldata/binlog.000013
+-rw-r----- 999:systemd-journal      9382 2026-05-03 18:02 /home/aagit/docker/volumes/mysqldata/ib_buffer_pool
+-rw-r--r-- 999:systemd-journal      1108 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/server-cert.pem
+-rw-r----- 999:systemd-journal       124 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/mysql_upgrade_history
+-rw-r----- 999:systemd-journal  36100319 2026-05-22 08:03 /home/aagit/docker/volumes/mysqldata/binlog.000021
+-rw------- 999:systemd-journal      1705 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/ca-key.pem
+drwxr-x--- 999:systemd-journal      4096 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema
+-rw-r----- 999:systemd-journal     21006 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/events_transacti_134.sdi
+-rw-r----- 999:systemd-journal      3955 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/cond_instances_81.sdi
+-rw-r----- 999:systemd-journal      9110 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/socket_instances_148.sdi
+-rw-r----- 999:systemd-journal      6730 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/replication_appl_171.sdi
+-rw-r----- 999:systemd-journal      4695 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/session_connect__151.sdi
+-rw-r----- 999:systemd-journal     17384 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/events_waits_his_84.sdi
+-rw-r----- 999:systemd-journal     13199 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/binary_log_trans_190.sdi
+-rw-r----- 999:systemd-journal     38909 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/events_statement_121.sdi
+-rw-r----- 999:systemd-journal     25622 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/file_summary_by__94.sdi
+-rw-r----- 999:systemd-journal      3222 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/session_variable_186.sdi
+-rw-r----- 999:systemd-journal      3261 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/setup_consumers_102.sdi
+-rw-r----- 999:systemd-journal      7695 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/events_stages_su_115.sdi
+-rw-r----- 999:systemd-journal     16110 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/data_locks_161.sdi
+-rw-r----- 999:systemd-journal     17384 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/events_waits_cur_83.sdi
+-rw-r----- 999:systemd-journal      4283 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/log_status_175.sdi
+-rw-r----- 999:systemd-journal     20467 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/file_summary_by__93.sdi
+-rw-r----- 999:systemd-journal      7665 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/events_waits_sum_89.sdi
+-rw-r----- 999:systemd-journal     15786 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/events_transacti_135.sdi
+-rw-r----- 999:systemd-journal      4100 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/user_variables_b_177.sdi
+-rw-r----- 999:systemd-journal     27360 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/replication_appl_169.sdi
+-rw-r----- 999:systemd-journal      7663 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/events_errors_su_140.sdi
+-rw-r----- 999:systemd-journal     21447 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/events_transacti_132.sdi
+-rw-r----- 999:systemd-journal      7996 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/events_waits_sum_87.sdi
+-rw-r----- 999:systemd-journal     16613 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/events_transacti_136.sdi
+-rw-r----- 999:systemd-journal      8385 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/processlist_99.sdi
+-rw-r----- 999:systemd-journal     11687 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/memory_summary_b_158.sdi
+-rw-r----- 999:systemd-journal      4663 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/keyring_keys_153.sdi
+-rw-r----- 999:systemd-journal      4065 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/status_by_host_179.sdi
+-rw-r----- 999:systemd-journal      6125 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/events_statement_130.sdi
+-rw-r----- 999:systemd-journal      4833 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/setup_meters_104.sdi
+-rw-r----- 999:systemd-journal      4601 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/replication_appl_172.sdi
+-rw-r----- 999:systemd-journal      7694 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/events_errors_su_143.sdi
+-rw-r----- 999:systemd-journal     26232 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/events_statement_125.sdi
+-rw-r----- 999:systemd-journal     16943 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/events_waits_his_85.sdi
+-rw-r----- 999:systemd-journal     20485 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/socket_summary_b_150.sdi
+-rw-r----- 999:systemd-journal     15758 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/events_transacti_138.sdi
+-rw-r----- 999:systemd-journal      4096 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/variables_by_thr_184.sdi
+-rw-r----- 999:systemd-journal     14643 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/data_lock_waits_162.sdi
+-rw-r----- 999:systemd-journal      6406 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/setup_objects_106.sdi
+-rw-r----- 999:systemd-journal     15893 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/tls_channel_stat_191.sdi
+-rw-r----- 999:systemd-journal     26233 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/events_statement_126.sdi
+-rw-r----- 999:systemd-journal      9488 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/replication_grou_164.sdi
+-rw-r----- 999:systemd-journal      7664 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/events_errors_su_141.sdi
+-rw-r----- 999:systemd-journal     31346 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/events_statement_129.sdi
+-rw-r----- 999:systemd-journal      5791 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/user_defined_fun_189.sdi
+-rw-r----- 999:systemd-journal      8225 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/replication_appl_166.sdi
+-rw-r----- 999:systemd-journal      4064 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/status_by_user_181.sdi
+-rw-r----- 999:systemd-journal      8520 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/events_waits_sum_90.sdi
+-rw-r----- 999:systemd-journal      7666 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/events_stages_su_117.sdi
+-rw-r----- 999:systemd-journal     31958 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/table_io_waits_s_109.sdi
+-rw-r----- 999:systemd-journal      6819 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/events_waits_sum_91.sdi
+-rw-r----- 999:systemd-journal     11711 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/events_stages_cu_112.sdi
+-rw-r----- 999:systemd-journal      3219 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/session_status_183.sdi
+-rw-r----- 999:systemd-journal      4093 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/status_by_thread_180.sdi
+-rw-r----- 999:systemd-journal      6951 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/setup_metrics_105.sdi
+-rw-r----- 999:systemd-journal     23643 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/threads_111.sdi
+-rw-r----- 999:systemd-journal     11688 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/memory_summary_b_156.sdi
+-rw-r----- 999:systemd-journal      6134 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/accounts_146.sdi
+-rw-r----- 999:systemd-journal     15757 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/events_transacti_137.sdi
+-rw-r----- 999:systemd-journal      5951 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/rwlock_instances_100.sdi
+-rw-r----- 999:systemd-journal      7937 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/setup_instrument_103.sdi
+-rw-r----- 999:systemd-journal      7822 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/objects_summary__97.sdi
+-rw-r----- 999:systemd-journal      4293 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/performance_time_98.sdi
+-rw-r----- 999:systemd-journal     14910 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/events_transacti_139.sdi
+-rw-r----- 999:systemd-journal     11270 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/events_stages_hi_114.sdi
+-rw-r----- 999:systemd-journal      7243 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/replication_asyn_173.sdi
+-rw-r----- 999:systemd-journal      6890 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/setup_threads_107.sdi
+-rw-r----- 999:systemd-journal      4886 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/replication_appl_167.sdi
+-rw-r----- 999:systemd-journal      6820 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/events_stages_su_119.sdi
+-rw-r----- 999:systemd-journal     19879 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/replication_appl_168.sdi
+-rw-r----- 999:systemd-journal     46221 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/replication_conn_163.sdi
+-rw-r----- 999:systemd-journal     11716 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/memory_summary_b_157.sdi
+-rw-r----- 999:systemd-journal     27088 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/events_statement_124.sdi
+-rw-r----- 999:systemd-journal      7694 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/events_waits_sum_88.sdi
+-rw-r----- 999:systemd-journal      5317 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/replication_asyn_174.sdi
+-rw-r----- 999:systemd-journal      7847 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/events_statement_131.sdi
+-rw-r----- 999:systemd-journal     38468 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/events_statement_122.sdi
+-rw-r----- 999:systemd-journal      7960 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/variables_info_187.sdi
+-rw-r----- 999:systemd-journal     21447 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/events_transacti_133.sdi
+-rw-r----- 999:systemd-journal      3224 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/persisted_variab_188.sdi
+-rw-r----- 999:systemd-journal      3218 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/global_status_182.sdi
+-rw-r----- 999:systemd-journal      3221 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/global_variables_185.sdi
+-rw-r----- 999:systemd-journal      5280 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/hosts_147.sdi
+-rw-r----- 999:systemd-journal     11897 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/metadata_locks_160.sdi
+-rw-r----- 999:systemd-journal      6159 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/setup_actors_101.sdi
+-rw-r----- 999:systemd-journal      8521 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/events_stages_su_116.sdi
+-rw-r----- 999:systemd-journal     10840 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/memory_summary_g_154.sdi
+-rw-r----- 999:systemd-journal     25310 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/host_cache_95.sdi
+-rw-r----- 999:systemd-journal      7543 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/file_instances_92.sdi
+-rw-r----- 999:systemd-journal      5136 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/mutex_instances_96.sdi
+-rw-r----- 999:systemd-journal      8518 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/events_errors_su_142.sdi
+-rw-r----- 999:systemd-journal     12356 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/replication_grou_170.sdi
+-rw-r----- 999:systemd-journal     24348 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/replication_conn_165.sdi
+-rw-r----- 999:systemd-journal      9649 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/table_handles_159.sdi
+-rw-r----- 999:systemd-journal      7666 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/events_waits_sum_86.sdi
+-rw-r----- 999:systemd-journal      7639 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/error_log_82.sdi
+-rw-r----- 999:systemd-journal     32824 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/table_io_waits_s_108.sdi
+-rw-r----- 999:systemd-journal      6822 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/events_errors_su_144.sdi
+-rw-r----- 999:systemd-journal      5279 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/users_145.sdi
+-rw-r----- 999:systemd-journal      7667 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/events_stages_su_118.sdi
+-rw-r----- 999:systemd-journal     56631 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/table_lock_waits_110.sdi
+-rw-r----- 999:systemd-journal     12543 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/memory_summary_b_155.sdi
+-rw-r----- 999:systemd-journal     11711 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/events_stages_hi_113.sdi
+-rw-r----- 999:systemd-journal      4919 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/status_by_accoun_178.sdi
+-rw-r----- 999:systemd-journal     35510 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/prepared_stateme_176.sdi
+-rw-r----- 999:systemd-journal      9509 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/keyring_componen_192.sdi
+-rw-r----- 999:systemd-journal     21670 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/socket_summary_b_149.sdi
+-rw-r----- 999:systemd-journal     38909 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/events_statement_120.sdi
+-rw-r----- 999:systemd-journal     25385 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/events_statement_127.sdi
+-rw-r----- 999:systemd-journal      4703 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/session_account__152.sdi
+-rw-r----- 999:systemd-journal     32719 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/events_statement_128.sdi
+-rw-r----- 999:systemd-journal     26261 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/performance_schema/events_statement_123.sdi
+drwxr-x--- 999:systemd-journal      4096 2026-05-21 19:44 /home/aagit/docker/volumes/mysqldata/#innodb_temp
+-rw-r----- 999:systemd-journal     81920 2026-05-21 19:44 /home/aagit/docker/volumes/mysqldata/#innodb_temp/temp_7.ibt
+-rw-r----- 999:systemd-journal     81920 2026-05-21 19:44 /home/aagit/docker/volumes/mysqldata/#innodb_temp/temp_9.ibt
+-rw-r----- 999:systemd-journal     81920 2026-05-21 19:44 /home/aagit/docker/volumes/mysqldata/#innodb_temp/temp_4.ibt
+-rw-r----- 999:systemd-journal     81920 2026-05-21 19:44 /home/aagit/docker/volumes/mysqldata/#innodb_temp/temp_3.ibt
+-rw-r----- 999:systemd-journal     81920 2026-05-21 19:44 /home/aagit/docker/volumes/mysqldata/#innodb_temp/temp_2.ibt
+-rw-r----- 999:systemd-journal     81920 2026-05-21 19:44 /home/aagit/docker/volumes/mysqldata/#innodb_temp/temp_10.ibt
+-rw-r----- 999:systemd-journal     81920 2026-05-21 19:44 /home/aagit/docker/volumes/mysqldata/#innodb_temp/temp_5.ibt
+-rw-r----- 999:systemd-journal     81920 2026-05-21 19:44 /home/aagit/docker/volumes/mysqldata/#innodb_temp/temp_6.ibt
+-rw-r----- 999:systemd-journal     81920 2026-05-21 19:44 /home/aagit/docker/volumes/mysqldata/#innodb_temp/temp_8.ibt
+-rw-r----- 999:systemd-journal     81920 2026-05-21 19:44 /home/aagit/docker/volumes/mysqldata/#innodb_temp/temp_1.ibt
+-rw-r----- 999:systemd-journal 263880428 2026-05-21 19:44 /home/aagit/docker/volumes/mysqldata/binlog.000020
+-rw-r----- 999:systemd-journal   2861926 2026-05-03 18:02 /home/aagit/docker/volumes/mysqldata/binlog.000012
+-rw-r----- 999:systemd-journal  16777216 2026-05-22 08:03 /home/aagit/docker/volumes/mysqldata/undo_002
+-rw-r----- 999:systemd-journal 151320566 2026-05-03 18:01 /home/aagit/docker/volumes/mysqldata/binlog.000011
+-rw------- 999:systemd-journal      1705 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/private_key.pem
+-rw-r----- 999:systemd-journal  17133386 2026-05-08 13:46 /home/aagit/docker/volumes/mysqldata/binlog.000014
+-rw-r----- 999:systemd-journal  12582912 2026-05-21 19:44 /home/aagit/docker/volumes/mysqldata/ibtmp1
+lrwxrwxrwx 999:systemd-journal        27 2026-05-21 19:44 /home/aagit/docker/volumes/mysqldata/mysql.sock
+-rw------- 999:systemd-journal      1705 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/server-key.pem
+-rw-r----- 999:systemd-journal   3544441 2026-05-09 04:56 /home/aagit/docker/volumes/mysqldata/binlog.000019
+-rw------- 999:systemd-journal      1705 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/client-key.pem
+-rw-r----- 999:systemd-journal 604077714 2026-04-23 09:53 /home/aagit/docker/volumes/mysqldata/binlog.000010
+-rw-r--r-- 999:systemd-journal      1108 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/ca.pem
+drwxr-x--- 999:systemd-journal      4096 2026-05-22 05:54 /home/aagit/docker/volumes/mysqldata/wp_lpmpjk
+-rw-r----- 999:systemd-journal    131072 2026-03-09 02:24 /home/aagit/docker/volumes/mysqldata/wp_lpmpjk/wp_actionscheduler_groups.ibd
+-rw-r----- 999:systemd-journal    229376 2026-03-09 02:25 /home/aagit/docker/volumes/mysqldata/wp_lpmpjk/wp_actionscheduler_actions.ibd
+-rw-r----- 999:systemd-journal    507904 2026-05-15 18:20 /home/aagit/docker/volumes/mysqldata/wp_lpmpjk/wp_posts.ibd
+-rw-r----- 999:systemd-journal    163840 2026-04-12 18:46 /home/aagit/docker/volumes/mysqldata/wp_lpmpjk/wp_yoast_indexable_hierarchy.ibd
+-rw-r----- 999:systemd-journal    147456 2026-03-09 02:25 /home/aagit/docker/volumes/mysqldata/wp_lpmpjk/wp_actionscheduler_logs.ibd
+-rw-r----- 999:systemd-journal    131072 2026-03-08 17:19 /home/aagit/docker/volumes/mysqldata/wp_lpmpjk/wp_links.ibd
+-rw-r----- 999:systemd-journal    131072 2026-05-22 04:29 /home/aagit/docker/volumes/mysqldata/wp_lpmpjk/wp_cerber_uss.ibd
+-rw-r----- 999:systemd-journal    131072 2026-05-22 04:29 /home/aagit/docker/volumes/mysqldata/wp_lpmpjk/cerber_lab_net.ibd
+-rw-r----- 999:systemd-journal    131072 2026-05-22 04:29 /home/aagit/docker/volumes/mysqldata/wp_lpmpjk/cerber_acl.ibd
+-rw-r----- 999:systemd-journal    147456 2026-05-21 19:45 /home/aagit/docker/volumes/mysqldata/wp_lpmpjk/wp_usermeta.ibd
+-rw-r----- 999:systemd-journal    147456 2026-03-19 11:35 /home/aagit/docker/volumes/mysqldata/wp_lpmpjk/wp_term_taxonomy.ibd
+-rw-r----- 999:systemd-journal    147456 2026-03-08 17:19 /home/aagit/docker/volumes/mysqldata/wp_lpmpjk/wp_termmeta.ibd
+-rw-r----- 999:systemd-journal    114688 2026-05-22 07:40 /home/aagit/docker/volumes/mysqldata/wp_lpmpjk/wp_cerber_sets.ibd
+-rw-r----- 999:systemd-journal    147456 2026-03-13 15:54 /home/aagit/docker/volumes/mysqldata/wp_lpmpjk/wp_litespeed_url.ibd
+-rw-r----- 999:systemd-journal    131072 2026-03-09 02:26 /home/aagit/docker/volumes/mysqldata/wp_lpmpjk/wp_actionscheduler_claims.ibd
+-rw-r----- 999:systemd-journal    147456 2026-03-19 11:35 /home/aagit/docker/volumes/mysqldata/wp_lpmpjk/wp_terms.ibd
+-rw-r----- 999:systemd-journal  11534336 2026-05-22 07:40 /home/aagit/docker/volumes/mysqldata/wp_lpmpjk/wp_options.ibd
+-rw-r----- 999:systemd-journal    180224 2026-03-19 11:33 /home/aagit/docker/volumes/mysqldata/wp_lpmpjk/wp_yoast_seo_links.ibd
+-rw-r----- 999:systemd-journal    114688 2026-05-22 07:40 /home/aagit/docker/volumes/mysqldata/wp_lpmpjk/cerber_blocks.ibd
+-rw-r----- 999:systemd-journal  28311552 2026-05-22 05:54 /home/aagit/docker/volumes/mysqldata/wp_lpmpjk/cerber_log.ibd
+-rw-r----- 999:systemd-journal    114688 2026-05-22 05:54 /home/aagit/docker/volumes/mysqldata/wp_lpmpjk/cerber_lab.ibd
+-rw-r----- 999:systemd-journal    131072 2026-05-18 07:54 /home/aagit/docker/volumes/mysqldata/wp_lpmpjk/wp_e_events.ibd
+-rw-r----- 999:systemd-journal    131072 2026-03-13 15:54 /home/aagit/docker/volumes/mysqldata/wp_lpmpjk/wp_yoast_migrations.ibd
+-rw-r----- 999:systemd-journal   9437184 2026-05-21 19:45 /home/aagit/docker/volumes/mysqldata/wp_lpmpjk/wp_postmeta.ibd
+-rw-r----- 999:systemd-journal    212992 2026-04-12 18:46 /home/aagit/docker/volumes/mysqldata/wp_lpmpjk/wp_yoast_indexable.ibd
+-rw-r----- 999:systemd-journal    131072 2026-05-22 07:40 /home/aagit/docker/volumes/mysqldata/wp_lpmpjk/cerber_qmem.ibd
+-rw-r----- 999:systemd-journal    163840 2026-03-09 02:34 /home/aagit/docker/volumes/mysqldata/wp_lpmpjk/wp_users.ibd
+-rw-r----- 999:systemd-journal    114688 2026-05-22 04:29 /home/aagit/docker/volumes/mysqldata/wp_lpmpjk/cerber_lab_ip.ibd
+-rw-r----- 999:systemd-journal    114688 2026-03-08 22:34 /home/aagit/docker/volumes/mysqldata/wp_lpmpjk/cerber_countries.ibd
+-rw-r----- 999:systemd-journal    114688 2026-05-22 04:29 /home/aagit/docker/volumes/mysqldata/wp_lpmpjk/wp_cerber_files.ibd
+-rw-r----- 999:systemd-journal    196608 2026-03-08 17:19 /home/aagit/docker/volumes/mysqldata/wp_lpmpjk/wp_comments.ibd
+-rw-r----- 999:systemd-journal    147456 2026-03-19 11:37 /home/aagit/docker/volumes/mysqldata/wp_lpmpjk/wp_yoast_primary_term.ibd
+-rw-r----- 999:systemd-journal  22020096 2026-05-22 07:40 /home/aagit/docker/volumes/mysqldata/wp_lpmpjk/cerber_traffic.ibd
+-rw-r----- 999:systemd-journal    131072 2026-04-12 18:46 /home/aagit/docker/volumes/mysqldata/wp_lpmpjk/wp_term_relationships.ibd
+-rw-r----- 999:systemd-journal    196608 2026-03-13 15:54 /home/aagit/docker/volumes/mysqldata/wp_lpmpjk/wp_litespeed_url_file.ibd
+-rw-r----- 999:systemd-journal    147456 2026-03-08 17:19 /home/aagit/docker/volumes/mysqldata/wp_lpmpjk/wp_commentmeta.ibd
+-rw-r----- 999:systemd-journal  12582912 2026-05-22 08:03 /home/aagit/docker/volumes/mysqldata/ibdata1
+-rw-r----- 999:systemd-journal   4194304 2026-05-22 08:03 /home/aagit/docker/volumes/mysqldata/#ib_16384_0.dblwr
+drwxr-x--- 999:systemd-journal      4096 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/sys
+-rw-r----- 999:systemd-journal    114688 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/sys/sys_config.ibd
+-rw-r--r-- 999:systemd-journal       452 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/public_key.pem
+-rw-r----- 999:systemd-journal        56 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/auto.cnf
+drwxr-x--- 999:systemd-journal      4096 2026-05-22 04:20 /home/aagit/docker/volumes/mysqldata/wp_ptsbi
+-rw-r----- 999:systemd-journal    131072 2026-03-19 20:58 /home/aagit/docker/volumes/mysqldata/wp_ptsbi/wp_actionscheduler_groups.ibd
+-rw-r----- 999:systemd-journal  11534336 2026-05-22 08:01 /home/aagit/docker/volumes/mysqldata/wp_ptsbi/wp_actionscheduler_actions.ibd
+-rw-r----- 999:systemd-journal  11534336 2026-05-22 07:31 /home/aagit/docker/volumes/mysqldata/wp_ptsbi/wp_posts.ibd
+-rw-r----- 999:systemd-journal   1015808 2026-05-22 08:01 /home/aagit/docker/volumes/mysqldata/wp_ptsbi/wp_actionscheduler_logs.ibd
+-rw-r----- 999:systemd-journal    131072 2026-03-08 17:20 /home/aagit/docker/volumes/mysqldata/wp_ptsbi/wp_links.ibd
+-rw-r----- 999:systemd-journal    131072 2026-05-22 04:20 /home/aagit/docker/volumes/mysqldata/wp_ptsbi/wp_cerber_uss.ibd
+-rw-r----- 999:systemd-journal    131072 2026-05-22 04:20 /home/aagit/docker/volumes/mysqldata/wp_ptsbi/cerber_lab_net.ibd
+-rw-r----- 999:systemd-journal    131072 2026-05-22 04:20 /home/aagit/docker/volumes/mysqldata/wp_ptsbi/cerber_acl.ibd
+-rw-r----- 999:systemd-journal    147456 2026-05-22 06:20 /home/aagit/docker/volumes/mysqldata/wp_ptsbi/wp_usermeta.ibd
+-rw-r----- 999:systemd-journal    147456 2026-05-06 17:01 /home/aagit/docker/volumes/mysqldata/wp_ptsbi/wp_term_taxonomy.ibd
+-rw-r----- 999:systemd-journal    147456 2026-05-03 18:50 /home/aagit/docker/volumes/mysqldata/wp_ptsbi/wp_termmeta.ibd
+-rw-r----- 999:systemd-journal    114688 2026-05-22 08:03 /home/aagit/docker/volumes/mysqldata/wp_ptsbi/wp_cerber_sets.ibd
+-rw-r----- 999:systemd-journal    131072 2026-05-22 08:03 /home/aagit/docker/volumes/mysqldata/wp_ptsbi/wp_actionscheduler_claims.ibd
+-rw-r----- 999:systemd-journal    147456 2026-05-06 17:01 /home/aagit/docker/volumes/mysqldata/wp_ptsbi/wp_terms.ibd
+-rw-r----- 999:systemd-journal  11534336 2026-05-22 08:03 /home/aagit/docker/volumes/mysqldata/wp_ptsbi/wp_options.ibd
+-rw-r----- 999:systemd-journal    114688 2026-05-22 04:56 /home/aagit/docker/volumes/mysqldata/wp_ptsbi/cerber_blocks.ibd
+-rw-r----- 999:systemd-journal  14680064 2026-05-22 08:03 /home/aagit/docker/volumes/mysqldata/wp_ptsbi/cerber_log.ibd
+-rw-r----- 999:systemd-journal    114688 2026-05-22 04:20 /home/aagit/docker/volumes/mysqldata/wp_ptsbi/cerber_lab.ibd
+-rw-r----- 999:systemd-journal    131072 2026-03-19 20:44 /home/aagit/docker/volumes/mysqldata/wp_ptsbi/wp_e_events.ibd
+-rw-r----- 999:systemd-journal  20971520 2026-05-22 07:35 /home/aagit/docker/volumes/mysqldata/wp_ptsbi/wp_postmeta.ibd
+-rw-r----- 999:systemd-journal    131072 2026-05-22 08:03 /home/aagit/docker/volumes/mysqldata/wp_ptsbi/cerber_qmem.ibd
+-rw-r----- 999:systemd-journal    163840 2026-03-09 02:38 /home/aagit/docker/volumes/mysqldata/wp_ptsbi/wp_users.ibd
+-rw-r----- 999:systemd-journal    114688 2026-05-22 04:20 /home/aagit/docker/volumes/mysqldata/wp_ptsbi/cerber_lab_ip.ibd
+-rw-r----- 999:systemd-journal    114688 2026-03-09 02:35 /home/aagit/docker/volumes/mysqldata/wp_ptsbi/cerber_countries.ibd
+-rw-r----- 999:systemd-journal    114688 2026-05-22 04:20 /home/aagit/docker/volumes/mysqldata/wp_ptsbi/wp_cerber_files.ibd
+-rw-r----- 999:systemd-journal    196608 2026-04-24 17:20 /home/aagit/docker/volumes/mysqldata/wp_ptsbi/wp_comments.ibd
+-rw-r----- 999:systemd-journal  10485760 2026-05-22 08:03 /home/aagit/docker/volumes/mysqldata/wp_ptsbi/cerber_traffic.ibd
+-rw-r----- 999:systemd-journal    131072 2026-05-06 17:02 /home/aagit/docker/volumes/mysqldata/wp_ptsbi/wp_term_relationships.ibd
+-rw-r----- 999:systemd-journal    147456 2026-03-08 17:20 /home/aagit/docker/volumes/mysqldata/wp_ptsbi/wp_commentmeta.ibd
+-rw-r----- 999:systemd-journal  16777216 2026-05-22 08:03 /home/aagit/docker/volumes/mysqldata/undo_001
+drwxr-x--- 999:systemd-journal      4096 2026-05-22 07:40 /home/aagit/docker/volumes/mysqldata/#innodb_redo
+-rw-r----- 999:systemd-journal   3276800 2026-05-21 19:44 /home/aagit/docker/volumes/mysqldata/#innodb_redo/#ib_redo655_tmp
+-rw-r----- 999:systemd-journal   3276800 2026-05-21 23:49 /home/aagit/docker/volumes/mysqldata/#innodb_redo/#ib_redo645
+-rw-r----- 999:systemd-journal   3276800 2026-05-21 19:44 /home/aagit/docker/volumes/mysqldata/#innodb_redo/#ib_redo658_tmp
+-rw-r----- 999:systemd-journal   3276800 2026-05-21 21:30 /home/aagit/docker/volumes/mysqldata/#innodb_redo/#ib_redo642
+-rw-r----- 999:systemd-journal   3276800 2026-05-21 19:44 /home/aagit/docker/volumes/mysqldata/#innodb_redo/#ib_redo661_tmp
+-rw-r----- 999:systemd-journal   3276800 2026-05-22 03:32 /home/aagit/docker/volumes/mysqldata/#innodb_redo/#ib_redo649
+-rw-r----- 999:systemd-journal   3276800 2026-05-21 19:44 /home/aagit/docker/volumes/mysqldata/#innodb_redo/#ib_redo667_tmp
+-rw-r----- 999:systemd-journal   3276800 2026-05-21 19:44 /home/aagit/docker/volumes/mysqldata/#innodb_redo/#ib_redo657_tmp
+-rw-r----- 999:systemd-journal   3276800 2026-05-21 19:44 /home/aagit/docker/volumes/mysqldata/#innodb_redo/#ib_redo666_tmp
+-rw-r----- 999:systemd-journal   3276800 2026-05-21 19:44 /home/aagit/docker/volumes/mysqldata/#innodb_redo/#ib_redo663_tmp
+-rw-r----- 999:systemd-journal   3276800 2026-05-21 19:44 /home/aagit/docker/volumes/mysqldata/#innodb_redo/#ib_redo662_tmp
+-rw-r----- 999:systemd-journal   3276800 2026-05-21 19:44 /home/aagit/docker/volumes/mysqldata/#innodb_redo/#ib_redo664_tmp
+-rw-r----- 999:systemd-journal   3276800 2026-05-22 08:03 /home/aagit/docker/volumes/mysqldata/#innodb_redo/#ib_redo653
+-rw-r----- 999:systemd-journal   3276800 2026-05-21 19:44 /home/aagit/docker/volumes/mysqldata/#innodb_redo/#ib_redo670_tmp
+-rw-r----- 999:systemd-journal   3276800 2026-05-21 19:44 /home/aagit/docker/volumes/mysqldata/#innodb_redo/#ib_redo659_tmp
+-rw-r----- 999:systemd-journal   3276800 2026-05-21 19:44 /home/aagit/docker/volumes/mysqldata/#innodb_redo/#ib_redo639
+-rw-r----- 999:systemd-journal   3276800 2026-05-21 19:44 /home/aagit/docker/volumes/mysqldata/#innodb_redo/#ib_redo660_tmp
+-rw-r----- 999:systemd-journal   3276800 2026-05-21 19:44 /home/aagit/docker/volumes/mysqldata/#innodb_redo/#ib_redo656_tmp
+-rw-r----- 999:systemd-journal   3276800 2026-05-22 04:29 /home/aagit/docker/volumes/mysqldata/#innodb_redo/#ib_redo650
+-rw-r----- 999:systemd-journal   3276800 2026-05-22 06:08 /home/aagit/docker/volumes/mysqldata/#innodb_redo/#ib_redo651
+-rw-r----- 999:systemd-journal   3276800 2026-05-21 19:53 /home/aagit/docker/volumes/mysqldata/#innodb_redo/#ib_redo640
+-rw-r----- 999:systemd-journal   3276800 2026-05-21 21:54 /home/aagit/docker/volumes/mysqldata/#innodb_redo/#ib_redo643
+-rw-r----- 999:systemd-journal   3276800 2026-05-21 22:51 /home/aagit/docker/volumes/mysqldata/#innodb_redo/#ib_redo644
+-rw-r----- 999:systemd-journal   3276800 2026-05-22 01:19 /home/aagit/docker/volumes/mysqldata/#innodb_redo/#ib_redo646
+-rw-r----- 999:systemd-journal   3276800 2026-05-21 19:44 /home/aagit/docker/volumes/mysqldata/#innodb_redo/#ib_redo665_tmp
+-rw-r----- 999:systemd-journal   3276800 2026-05-21 19:44 /home/aagit/docker/volumes/mysqldata/#innodb_redo/#ib_redo654_tmp
+-rw-r----- 999:systemd-journal   3276800 2026-05-21 20:58 /home/aagit/docker/volumes/mysqldata/#innodb_redo/#ib_redo641
+-rw-r----- 999:systemd-journal   3276800 2026-05-22 01:23 /home/aagit/docker/volumes/mysqldata/#innodb_redo/#ib_redo647
+-rw-r----- 999:systemd-journal   3276800 2026-05-22 07:40 /home/aagit/docker/volumes/mysqldata/#innodb_redo/#ib_redo652
+-rw-r----- 999:systemd-journal   3276800 2026-05-21 19:44 /home/aagit/docker/volumes/mysqldata/#innodb_redo/#ib_redo669_tmp
+-rw-r----- 999:systemd-journal   3276800 2026-05-21 19:44 /home/aagit/docker/volumes/mysqldata/#innodb_redo/#ib_redo668_tmp
+-rw-r----- 999:systemd-journal   3276800 2026-05-22 03:29 /home/aagit/docker/volumes/mysqldata/#innodb_redo/#ib_redo648
+drwxr-x--- 999:systemd-journal      4096 2026-03-08 16:42 /home/aagit/docker/volumes/mysqldata/db
+drwxr-xr-x root:root      4096 2026-05-20 12:58 /home/aagit/tarombo-app
+-rw-r--r-- root:root       453 2026-05-20 12:58 /home/aagit/tarombo-app/.env
+-rw-r--r-- root:root       453 2026-05-20 10:38 /home/aagit/tarombo-app/.env.example
+-rw-r--r-- root:root       756 2026-05-20 12:29 /home/aagit/tarombo-app/MULAI-DISINI.txt
+-rw-r--r-- root:root      3660 2026-05-20 10:37 /home/aagit/tarombo-app/schema.sql
+drwxr-xr-x root:root      4096 2026-05-20 12:39 /home/aagit/tarombo-app/scripts
+-rw-r--r-- root:root       362 2026-05-20 03:27 /home/aagit/tarombo-app/scripts/docker-entrypoint.sh
+drwxr-xr-x root:root      4096 2026-05-20 12:39 /home/aagit/tarombo-app/services
+-rw-r--r-- root:root      7587 2026-05-20 07:49 /home/aagit/tarombo-app/services/db_admin.py
+-rw-r--r-- root:root      2943 2026-05-20 10:37 /home/aagit/tarombo-app/services/site_branding.py
+-rw-r--r-- root:root      2838 2026-05-20 04:45 /home/aagit/tarombo-app/services/batak_names.py
+-rw-r--r-- root:root         0 2026-05-20 03:27 /home/aagit/tarombo-app/services/__init__.py
+-rw-r--r-- root:root       545 2026-05-20 03:27 /home/aagit/tarombo-app/services/audit.py
+-rw-r--r-- root:root      5400 2026-05-20 11:48 /home/aagit/tarombo-app/services/partuturan.py
+-rw-r--r-- root:root     10844 2026-05-20 09:41 /home/aagit/tarombo-app/services/sundut.py
+-rw-r--r-- root:root      4098 2026-05-20 05:22 /home/aagit/tarombo-app/services/sibling_order.py
+-rw-r--r-- root:root     12583 2026-05-20 12:08 /home/aagit/tarombo-app/services/opung.py
+-rw-r--r-- root:root      9094 2026-05-20 09:49 /home/aagit/tarombo-app/services/person_merge.py
+-rw-r--r-- root:root      6147 2026-05-20 09:50 /home/aagit/tarombo-app/services/graph_sync.py
+-rw-r--r-- root:root      6107 2026-05-20 08:42 /home/aagit/tarombo-app/services/tree_editor.py
+-rw-r--r-- root:root      5047 2026-05-20 11:48 /home/aagit/tarombo-app/services/form_config.py
+-rw-r--r-- root:root      4124 2026-05-20 08:35 /home/aagit/tarombo-app/services/matching.py
+-rw-r--r-- root:root      3571 2026-05-20 08:36 /home/aagit/tarombo-app/services/member_registration.py
+-rw-r--r-- root:root      4168 2026-05-20 08:35 /home/aagit/tarombo-app/services/tarombo_person.py
+-rw-r--r-- root:root     21516 2026-05-20 12:09 /home/aagit/tarombo-app/services/tree_display.py
+-rw-r--r-- root:root     72842 2026-05-20 12:09 /home/aagit/tarombo-app/app.py
+-rw-r--r-- root:root        68 2026-05-20 10:38 /home/aagit/tarombo-app/.gitignore
+drwxr-xr-x root:root      4096 2026-05-20 12:38 /home/aagit/tarombo-app/deploy
+-rw-r--r-- root:root       381 2026-05-20 03:27 /home/aagit/tarombo-app/deploy/nginx-tarombo.conf.example
+drwxr-xr-x root:root      4096 2026-05-20 12:38 /home/aagit/tarombo-app/data
+drwxr-xr-x root:root      4096 2026-05-20 12:38 /home/aagit/tarombo-app/data/uploads
+-rw-r--r-- root:root         0 2026-05-20 10:37 /home/aagit/tarombo-app/data/uploads/.gitkeep
+-rw-r--r-- root:root       100 2026-05-20 03:27 /home/aagit/tarombo-app/requirements.txt
+-rw-r--r-- root:root       545 2026-05-20 10:39 /home/aagit/tarombo-app/Dockerfile
+-rw-r--r-- root:root     11363 2026-05-20 10:38 /home/aagit/tarombo-app/db.py
+-rw-r--r-- root:root      2728 2026-05-20 12:25 /home/aagit/tarombo-app/DEPLOY-UBUNTU.md
+-rw-r--r-- root:root       599 2026-05-20 10:38 /home/aagit/tarombo-app/README.md
+drwxr-xr-x root:root      4096 2026-05-20 12:39 /home/aagit/tarombo-app/templates
+-rw-r--r-- root:root      2627 2026-05-20 04:24 /home/aagit/tarombo-app/templates/register.html
+-rw-r--r-- root:root      2921 2026-05-20 05:04 /home/aagit/tarombo-app/templates/admin_database.html
+-rw-r--r-- root:root       755 2026-05-20 03:27 /home/aagit/tarombo-app/templates/admin_audit.html
+-rw-r--r-- root:root      5506 2026-05-20 11:04 /home/aagit/tarombo-app/templates/admin.html
+-rw-r--r-- root:root      1547 2026-05-20 11:04 /home/aagit/tarombo-app/templates/index.html
+-rw-r--r-- root:root      1495 2026-05-20 10:37 /home/aagit/tarombo-app/templates/admin_logo.html
+-rw-r--r-- root:root      2552 2026-05-20 12:09 /home/aagit/tarombo-app/templates/admin_pohon.html
+-rw-r--r-- root:root       491 2026-05-20 11:04 /home/aagit/tarombo-app/templates/member_dashboard.html
+-rw-r--r-- root:root      1631 2026-05-20 03:27 /home/aagit/tarombo-app/templates/admin_form_config.html
+-rw-r--r-- root:root       341 2026-05-20 03:27 /home/aagit/tarombo-app/templates/login.html
+-rw-r--r-- root:root      9220 2026-05-20 09:51 /home/aagit/tarombo-app/templates/admin_edit_person.html
+-rw-r--r-- root:root      2843 2026-05-20 05:25 /home/aagit/tarombo-app/templates/admin_add_person.html
+-rw-r--r-- root:root      3319 2026-05-20 09:41 /home/aagit/tarombo-app/templates/admin_sundut.html
+-rw-r--r-- root:root      1984 2026-05-20 12:09 /home/aagit/tarombo-app/templates/base.html
+-rw-r--r-- root:root      1256 2026-05-20 12:09 /home/aagit/tarombo-app/templates/tarombo.html
+-rw-r--r-- root:root      2110 2026-05-20 12:09 /home/aagit/tarombo-app/templates/tarombo_layar_penuh.html
+-rw-r--r-- root:root      1059 2026-05-20 10:38 /home/aagit/tarombo-app/docker-compose.yml
+drwxr-xr-x root:root      4096 2026-05-20 12:39 /home/aagit/tarombo-app/static
+-rw-r--r-- root:root     20198 2026-05-20 12:09 /home/aagit/tarombo-app/static/styles.css
+-rw-r--r-- root:root     12818 2026-05-20 08:46 /home/aagit/tarombo-app/static/tarombo-tree-editor.js
+-rw-r--r-- root:root       531 2026-05-20 03:27 /home/aagit/tarombo-app/static/logo-ptsbi.svg
+-rw-r--r-- root:root      2835 2026-05-20 05:24 /home/aagit/tarombo-app/static/app.js
+-rw-r--r-- root:root     21066 2026-05-20 11:48 /home/aagit/tarombo-app/static/tarombo-tree.js
+-rw------- aagit:aagit      3547 2026-04-10 05:25 /home/aagit/.bash_history
+-rw-r--r-- aagit:aagit       807 2026-03-08 13:55 /home/aagit/.profile
+drwxr-xr-x root:root      4096 2026-03-08 17:27 /home/aagit/wordpress
+drwxr-xr-x root:root      4096 2026-03-08 15:04 /home/aagit/wordpress/php.ini
+-rw-r--r-- root:root      1612 2026-03-08 17:27 /home/aagit/wordpress/docker-compose.yml
+-rw-r--r-- aagit:aagit       220 2026-03-08 13:55 /home/aagit/.bash_logout
+-rw------- aagit:aagit        20 2026-03-11 05:15 /home/aagit/.lesshst
+drwxrwxr-x aagit:aagit      4096 2026-03-08 15:43 /home/aagit/traefik
+-rw-r--r-- root:root       157 2026-03-08 14:58 /home/aagit/traefik/.env
+drwxr-xr-x root:root      4096 2026-03-08 14:59 /home/aagit/traefik/data
+drwxr-xr-x root:root      4096 2026-03-08 14:59 /home/aagit/traefik/data/letsencrypt
+-rw------- root:root     61887 2026-05-08 16:33 /home/aagit/traefik/data/letsencrypt/acme.json
+-rw-r--r-- root:root      2262 2026-05-08 16:49 /home/aagit/traefik/docker-compose.yml
+drwx------ aagit:aagit      4096 2026-03-08 13:58 /home/aagit/.ssh
+-rw------- aagit:aagit       964 2026-03-08 13:58 /home/aagit/.ssh/authorized_keys
+-rw-r--r-- aagit:aagit         0 2026-03-08 13:59 /home/aagit/.sudo_as_admin_successful
+drwx------ aagit:aagit      4096 2026-03-08 13:59 /home/aagit/.cache
+-rw-r--r-- aagit:aagit         0 2026-03-08 13:59 /home/aagit/.cache/motd.legal-displayed
+
+
+================================================================================
+  4. HARDCODED PATHS (/home/aagit)
+================================================================================
+
+### References to source home
+$ grep -r /home/aagit /home/aagit --include=*.yml --include=*.yaml --include=*.env --include=*.sh --include=*.php
+---
+/home/aagit/mysql/docker-compose.yml:      - /home/aagit/docker/volumes/mysqldata:/var/lib/mysql
+
+### References in cron
+$ grep -r /home/aagit /etc/cron.d /etc/cron.daily /etc/cron.hourly /etc/cron.monthly /etc/crontab /etc/cron.weekly /etc/cron.yearly /var/spool/cron
+---
+[exit code: 1]
+
+
+================================================================================
+  5. DOCKER
+================================================================================
+
+### Docker version
+$ docker version
+---
+Client: Docker Engine - Community
+ Version:           29.4.2
+ API version:       1.54
+ Go version:        go1.26.2
+ Git commit:        055a478
+ Built:             Fri May  1 10:24:01 2026
+ OS/Arch:           linux/amd64
+ Context:           default
+
+Server: Docker Engine - Community
+ Engine:
+  Version:          29.4.2
+  API version:      1.54 (minimum version 1.40)
+  Go version:       go1.26.2
+  Git commit:       d329809
+  Built:            Fri May  1 10:24:01 2026
+  OS/Arch:          linux/amd64
+  Experimental:     false
+ containerd:
+  Version:          v2.2.3
+  GitCommit:        77c84241c7cbdd9b4eca2591793e3d4f4317c590
+ runc:
+  Version:          1.3.5
+  GitCommit:        v1.3.5-0-g488fc13e
+ docker-init:
+  Version:          0.19.0
+  GitCommit:        de40ad0
+
+### Compose version
+$ docker compose version
+---
+Docker Compose version v5.1.3
+
+### Running containers
+$ docker ps -a --format table {{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}
+---
+NAMES              IMAGE                           STATUS        PORTS
+traefik            traefik:3.6                     Up 12 hours   0.0.0.0:80->80/tcp, [::]:80->80/tcp, 0.0.0.0:443->443/tcp, [::]:443->443/tcp
+tarombo-web        tarombo-app-tarombo-app         Up 12 hours   5000/tcp
+wordpress-lpmpjk   wordpress:6.9.1-php8.2-apache   Up 12 hours   80/tcp
+wordpress-ptsbi    wordpress:6.9.1-php8.2-apache   Up 12 hours   80/tcp
+mysql              mysql:8.4                       Up 12 hours   127.0.0.1:3306->3306/tcp, 33060/tcp
+
+### Networks
+$ docker network ls
+---
+NETWORK ID     NAME      DRIVER    SCOPE
+0550778e206f   bridge    bridge    local
+87d67b9513e9   host      host      local
+e2f6f82e758e   none      null      local
+d579289e4ff1   traefik   bridge    local
+
+### Volumes
+$ docker volume ls
+---
+DRIVER    VOLUME NAME
+local     7a0e69703987d80c391483a555c384f130703fbf11c1ce72167826ab0c189e99
+local     2916becca9d7c87a47c06aad25d4ecfd4169b1259c43bc357a98a5ca346cd81d
+local     ce3eac53fe29cf0fb447850e6c387db07004ebc9ce57039066512bff413e8f21
+local     wordpress_wordpress_lpmpjk
+local     wordpress_wordpress_ptsbi
+local     wp-lpmpjk_wordpress_files
+
+### Compose projects (labels)
+$ docker ps -a --filter label=com.docker.compose.project --format {{.Label "com.docker.compose.project"}}\t{{.Names}}
+---
+traefik	traefik
+tarombo-app	tarombo-web
+wordpress	wordpress-lpmpjk
+wordpress	wordpress-ptsbi
+mysql	mysql
+
+
+================================================================================
+  6. SERVICE FOLDERS
+================================================================================
+
+  Copied configs: docker
+  Copied configs: mysql
+  Copied configs: tarombo-app
+  Copied configs: traefik
+  Copied configs: wordpress
+
+================================================================================
+  7. TRAEFIK SPOT CHECK
+================================================================================
+
+### traefik/ listing
+$ ls -la /home/aagit/traefik
+---
+total 20
+drwxrwxr-x  3 aagit aagit 4096 Mar  8 15:43 .
+drwxr-x--- 10 aagit aagit 4096 May 20 13:19 ..
+drwxr-xr-x  3 root  root  4096 Mar  8 14:59 data
+-rw-r--r--  1 root  root  2262 May  8 16:49 docker-compose.yml
+-rw-r--r--  1 root  root   157 Mar  8 14:58 .env
+
+### traefik/data
+$ ls -laR /home/aagit/traefik/data
+---
+/home/aagit/traefik/data:
+total 12
+drwxr-xr-x 3 root  root  4096 Mar  8 14:59 .
+drwxrwxr-x 3 aagit aagit 4096 Mar  8 15:43 ..
+drwxr-xr-x 2 root  root  4096 Mar  8 14:59 letsencrypt
+
+/home/aagit/traefik/data/letsencrypt:
+total 72
+drwxr-xr-x 2 root root  4096 Mar  8 14:59 .
+drwxr-xr-x 3 root root  4096 Mar  8 14:59 ..
+-rw------- 1 root root 61887 May  8 16:33 acme.json
+
+### acme.json metadata
+$ stat /home/aagit/traefik/data/letsencrypt/acme.json
+---
+  File: /home/aagit/traefik/data/letsencrypt/acme.json
+  Size: 61887     	Blocks: 128        IO Block: 4096   regular file
+Device: 8,1	Inode: 564410      Links: 1
+Access: (0600/-rw-------)  Uid: (    0/    root)   Gid: (    0/    root)
+Access: 2026-05-21 19:43:42.593000000 +0200
+Modify: 2026-05-08 16:33:46.303047567 +0200
+Change: 2026-05-08 16:33:46.303047567 +0200
+ Birth: 2026-03-08 14:59:44.450218242 +0100
+
+
+================================================================================
+  8. WORDPRESS / APP SITES
+================================================================================
+
+### wordpress subdirs
+$ ls -la /home/aagit/wordpress
+---
+total 16
+drwxr-xr-x  3 root  root  4096 Mar  8 17:27 .
+drwxr-x--- 10 aagit aagit 4096 May 20 13:19 ..
+-rw-r--r--  1 root  root  1612 Mar  8 17:27 docker-compose.yml
+drwxr-xr-x  2 root  root  4096 Mar  8 15:04 php.ini
+
+### Site: php.ini
+$ ls -la /home/aagit/wordpress/php.ini
+---
+total 8
+drwxr-xr-x 2 root root 4096 Mar  8 15:04 .
+drwxr-xr-x 3 root root 4096 Mar  8 17:27 ..
+
+### tarombo-app listing
+$ ls -laR /home/aagit/tarombo-app
+---
+/home/aagit/tarombo-app:
+total 156
+drwxr-xr-x  8 root  root   4096 May 20 12:58 .
+drwxr-x--- 10 aagit aagit  4096 May 20 13:19 ..
+-rw-r--r--  1 root  root  72842 May 20 12:09 app.py
+drwxr-xr-x  3 root  root   4096 May 20 12:38 data
+-rw-r--r--  1 root  root  11363 May 20 10:38 db.py
+drwxr-xr-x  2 root  root   4096 May 20 12:38 deploy
+-rw-r--r--  1 root  root   2728 May 20 12:25 DEPLOY-UBUNTU.md
+-rw-r--r--  1 root  root   1059 May 20 10:38 docker-compose.yml
+-rw-r--r--  1 root  root    545 May 20 10:39 Dockerfile
+-rw-r--r--  1 root  root    453 May 20 12:58 .env
+-rw-r--r--  1 root  root    453 May 20 10:38 .env.example
+-rw-r--r--  1 root  root     68 May 20 10:38 .gitignore
+-rw-r--r--  1 root  root    756 May 20 12:29 MULAI-DISINI.txt
+-rw-r--r--  1 root  root    599 May 20 10:38 README.md
+-rw-r--r--  1 root  root    100 May 20 03:27 requirements.txt
+-rw-r--r--  1 root  root   3660 May 20 10:37 schema.sql
+drwxr-xr-x  2 root  root   4096 May 20 12:39 scripts
+drwxr-xr-x  2 root  root   4096 May 20 12:39 services
+drwxr-xr-x  2 root  root   4096 May 20 12:39 static
+drwxr-xr-x  2 root  root   4096 May 20 12:39 templates
+
+/home/aagit/tarombo-app/data:
+total 12
+drwxr-xr-x 3 root root 4096 May 20 12:38 .
+drwxr-xr-x 8 root root 4096 May 20 12:58 ..
+drwxr-xr-x 2 root root 4096 May 20 12:38 uploads
+
+/home/aagit/tarombo-app/data/uploads:
+total 8
+drwxr-xr-x 2 root root 4096 May 20 12:38 .
+drwxr-xr-x 3 root root 4096 May 20 12:38 ..
+-rw-r--r-- 1 root root    0 May 20 10:37 .gitkeep
+
+/home/aagit/tarombo-app/deploy:
+total 12
+drwxr-xr-x 2 root root 4096 May 20 12:38 .
+drwxr-xr-x 8 root root 4096 May 20 12:58 ..
+-rw-r--r-- 1 root root  381 May 20 03:27 nginx-tarombo.conf.example
+
+/home/aagit/tarombo-app/scripts:
+total 12
+drwxr-xr-x 2 root root 4096 May 20 12:39 .
+drwxr-xr-x 8 root root 4096 May 20 12:58 ..
+-rw-r--r-- 1 root root  362 May 20 03:27 docker-entrypoint.sh
+
+/home/aagit/tarombo-app/services:
+total 152
+drwxr-xr-x 2 root root  4096 May 20 12:39 .
+drwxr-xr-x 8 root root  4096 May 20 12:58 ..
+-rw-r--r-- 1 root root   545 May 20 03:27 audit.py
+-rw-r--r-- 1 root root  2838 May 20 04:45 batak_names.py
+-rw-r--r-- 1 root root  7587 May 20 07:49 db_admin.py
+-rw-r--r-- 1 root root  5047 May 20 11:48 form_config.py
+-rw-r--r-- 1 root root  6147 May 20 09:50 graph_sync.py
+-rw-r--r-- 1 root root     0 May 20 03:27 __init__.py
+-rw-r--r-- 1 root root  4124 May 20 08:35 matching.py
+-rw-r--r-- 1 root root  3571 May 20 08:36 member_registration.py
+-rw-r--r-- 1 root root 12583 May 20 12:08 opung.py
+-rw-r--r-- 1 root root  5400 May 20 11:48 partuturan.py
+-rw-r--r-- 1 root root  9094 May 20 09:49 person_merge.py
+-rw-r--r-- 1 root root  4098 May 20 05:22 sibling_order.py
+-rw-r--r-- 1 root root  2943 May 20 10:37 site_branding.py
+-rw-r--r-- 1 root root 10844 May 20 09:41 sundut.py
+-rw-r--r-- 1 root root  4168 May 20 08:35 tarombo_person.py
+-rw-r--r-- 1 root root 21516 May 20 12:09 tree_display.py
+-rw-r--r-- 1 root root  6107 May 20 08:42 tree_editor.py
+
+/home/aagit/tarombo-app/static:
+total 76
+drwxr-xr-x 2 root root  4096 May 20 12:39 .
+drwxr-xr-x 8 root root  4096 May 20 12:58 ..
+-rw-r--r-- 1 root root  2835 May 20 05:24 app.js
+-rw-r--r-- 1 root root   531 May 20 03:27 logo-ptsbi.svg
+-rw-r--r-- 1 root root 20198 May 20 12:09 styles.css
+-rw-r--r-- 1 root root 12818 May 20 08:46 tarombo-tree-editor.js
+-rw-r--r-- 1 root root 21066 May 20 11:48 tarombo-tree.js
+
+/home/aagit/tarombo-app/templates:
+total 84
+drwxr-xr-x 2 root root 4096 May 20 12:39 .
+drwxr-xr-x 8 root root 4096 May 20 12:58 ..
+-rw-r--r-- 1 root root 2843 May 20 05:25 admin_add_person.html
+-rw-r--r-- 1 root root  755 May 20 03:27 admin_audit.html
+-rw-r--r-- 1 root root 2921 May 20 05:04 admin_database.html
+-rw-r--r-- 1 root root 9220 May 20 09:51 admin_edit_person.html
+-rw-r--r-- 1 root root 1631 May 20 03:27 admin_form_config.html
+-rw-r--r-- 1 root root 5506 May 20 11:04 admin.html
+-rw-r--r-- 1 root root 1495 May 20 10:37 admin_logo.html
+-rw-r--r-- 1 root root 2552 May 20 12:09 admin_pohon.html
+-rw-r--r-- 1 root root 3319 May 20 09:41 admin_sundut.html
+-rw-r--r-- 1 root root 1984 May 20 12:09 base.html
+-rw-r--r-- 1 root root 1547 May 20 11:04 index.html
+-rw-r--r-- 1 root root  341 May 20 03:27 login.html
+-rw-r--r-- 1 root root  491 May 20 11:04 member_dashboard.html
+-rw-r--r-- 1 root root 2627 May 20 04:24 register.html
+-rw-r--r-- 1 root root 1256 May 20 12:09 tarombo.html
+-rw-r--r-- 1 root root 2110 May 20 12:09 tarombo_layar_penuh.html
+
+
+================================================================================
+  9. MYSQL
+================================================================================
+
+### mysql/ listing
+$ ls -la /home/aagit/mysql
+---
+total 16
+drwxr-xr-x  3 root  root  4096 Mar  8 16:48 .
+drwxr-x--- 10 aagit aagit 4096 May 20 13:19 ..
+-rw-r--r--  1 root  root   469 Mar  8 16:48 docker-compose.yml
+drwxr-xr-x  2 root  root  4096 Mar  8 15:02 mysql-conf
+
+### mysql data size
+$ du -sh /home/aagit/mysql/docker-compose.yml /home/aagit/mysql/mysql-conf
+---
+4.0K	/home/aagit/mysql/docker-compose.yml
+4.0K	/home/aagit/mysql/mysql-conf
+
+
+================================================================================
+  10. NETWORK & FIREWALL
+================================================================================
+
+### Listening ports
+$ ss -tlnp
+---
+State  Recv-Q Send-Q Local Address:Port Peer Address:PortProcess                                   
+LISTEN 0      4096       127.0.0.1:3306      0.0.0.0:*    users:(("docker-proxy",pid=1690,fd=8))   
+LISTEN 0      4096   127.0.0.53%lo:53        0.0.0.0:*    users:(("systemd-resolve",pid=590,fd=15))
+LISTEN 0      4096      127.0.0.54:53        0.0.0.0:*    users:(("systemd-resolve",pid=590,fd=17))
+LISTEN 0      4096         0.0.0.0:443       0.0.0.0:*    users:(("docker-proxy",pid=1630,fd=8))   
+LISTEN 0      4096         0.0.0.0:80        0.0.0.0:*    users:(("docker-proxy",pid=1588,fd=8))   
+LISTEN 0      128          0.0.0.0:22        0.0.0.0:*    users:(("sshd",pid=810,fd=3))            
+LISTEN 0      4096            [::]:443          [::]:*    users:(("docker-proxy",pid=1642,fd=8))   
+LISTEN 0      4096            [::]:80           [::]:*    users:(("docker-proxy",pid=1596,fd=8))   
+LISTEN 0      128             [::]:22           [::]:*    users:(("sshd",pid=810,fd=4))            
+
+### UFW status
+$ ufw status verbose
+---
+Status: active
+Logging: on (low)
+Default: deny (incoming), allow (outgoing), deny (routed)
+New profiles: skip
+
+To                         Action      From
+--                         ------      ----
+80/tcp                     ALLOW IN    Anywhere                  
+443                        ALLOW IN    Anywhere                  
+22/tcp                     ALLOW IN    Anywhere                  
+37953                      ALLOW IN    Anywhere                  
+37953/tcp                  ALLOW IN    Anywhere                  
+80/tcp (v6)                ALLOW IN    Anywhere (v6)             
+443 (v6)                   ALLOW IN    Anywhere (v6)             
+22/tcp (v6)                ALLOW IN    Anywhere (v6)             
+37953 (v6)                 ALLOW IN    Anywhere (v6)             
+37953/tcp (v6)             ALLOW IN    Anywhere (v6)             
+
+
+### iptables NAT (first 30)
+$ iptables -t nat -L -n -v
+---
+Chain PREROUTING (policy ACCEPT 102K packets, 8082K bytes)
+ pkts bytes target     prot opt in     out     source               destination         
+68170 3431K DOCKER     0    --  *      *       0.0.0.0/0            0.0.0.0/0            ADDRTYPE match dst-type LOCAL
+
+Chain INPUT (policy ACCEPT 0 packets, 0 bytes)
+ pkts bytes target     prot opt in     out     source               destination         
+
+Chain OUTPUT (policy ACCEPT 4203 packets, 302K bytes)
+ pkts bytes target     prot opt in     out     source               destination         
+    0     0 DOCKER     0    --  *      *       0.0.0.0/0           !127.0.0.0/8          ADDRTYPE match dst-type LOCAL
+
+Chain POSTROUTING (policy ACCEPT 48772 packets, 2237K bytes)
+ pkts bytes target     prot opt in     out     source               destination         
+    0     0 MASQUERADE  0    --  *      !docker0  172.17.0.0/16        0.0.0.0/0           
+  462 29080 MASQUERADE  0    --  *      !br-d579289e4ff1  172.18.0.0/16        0.0.0.0/0           
+
+Chain DOCKER (2 references)
+ pkts bytes target     prot opt in     out     source               destination         
+ 2603  200K DNAT       6    --  !br-d579289e4ff1 *       0.0.0.0/0            0.0.0.0/0            tcp dpt:80 to:172.18.0.2:80
+41968 1736K DNAT       6    --  !br-d579289e4ff1 *       0.0.0.0/0            0.0.0.0/0            tcp dpt:443 to:172.18.0.2:443
+    0     0 DNAT       6    --  !br-d579289e4ff1 *       0.0.0.0/0            127.0.0.1            tcp dpt:3306 to:172.18.0.6:3306
+
+
+================================================================================
+  11. CRON & TIMERS
+================================================================================
+
+### Root crontab
+$ crontab -l -u root
+---
+no crontab for root
+[exit code: 1]
+
+### aagit crontab
+$ crontab -l -u aagit
+---
+no crontab for aagit
+[exit code: 1]
+
+### System timers (active)
+$ systemctl list-timers --no-pager
+---
+NEXT                              LEFT LAST                               PASSED UNIT                           ACTIVATES
+Fri 2026-05-22 08:10:00 CEST      5min Fri 2026-05-22 08:00:08 CEST 4min 12s ago sysstat-collect.timer          sysstat-collect.service
+Fri 2026-05-22 09:48:59 CEST  1h 44min Fri 2026-05-22 08:03:08 CEST 1min 12s ago fwupd-refresh.timer            fwupd-refresh.service
+Fri 2026-05-22 11:35:09 CEST  3h 30min Fri 2026-05-22 00:18:08 CEST       7h ago apt-daily.timer                apt-daily.service
+Fri 2026-05-22 17:02:19 CEST        8h Fri 2026-05-22 04:43:38 CEST 3h 20min ago motd-news.timer                motd-news.service
+Fri 2026-05-22 19:49:08 CEST       11h Thu 2026-05-21 19:49:08 CEST      12h ago update-notifier-download.timer update-notifier-download.service
+Fri 2026-05-22 19:59:02 CEST       11h Thu 2026-05-21 19:59:02 CEST      12h ago systemd-tmpfiles-clean.timer   systemd-tmpfiles-clean.service
+Sat 2026-05-23 00:00:00 CEST       15h Fri 2026-05-22 00:00:04 CEST       8h ago dpkg-db-backup.timer           dpkg-db-backup.service
+Sat 2026-05-23 00:00:00 CEST       15h Fri 2026-05-22 00:00:04 CEST       8h ago logrotate.timer                logrotate.service
+Sat 2026-05-23 00:07:00 CEST       16h Fri 2026-05-22 00:07:08 CEST       7h ago sysstat-summary.timer          sysstat-summary.service
+Sat 2026-05-23 06:32:38 CEST       22h Fri 2026-05-22 06:11:08 CEST 1h 53min ago apt-daily-upgrade.timer        apt-daily-upgrade.service
+Sat 2026-05-23 09:21:26 CEST  1 day 1h Fri 2026-05-22 06:11:22 CEST 1h 52min ago man-db.timer                   man-db.service
+Sun 2026-05-24 03:10:28 CEST 1 day 19h Sun 2026-05-17 03:10:55 CEST            - e2scrub_all.timer              e2scrub_all.service
+Mon 2026-05-25 00:19:09 CEST    2 days Mon 2026-05-18 01:27:35 CEST            - fstrim.timer                   fstrim.service
+Thu 2026-05-28 00:26:08 CEST    5 days Mon 2026-05-11 22:55:55 CEST            - update-notifier-motd.timer     update-notifier-motd.service
+
+14 timers listed.
+Pass --all to see loaded but inactive timers, too.
+
+
+================================================================================
+  12. OTHER DOCKER PATHS
+================================================================================
+
+### Compose outside home
+$ find /opt /root /var/www /srv -name docker-compose.yml
+---
+find: ‘/var/www’: No such file or directory
+[exit code: 1]
+
+### Grep aagit in /etc
+$ grep -r aagit /etc
+---
+/etc/gshadow-:sudo:*::aagit
+/etc/gshadow-:users:*::aagit,adminuser
+/etc/gshadow-:aagit:!::
+/etc/gshadow-:docker:!::aagit
+/etc/group-:sudo:x:27:aagit
+/etc/group-:users:x:100:aagit,adminuser
+/etc/group-:aagit:x:1000:
+/etc/group-:docker:x:988:aagit
+/etc/shadow-:aagit:$y$j9T$CrSpr0K7ZZVrx7uQ90Irn1$X0L.EG4hWA1CWX.brwhpXN4vklytt16Ppxrw7AyXHr6:20520:0:99999:7:::
+/etc/subuid:aagit:100000:65536
+/etc/shadow:aagit:$y$j9T$CrSpr0K7ZZVrx7uQ90Irn1$X0L.EG4hWA1CWX.brwhpXN4vklytt16Ppxrw7AyXHr6:20520:0:99999:7:::
+/etc/group:sudo:x:27:aagit,adminuser
+/etc/group:users:x:100:aagit,adminuser
+/etc/group:aagit:x:1000:
+/etc/group:docker:x:988:aagit
+/etc/passwd:aagit:x:1000:1000:agitanggriawan,,,:/home/aagit:/bin/bash
+/etc/subgid:aagit:100000:65536
+/etc/subuid-:aagit:100000:65536
+/etc/subgid-:aagit:100000:65536
+/etc/passwd-:aagit:x:1000:1000:agitanggriawan,,,:/home/aagit:/bin/bash
+/etc/gshadow:sudo:*::aagit,adminuser
+/etc/gshadow:users:*::aagit,adminuser
+/etc/gshadow:aagit:!::
+/etc/gshadow:docker:!::aagit
+
+
+================================================================================
+  13. DATA SIZES
+================================================================================
+
+### Home total size
+$ du -sh /home/aagit
+---
+1.6G	/home/aagit
+
+### Per top-level folder
+$ du -sh /home/aagit/docker /home/aagit/mysql /home/aagit/tarombo-app /home/aagit/traefik /home/aagit/wordpress
+---
+1.6G	/home/aagit/docker
+12K	/home/aagit/mysql
+452K	/home/aagit/tarombo-app
+84K	/home/aagit/traefik
+12K	/home/aagit/wordpress
+
+
+================================================================================
+  14. MIGRATION CHECKLIST (manual fill after review)
+================================================================================
+
+[ ] Semua domain dicatat
+[ ] Semua docker-compose.yml ada di configs/
+[ ] Traefik acme.json ada (metadata .stat.txt)
+[ ] User togaa sudah dibuat & SSH key tested
+[ ] Tidak ada stack di luar /home/aagit yang terlewat
+[ ] Backup snapshot provider (Nexosystems) dilakukan
+[ ] Rencana downtime disetujui
+
+DOMAIN / SITE LIST (isi manual):
+  1. ___________________ → path: ___________________
+  2. ___________________ → path: ___________________
+

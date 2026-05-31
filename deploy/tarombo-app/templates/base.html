@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{% block title %}Tarombo PTSBI{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}?v=31" />
+  </head>
+  <body class="has-fixed-header {% block body_class %}{% endblock %}">
+    <header class="site-header">
+      <div class="container nav">
+        <a href="{{ url_for('home') }}" class="brand">
+          <img src="{{ site_logo_url }}" alt="Logo PTSBI" class="brand-logo" />
+          <span class="brand-text">Tarombo PTSBI</span>
+        </a>
+        <nav>
+          <a href="{{ url_for('home') }}">Home</a>
+          {% if can_view_tarombo %}
+          <a href="{{ url_for('tarombo') }}">Tarombo</a>
+          {% endif %}
+          <a href="https://ptsbi.org" class="nav-back-ptsbi" rel="noopener">PTSBI.org</a>
+          {% if not session.get('user_id') %}
+          <a href="{{ url_for('register') }}">Daftar</a>
+          <a href="{{ url_for('login') }}">Login</a>
+          {% else %}
+          <a href="{{ url_for('dashboard') }}">Dashboard</a>
+          <a href="{{ url_for('profile') }}">Profil</a>
+          {% if is_staff %}
+          <a href="{{ url_for('admin') }}">Admin</a>
+          {% endif %}
+          {% if is_developer %}
+          <a href="{{ url_for('admin_form_config') }}">Form</a>
+          <a href="{{ url_for('admin_logo') }}">Logo</a>
+          <a href="{{ url_for('admin_database') }}">Database</a>
+          <a href="{{ url_for('admin_audit') }}">Audit</a>
+          {% endif %}
+          <a href="{{ url_for('logout') }}">Logout</a>
+          {% endif %}
+        </nav>
+      </div>
+    </header>
+
+    <main class="container">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+      <div class="flash-wrap">
+        {% for category, message in messages %}
+        <div class="flash {{ category }}">{{ message }}</div>
+        {% endfor %}
+      </div>
+      {% endif %}
+      {% endwith %}
+      {% block content %}{% endblock %}
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <small>Pomparan Toga Samosir Se Indonesia — PTSBI</small>
+      </div>
+    </footer>
+  </body>
+</html>

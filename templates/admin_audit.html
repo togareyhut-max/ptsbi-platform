@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Log Audit Admin</h2>
+<p><a href="{{ url_for('admin') }}">← Kembali ke Admin</a></p>
+
+{% if logs %}
+<table class="admin-table">
+  <thead>
+    <tr>
+      <th>Waktu</th>
+      <th>Admin</th>
+      <th>Aksi</th>
+      <th>Entitas</th>
+      <th>Detail</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for row in logs %}
+    <tr>
+      <td>{{ row.created_at }}</td>
+      <td>{{ row.actor_name or '-' }}</td>
+      <td>{{ row.action }}</td>
+      <td>{{ row.entity_type }} #{{ row.entity_id or '-' }}</td>
+      <td><code style="font-size:0.8rem">{{ row.detail_json or '-' }}</code></td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p class="hint">Belum ada log audit.</p>
+{% endif %}
+{% endblock %}
