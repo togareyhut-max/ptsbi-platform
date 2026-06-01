@@ -73,6 +73,9 @@ class PTPRM_Bidang_Portal {
         if ( isset( $_GET['ptprm_saved'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
             echo '<p class="ptprm-member-alert ptprm-member-alert-ok">' . esc_html__( 'Disimpan.', 'ptsbi-premium' ) . '</p>';
         }
+        if ( isset( $_GET['ptprm_bidang_error'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+            echo '<p class="ptprm-member-alert ptprm-member-alert-error">' . esc_html__( 'Sesi form kedaluwarsa. Muat ulang halaman lalu coba lagi.', 'ptsbi-premium' ) . '</p>';
+        }
         switch ( $tab ) {
             case 'berita':
                 $this->render_post_form( $slug, 'kegiatan' );
@@ -193,7 +196,7 @@ class PTPRM_Bidang_Portal {
                 echo '<div class="ptprm-member-card"><h3>' . esc_html__( 'Terbaru', 'ptsbi-premium' ) . '</h3><ul>';
                 while ( $q->have_posts() ) {
                     $q->the_post();
-                    echo '<li><a href="' . esc_url( get_edit_post_link() ) . '">' . esc_html( get_the_title() ) . '</a></li>';
+                    echo '<li><a href="' . esc_url( get_permalink() ) . '">' . esc_html( get_the_title() ) . '</a></li>';
                 }
                 echo '</ul></div>';
                 wp_reset_postdata();

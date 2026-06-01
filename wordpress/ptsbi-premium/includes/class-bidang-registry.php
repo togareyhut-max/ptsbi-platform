@@ -199,7 +199,7 @@ class PTPRM_Bidang_Registry {
         if ( class_exists( 'PTPRM_Access' ) && PTPRM_Access::is_site_admin( $user ) ) {
             return true;
         }
-        if ( class_exists( 'PTPRM_Access' ) && PTPRM_Access::can_manage_org_settings( $user ) ) {
+        if ( class_exists( 'PTPRM_Access' ) && $user instanceof WP_User && user_can( $user, PTPRM_Access::CAP_ORG_SETTINGS ) ) {
             return true;
         }
         return self::get_user_bidang_slug( $user ) === $bidang_slug;
