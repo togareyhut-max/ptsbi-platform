@@ -1806,6 +1806,22 @@ JS;
         <?php
     }
 
+    /* -- PANEL: PDF -- */
+
+    private function panel_pdf( $o, $opt ) {
+        ?>
+        <section class="ptprm-panel" id="tab-pdf" data-panel="pdf" hidden>
+            <h2><?php esc_html_e( 'Dokumen PDF', 'ptsbi-premium' ); ?></h2>
+            <p class="ptprm-help">
+                <?php esc_html_e( 'Unggah PDF, lalu salin shortcode ke halaman WordPress. Pengunjung membuka dokumen dalam lightbox tanpa meninggalkan halaman.', 'ptsbi-premium' ); ?>
+            </p>
+            <div class="ptprm-card">
+                <?php $this->repeater_pdf( $o, $opt ); ?>
+            </div>
+        </section>
+        <?php
+    }
+
     /* -- PANEL: SUBPAGE -- */
 
     private function panel_subpage( $o, $opt ) {

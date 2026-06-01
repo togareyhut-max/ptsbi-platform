@@ -14,6 +14,7 @@
         initPreviewModes();
         initLivePreview();
         initRepeaters();
+        initPdfMediaPickers();
     });
 
     /** Simpan ditangani script inline ptprm-save (admin-post.php). */
