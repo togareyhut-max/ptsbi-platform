@@ -19,11 +19,22 @@ class PTPRM_Access {
         add_action( 'init', [ __CLASS__, 'handle_portal_logout_post' ], 2 );
         add_action( 'init', [ __CLASS__, 'block_wp_admin_early' ], 1 );
         add_action( 'init', [ __CLASS__, 'ensure_capabilities' ], 4 );
+        add_action( 'template_redirect', [ __CLASS__, 'portal_nocache_headers' ], 0 );
         add_action( 'admin_init', [ __CLASS__, 'block_wp_admin' ], 1 );
         add_action( 'login_init', [ __CLASS__, 'redirect_logged_in_from_wp_login' ] );
         add_action( 'wp_logout', [ __CLASS__, 'clear_auth_cookies' ] );
         add_filter( 'show_admin_bar', [ __CLASS__, 'hide_admin_bar_on_front' ] );
         add_filter( 'the_content', [ __CLASS__, 'inject_portal_shortcode_if_empty' ], 5 );
+    }
+
+    /** Portal berisi nonce form — jangan di-cache (penyebab utama "sesi kedaluwarsa"). */
+    public static function portal_nocache_headers(): void {
+        if ( ! function_exists( 'ptprm_is_portal_page_request' ) || ! ptprm_is_portal_page_request() ) {
+            return;
+        }
+        if ( function_exists( 'ptprm_portal_nocache_headers' ) ) {
+            ptprm_portal_nocache_headers();
+        }
     }
 
     /**

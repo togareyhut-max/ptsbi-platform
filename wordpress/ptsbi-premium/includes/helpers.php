@@ -8,6 +8,77 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
+ * Pesan gagal simpan portal saat nonce tidak valid (biasanya halaman dari cache).
+ */
+function ptprm_portal_session_expired_message(): string {
+    return __( 'Sesi form kedaluwarsa. Muat ulang halaman lalu simpan lagi.', 'ptsbi-premium' );
+}
+
+/**
+ * Slug halaman portal frontend (login, anggota, pengurus).
+ *
+ * @return list<string>
+ */
+function ptprm_portal_page_slugs(): array {
+    $o     = ptprm_options();
+    $raw   = [
+        (string) ( $o['portal_login_slug'] ?? 'rumah-anggota' ),
+        (string) ( $o['members_login_slug'] ?? 'masuk' ),
+        (string) ( $o['members_portal_slug'] ?? 'area-anggota' ),
+        (string) ( $o['admin_login_slug'] ?? 'masuk-pengurus' ),
+        (string) ( $o['admin_portal_slug'] ?? 'panel-pengurus' ),
+        'rumah-anggota',
+        'masuk',
+        'area-anggota',
+        'masuk-pengurus',
+        'panel-pengurus',
+    ];
+    $slugs = [];
+    foreach ( $raw as $slug ) {
+        $s = sanitize_title( $slug );
+        if ( $s !== '' ) {
+            $slugs[] = $s;
+        }
+    }
+    return array_values( array_unique( $slugs ) );
+}
+
+/**
+ * Apakah request ini halaman portal (bukan wp-admin).
+ */
+function ptprm_is_portal_page_request(): bool {
+    if ( ! is_page() ) {
+        return false;
+    }
+    $slug = (string) get_post_field( 'post_name', get_queried_object_id() );
+    return in_array( $slug, ptprm_portal_page_slugs(), true );
+}
+
+/**
+ * Cegah LiteSpeed / CDN menyimpan HTML form portal (nonce jadi tidak valid).
+ */
+function ptprm_portal_nocache_headers(): void {
+    if ( headers_sent() ) {
+        return;
+    }
+    nocache_headers();
+    header( 'Cache-Control: private, no-store, no-cache, must-revalidate, max-age=0', true );
+    header( 'Pragma: no-cache', true );
+    if ( ! defined( 'DONOTCACHEPAGE' ) ) {
+        define( 'DONOTCACHEPAGE', true );
+    }
+    if ( ! defined( 'DONOTCACHEDB' ) ) {
+        define( 'DONOTCACHEDB', true );
+    }
+    if ( ! defined( 'DONOTCACHEOBJECT' ) ) {
+        define( 'DONOTCACHEOBJECT', true );
+    }
+    if ( has_action( 'litespeed_control_set_nocache' ) ) {
+        do_action( 'litespeed_control_set_nocache', 'ptprm-portal' );
+    }
+}
+
+/**
  * @return array{0:int,1:int,2:int}
  */
 function ptprm_hex_to_rgb( string $hex ): array {

@@ -138,7 +138,13 @@ class PTPRM_Member_Portal {
             return;
         }
         if ( ! isset( $_POST[ self::NONCE_PROFILE ] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( (string) $_POST[ self::NONCE_PROFILE ] ) ), 'ptprm_member_profile' ) ) {
-            wp_safe_redirect( add_query_arg( 'ptprm_profile_error', rawurlencode( __( 'Sesi kedaluwarsa. Muat ulang halaman lalu simpan lagi.', 'ptsbi-premium' ) ), self::navigation_url( [ 'tab' => 'profil' ] ) ) );
+            wp_safe_redirect(
+                add_query_arg(
+                    'ptprm_profile_error',
+                    rawurlencode( function_exists( 'ptprm_portal_session_expired_message' ) ? ptprm_portal_session_expired_message() : __( 'Sesi form kedaluwarsa. Muat ulang halaman lalu simpan lagi.', 'ptsbi-premium' ) ),
+                    self::navigation_url( [ 'tab' => 'profil' ] )
+                )
+            );
             exit;
         }
 
@@ -344,7 +350,7 @@ class PTPRM_Member_Portal {
             echo '</p>';
         }
 
-        echo '<form method="post" class="ptprm-member-form" data-ptprm-address-form>';
+        echo '<form method="post" class="ptprm-member-form" data-ptprm-address-form action="' . esc_url( self::navigation_url( [ 'tab' => 'profil' ] ) ) . '">';
         wp_nonce_field( 'ptprm_member_profile', self::NONCE_PROFILE );
         echo '<input type="hidden" name="ptprm_member_profile" value="1">';
         echo '<div class="ptprm-member-grid">';
@@ -439,7 +445,7 @@ class PTPRM_Member_Portal {
         echo '<div class="ptprm-member-card ptprm-portal-card">';
         echo '<p><strong>' . esc_html__( 'Username', 'ptsbi-premium' ) . ':</strong> ' . esc_html( $user->user_login ) . '</p>';
         echo '<p class="ptprm-portal-help">' . esc_html__( 'Ganti password di bawah jika perlu. Kosongkan jika tidak ingin mengubah.', 'ptsbi-premium' ) . '</p>';
-        echo '<form method="post" class="ptprm-member-form">';
+        echo '<form method="post" class="ptprm-member-form" action="' . esc_url( self::navigation_url( [ 'tab' => 'akun' ] ) ) . '">';
         wp_nonce_field( 'ptprm_member_profile', self::NONCE_PROFILE );
         echo '<input type="hidden" name="ptprm_member_profile" value="1">';
         echo '<input type="hidden" name="ptprm_password_only" value="1">';
