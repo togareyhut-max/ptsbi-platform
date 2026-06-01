@@ -137,7 +137,7 @@ class PTPRM_Member_Portal {
         if ( empty( $_POST['ptprm_member_profile'] ) || ! is_user_logged_in() ) {
             return;
         }
-        if ( ! isset( $_POST[ self::NONCE_PROFILE ] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( (string) $_POST[ self::NONCE_PROFILE ] ) ), 'ptprm_member_profile' ) ) {
+        if ( ! function_exists( 'ptprm_verify_portal_form_nonce' ) || ! ptprm_verify_portal_form_nonce( 'ptprm_member_profile' ) ) {
             wp_safe_redirect(
                 add_query_arg(
                     'ptprm_profile_error',
@@ -357,7 +357,7 @@ class PTPRM_Member_Portal {
         }
 
         echo '<form method="post" class="ptprm-member-form" data-ptprm-address-form action="' . esc_url( self::navigation_url( [ 'tab' => 'profil' ] ) ) . '">';
-        wp_nonce_field( 'ptprm_member_profile', self::NONCE_PROFILE );
+        wp_nonce_field( 'ptprm_member_profile' );
         echo '<input type="hidden" name="ptprm_member_profile" value="1">';
         echo '<div class="ptprm-member-grid">';
 
@@ -452,7 +452,7 @@ class PTPRM_Member_Portal {
         echo '<p><strong>' . esc_html__( 'Username', 'ptsbi-premium' ) . ':</strong> ' . esc_html( $user->user_login ) . '</p>';
         echo '<p class="ptprm-portal-help">' . esc_html__( 'Ganti password di bawah jika perlu. Kosongkan jika tidak ingin mengubah.', 'ptsbi-premium' ) . '</p>';
         echo '<form method="post" class="ptprm-member-form" action="' . esc_url( self::navigation_url( [ 'tab' => 'akun' ] ) ) . '">';
-        wp_nonce_field( 'ptprm_member_profile', self::NONCE_PROFILE );
+        wp_nonce_field( 'ptprm_member_profile' );
         echo '<input type="hidden" name="ptprm_member_profile" value="1">';
         echo '<input type="hidden" name="ptprm_password_only" value="1">';
         echo '<label><span>' . esc_html__( 'Password baru', 'ptsbi-premium' ) . '</span>';

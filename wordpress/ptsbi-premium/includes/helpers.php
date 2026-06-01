@@ -8,10 +8,23 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Pesan gagal simpan portal saat nonce tidak valid (biasanya halaman dari cache).
+ * Pesan gagal simpan portal saat nonce tidak valid.
  */
 function ptprm_portal_session_expired_message(): string {
     return __( 'Sesi form kedaluwarsa. Muat ulang halaman lalu simpan lagi.', 'ptsbi-premium' );
+}
+
+/**
+ * Verifikasi nonce form portal (field WordPress standar `_wpnonce`).
+ */
+function ptprm_verify_portal_form_nonce( string $action ): bool {
+    if ( ! isset( $_POST['_wpnonce'] ) ) {
+        return false;
+    }
+    return (bool) wp_verify_nonce(
+        sanitize_text_field( wp_unslash( (string) $_POST['_wpnonce'] ) ),
+        $action
+    );
 }
 
 /**

@@ -84,7 +84,7 @@ class PTPRM_Members_Admin {
         if ( empty( $_POST['ptprm_admin_team_photos'] ) || ! class_exists( 'PTPRM_Access' ) || ! PTPRM_Access::can_manage_org_settings() ) {
             return;
         }
-        if ( ! isset( $_POST[ self::NONCE_TEAM ] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( (string) $_POST[ self::NONCE_TEAM ] ) ), 'ptprm_admin_team_photos' ) ) {
+        if ( ! function_exists( 'ptprm_verify_portal_form_nonce' ) || ! ptprm_verify_portal_form_nonce( 'ptprm_admin_team_photos' ) ) {
             return;
         }
         $names  = isset( $_POST['team_name'] ) && is_array( $_POST['team_name'] ) ? wp_unslash( $_POST['team_name'] ) : [];
@@ -192,7 +192,7 @@ class PTPRM_Members_Admin {
         echo '<div class="ptprm-member-card ptprm-portal-card">';
         echo '<p class="ptprm-portal-help">' . esc_html__( 'Unggah foto pengurus pusat (maks. 5) untuk beranda / struktur organisasi. Daftar teks pengurus wilayah di tab Pengurus Wilayah pada Premium Plugin.', 'ptsbi-premium' ) . '</p>';
         echo '<form method="post" class="ptprm-member-form">';
-        wp_nonce_field( 'ptprm_admin_team_photos', self::NONCE_TEAM );
+        wp_nonce_field( 'ptprm_admin_team_photos' );
         echo '<input type="hidden" name="ptprm_admin_team_photos" value="1">';
         foreach ( $items as $i => $item ) {
             $img = (string) ( $item['image'] ?? '' );

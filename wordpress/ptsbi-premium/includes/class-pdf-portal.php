@@ -58,7 +58,7 @@ class PTPRM_Pdf_Portal {
         if ( empty( $_POST['ptprm_portal_pdf_save'] ) || ! self::can_manage_pdf() ) {
             return;
         }
-        if ( ! isset( $_POST[ self::NONCE_SAVE ] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( (string) $_POST[ self::NONCE_SAVE ] ) ), 'ptprm_portal_pdf_save' ) ) {
+        if ( ! function_exists( 'ptprm_verify_portal_form_nonce' ) || ! ptprm_verify_portal_form_nonce( 'ptprm_portal_pdf_save' ) ) {
             $url = class_exists( 'PTPRM_Admin_Portal' )
                 ? PTPRM_Admin_Portal::portal_url(
                     'dokumen',
@@ -120,7 +120,7 @@ class PTPRM_Pdf_Portal {
 
         $form_action = class_exists( 'PTPRM_Admin_Portal' ) ? PTPRM_Admin_Portal::portal_url( 'dokumen' ) : '';
         echo '<form method="post" id="ptprm-portal-pdf-form" class="ptprm-pdf-list-form" action="' . esc_url( $form_action ) . '">';
-        wp_nonce_field( 'ptprm_portal_pdf_save', self::NONCE_SAVE );
+        wp_nonce_field( 'ptprm_portal_pdf_save' );
         echo '<input type="hidden" name="ptprm_portal_pdf_save" value="1">';
         echo '<input type="hidden" name="ptprm_pdf_items_json" id="ptprm-portal-pdf-json" value="">';
 
