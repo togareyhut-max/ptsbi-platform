@@ -96,6 +96,13 @@ class PTPRM_Access {
         if ( class_exists( 'PTPRM_Admin_Portal' ) && $slug === PTPRM_Admin_Portal::portal_slug() ) {
             return '[ptprm_admin_portal]';
         }
+        if ( class_exists( 'PTPRM_Bidang_Registry' ) ) {
+            foreach ( PTPRM_Bidang_Registry::bidangs() as $meta ) {
+                if ( (string) $meta['panel_slug'] === $slug ) {
+                    return '[ptprm_bidang_panel slug="' . esc_attr( (string) $meta['slug'] ) . '"]';
+                }
+            }
+        }
         return $content;
     }
 

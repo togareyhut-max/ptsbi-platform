@@ -57,6 +57,7 @@ class PTPRM_Bidang_Registry {
     public static function init(): void {
         add_action( 'init', [ __CLASS__, 'ensure_categories' ], 11 );
         add_action( 'init', [ __CLASS__, 'ensure_pages' ], 14 );
+        add_action( 'init', [ __CLASS__, 'repair_panel_pages' ], 15 );
     }
 
     public static function content_option_key( string $slug ): string {
@@ -148,10 +149,36 @@ class PTPRM_Bidang_Registry {
         flush_rewrite_rules( false );
     }
 
+    /**
+     * Perbaiki shortcode panel bidang (mis. [ptprm_bidang_portal] salah ketik).
+     */
+    public static function repair_panel_pages(): void {
+        foreach ( self::bidangs() as $meta ) {
+            $panel_slug = (string) $meta['panel_slug'];
+            $correct    = '[ptprm_bidang_panel slug="' . esc_attr( (string) $meta['slug'] ) . '"]';
+            $page       = get_page_by_path( $panel_slug, OBJECT, 'page' );
+            if ( ! $page instanceof WP_Post ) {
+                continue;
+            }
+            $content = (string) $page->post_content;
+            $needs   = strpos( $content, 'ptprm_bidang_panel' ) === false
+                || strpos( $content, 'ptprm_bidang_portal' ) !== false;
+            if ( $needs ) {
+                wp_update_post(
+                    [
+                        'ID'           => (int) $page->ID,
+                        'post_content' => $correct,
+                    ]
+                );
+            }
+        }
+    }
+
     private static function ensure_page( string $slug, string $title, string $content ): void {
         $existing = get_page_by_path( $slug, OBJECT, 'page' );
         if ( $existing instanceof WP_Post ) {
-            if ( strpos( (string) $existing->post_content, 'ptprm_bidang' ) === false ) {
+            $current = (string) $existing->post_content;
+            if ( strpos( $current, 'ptprm_bidang_panel' ) === false || strpos( $current, 'ptprm_bidang_portal' ) !== false ) {
                 wp_update_post(
                     [
                         'ID'           => (int) $existing->ID,
