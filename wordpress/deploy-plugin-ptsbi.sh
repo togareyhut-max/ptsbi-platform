@@ -27,12 +27,19 @@ setup_ssh_key() {
     printf '%s\n' "${SSH_PRIVATE_KEY}" > "${SSH_ID}"
   fi
   chmod 600 "${SSH_ID}"
+  if ! ssh-keygen -y -f "${SSH_ID}" >/dev/null 2>&1; then
+    echo "SSH_PRIVATE_KEY tidak valid (harus isi file privat PEM atau base64-nya)." >&2
+    rm -f "${SSH_ID}"
+    return 1
+  fi
   local host="${DEPLOY_HOST:-5.175.245.78}"
-  ssh-keyscan -H "${host}" >> "${HOME}/.ssh/known_hosts" 2>/dev/null || true
+  local port="${PTPRM_SSH_PORT:-22}"
+  ssh-keyscan -p "${port}" -H "${host}" >> "${HOME}/.ssh/known_hosts" 2>/dev/null || true
   return 0
 }
 
-SSH_OPTS=(-o BatchMode=yes -o StrictHostKeyChecking=accept-new)
+SSH_PORT="${PTPRM_SSH_PORT:-22}"
+SSH_OPTS=(-p "${SSH_PORT}" -o BatchMode=yes -o StrictHostKeyChecking=accept-new)
 if setup_ssh_key; then
   SSH_OPTS+=(-i "${SSH_ID}" -o IdentitiesOnly=yes)
   echo "==> Memakai kunci dari secret SSH_PRIVATE_KEY"

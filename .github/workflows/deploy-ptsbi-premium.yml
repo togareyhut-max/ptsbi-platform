@@ -1,0 +1,28 @@
+name: Deploy ptsbi-premium
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'wordpress/ptsbi-premium/**'
+      - 'wordpress/deploy-plugin-ptsbi.sh'
+      - '.github/workflows/deploy-ptsbi-premium.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-ptsbi-premium
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Deploy plugin ke ptsbi.org
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          DEPLOY_HOST: 5.175.245.78
+          PTPRM_SSH_PORT: '22'
+        run: bash wordpress/deploy-plugin-ptsbi.sh
