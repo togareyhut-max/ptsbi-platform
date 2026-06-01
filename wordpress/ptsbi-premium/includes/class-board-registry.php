@@ -115,10 +115,13 @@ class PTPRM_Board_Registry {
         if ( ! isset( self::regions()[ $region ] ) ) {
             return [];
         }
-        $o   = ptprm_options();
+        $opts = get_option( PTPRM_OPTION, [] );
+        if ( ! is_array( $opts ) ) {
+            $opts = [];
+        }
         $key = self::option_key( $region );
-        $raw = isset( $o[ $key ] ) ? trim( (string) $o[ $key ] ) : '';
-        if ( $raw === '' ) {
+        $raw = isset( $opts[ $key ] ) ? trim( (string) $opts[ $key ] ) : '';
+        if ( $raw === '' || $raw === '[]' ) {
             $catalog = ptprm_board_default_catalog();
             return ptprm_sanitize_board_items( $catalog[ $region ] ?? [] );
         }
@@ -134,10 +137,22 @@ class PTPRM_Board_Registry {
         if ( ! isset( self::regions()[ $region ] ) ) {
             return;
         }
-        $opts         = (array) get_option( PTPRM_OPTION, [] );
-        $opts[ self::option_key( $region ) ] = wp_json_encode( ptprm_sanitize_board_items( $items ), JSON_UNESCAPED_UNICODE );
+        $items = ptprm_sanitize_board_items( $items );
+        if ( 'pusat' === $region ) {
+            foreach ( $items as $i => $item ) {
+                if ( self::is_featured_item( 'pusat', $item ) ) {
+                    $items[ $i ]['featured'] = 1;
+                }
+            }
+        }
+        $opts = (array) get_option( PTPRM_OPTION, [] );
+        if ( ! is_array( $opts ) ) {
+            $opts = [];
+        }
+        $opts[ self::option_key( $region ) ] = wp_json_encode( $items, JSON_UNESCAPED_UNICODE );
         update_option( PTPRM_OPTION, ptprm_normalize_option_for_storage( $opts ), true );
         wp_cache_delete( PTPRM_OPTION, 'options' );
+        wp_cache_delete( 'alloptions', 'options' );
     }
 
     public static function featured_roles_for_region( string $region ): array {

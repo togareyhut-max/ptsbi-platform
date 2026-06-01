@@ -1077,6 +1077,26 @@ function ptprm_normalize_option_for_storage( array $o ): array {
         $o['_site_fingerprint'] = PTPRM_Bootstrap::site_fingerprint();
     }
 
+    if ( class_exists( 'PTPRM_Board_Registry' ) ) {
+        foreach ( PTPRM_Board_Registry::regions() as $slug => $meta ) {
+            unset( $meta );
+            $key = PTPRM_Board_Registry::option_key( $slug );
+            if ( empty( $o[ $key ] ) ) {
+                continue;
+            }
+            $board_raw = $o[ $key ];
+            if ( is_string( $board_raw ) ) {
+                $board_decoded = json_decode( $board_raw, true );
+            } else {
+                $board_decoded = is_array( $board_raw ) ? $board_raw : [];
+            }
+            $o[ $key ] = wp_json_encode(
+                ptprm_sanitize_board_items( is_array( $board_decoded ) ? $board_decoded : [] ),
+                JSON_UNESCAPED_UNICODE
+            );
+        }
+    }
+
     return $o;
 }
 

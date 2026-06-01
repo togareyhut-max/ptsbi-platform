@@ -70,9 +70,43 @@ class PTPRM_Board_Admin {
             exit;
         }
         $region = sanitize_key( (string) ( $_POST['board_region'] ?? 'pusat' ) );
-        $raw    = isset( $_POST['ptprm_board_json'] ) ? wp_unslash( (string) $_POST['ptprm_board_json'] ) : '[]';
+        $raw    = isset( $_POST['ptprm_board_json'] ) ? wp_unslash( (string) $_POST['ptprm_board_json'] ) : '';
+
+        if ( trim( $raw ) === '' ) {
+            wp_safe_redirect(
+                add_query_arg(
+                    'ptprm_board_error',
+                    rawurlencode( __( 'Data pengurus tidak terkirim. Muat ulang halaman, cek semua baris memiliki nama, lalu simpan lagi.', 'ptsbi-premium' ) ),
+                    PTPRM_Admin_Portal::portal_url( 'pengurus', [ 'board_region' => $region ] )
+                )
+            );
+            exit;
+        }
+
         $decoded = json_decode( $raw, true );
-        $items   = is_array( $decoded ) ? ptprm_sanitize_board_items( $decoded ) : [];
+        if ( ! is_array( $decoded ) ) {
+            wp_safe_redirect(
+                add_query_arg(
+                    'ptprm_board_error',
+                    rawurlencode( __( 'Format data tidak valid. Muat ulang halaman lalu simpan lagi.', 'ptsbi-premium' ) ),
+                    PTPRM_Admin_Portal::portal_url( 'pengurus', [ 'board_region' => $region ] )
+                )
+            );
+            exit;
+        }
+
+        $items = ptprm_sanitize_board_items( $decoded );
+        if ( $items === [] ) {
+            wp_safe_redirect(
+                add_query_arg(
+                    'ptprm_board_error',
+                    rawurlencode( __( 'Tidak ada baris tersimpan: pastikan setiap pengurus memiliki nama.', 'ptsbi-premium' ) ),
+                    PTPRM_Admin_Portal::portal_url( 'pengurus', [ 'board_region' => $region ] )
+                )
+            );
+            exit;
+        }
+
         PTPRM_Board_Registry::save_items( $region, $items );
         wp_safe_redirect(
             add_query_arg(

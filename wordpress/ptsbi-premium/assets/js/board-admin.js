@@ -9,6 +9,14 @@
         }
     }
 
+    function rowFromTemplate(tpl) {
+        var $parsed = $($.trim(tpl));
+        if ($parsed.length && $parsed.first().prop('tagName') === 'LI') {
+            return $parsed.first();
+        }
+        return $parsed.filter('.ptprm-board-admin-row').first();
+    }
+
     function collectRows($list) {
         var items = [];
         $list.find('.ptprm-board-admin-row').each(function () {
@@ -50,7 +58,10 @@
     }
 
     function addRow($list, tpl, data, hasFeatured) {
-        var $row = $(tpl).contents().clone();
+        var $row = rowFromTemplate(tpl);
+        if (!$row.length) {
+            return;
+        }
         if (data) {
             $row.find('[data-field="role"]').val(data.role || '');
             $row.find('[data-field="name"]').val(data.name || '');
@@ -62,6 +73,12 @@
         }
         $list.append($row);
         bindRow($row, hasFeatured);
+    }
+
+    function syncJson($form, $list) {
+        var items = collectRows($list);
+        $('#ptprm-board-json').val(JSON.stringify(items));
+        return items.length;
     }
 
     $(function () {
@@ -82,8 +99,14 @@
         $('#ptprm-board-add').on('click', function () {
             addRow($list, tpl, null, hasFeatured);
         });
-        $form.on('submit', function () {
-            $('#ptprm-board-json').val(JSON.stringify(collectRows($list)));
+        $form.on('submit', function (e) {
+            if (!syncJson($form, $list)) {
+                e.preventDefault();
+                window.alert('Setiap baris pengurus harus memiliki nama sebelum disimpan.');
+            }
+        });
+        $form.find('button[type="submit"]').on('click', function () {
+            syncJson($form, $list);
         });
     });
 })(jQuery);
