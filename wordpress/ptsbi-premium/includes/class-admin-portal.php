@@ -354,6 +354,22 @@ class PTPRM_Admin_Portal {
                 }
                 do_action( 'ptprm_admin_portal_tab_dokumen' );
                 break;
+            case 'pengurus':
+            case 'iklan':
+                if ( $tab === 'pengurus' && ! PTPRM_Access::can_manage_org_settings() ) {
+                    $this->render_tab_dashboard();
+                    break;
+                }
+                if ( $tab === 'iklan' && ! PTPRM_Access::can_manage_org_settings() ) {
+                    $this->render_tab_dashboard();
+                    break;
+                }
+                if ( has_action( 'ptprm_admin_portal_tab_' . $tab ) ) {
+                    do_action( 'ptprm_admin_portal_tab_' . $tab );
+                } else {
+                    $this->render_tab_dashboard();
+                }
+                break;
             default:
                 $this->render_tab_dashboard();
         }

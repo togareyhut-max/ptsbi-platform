@@ -72,9 +72,7 @@ class PTPRM_Members {
         if ( ! class_exists( 'PTPRM_Access' ) ) {
             return current_user_can( 'manage_options' );
         }
-        if ( PTPRM_Access::can_approve_members()
-            || PTPRM_Access::can_manage_org_settings()
-            || PTPRM_Access::can_manage() ) {
+        if ( PTPRM_Access::can_approve_members() || PTPRM_Access::can_manage_org_settings() ) {
             return true;
         }
         return class_exists( 'PTPRM_Bidang_Registry' ) && PTPRM_Bidang_Registry::is_sekretariat_user();
@@ -85,9 +83,15 @@ class PTPRM_Members {
             return;
         }
 
-        $action = class_exists( 'PTPRM_Admin_Portal' )
-            ? PTPRM_Admin_Portal::portal_url( 'anggota' )
-            : home_url( '/panel-pengurus/' );
+        $action = home_url( '/panel-pengurus/' );
+        if ( class_exists( 'PTPRM_Bidang_Registry' ) && PTPRM_Bidang_Registry::is_bidang_panel_page() ) {
+            $slug = PTPRM_Bidang_Registry::bidang_slug_from_panel_page();
+            if ( $slug !== '' ) {
+                $action = PTPRM_Bidang_Registry::panel_url( $slug, 'anggota' );
+            }
+        } elseif ( class_exists( 'PTPRM_Admin_Portal' ) ) {
+            $action = PTPRM_Admin_Portal::portal_url( 'anggota' );
+        }
 
         echo '<form method="get" action="' . esc_url( $action ) . '" class="ptprm-export-xlsx-form">';
         echo '<input type="hidden" name="ptprm_export_members" value="1">';
@@ -840,19 +844,30 @@ class PTPRM_Members {
             );
         }
 
-        return trim(
-            implode(
-                ', ',
-                array_filter(
-                    [
-                        (string) ( $row['district'] ?? '' ),
-                        (string) ( $row['city'] ?? '' ),
-                        (string) ( $row['province'] ?? '' ),
-                        (string) ( $row['country_name'] ?? 'Indonesia' ),
-                    ]
-                )
-            )
+        $visible = array_filter(
+            [
+                (string) ( $row['district'] ?? '' ),
+                (string) ( $row['city'] ?? '' ),
+                (string) ( $row['province'] ?? '' ),
+                (string) ( $row['country_name'] ?? 'Indonesia' ),
+            ]
         );
+        $blurred = [];
+        foreach (
+            [
+                (string) ( $row['subdistrict'] ?? '' ) => __( 'Kelurahan', 'ptsbi-premium' ),
+                (string) ( $row['address_detail'] ?? '' ) => __( 'Alamat', 'ptsbi-premium' ),
+            ] as $val => $label
+        ) {
+            if ( trim( $val ) !== '' ) {
+                $blurred[] = '<span class="ptprm-data-blur" title="' . esc_attr__( 'Hubungi sekretariat untuk detail lengkap', 'ptsbi-premium' ) . '">' . esc_html( $label ) . ': ' . esc_html( $val ) . '</span>';
+            }
+        }
+        $out = esc_html( implode( ', ', $visible ) );
+        if ( $blurred ) {
+            $out .= ( $out !== '' ? ' · ' : '' ) . implode( ' ', $blurred );
+        }
+        return $out;
     }
 
     public static function ensure_roles(): void {
@@ -1444,9 +1459,11 @@ class PTPRM_Members {
         echo '<label><span>' . esc_html__( 'Kecamatan', 'ptsbi-premium' ) . '</span>';
         echo '<select name="kecamatan" data-current="' . esc_attr( $kec ) . '"><option value="">' . esc_html__( 'Semua kecamatan', 'ptsbi-premium' ) . '</option></select></label>';
 
-        $kel = (string) ( $filters['kelurahan'] ?? '' );
-        echo '<label><span>' . esc_html__( 'Kelurahan', 'ptsbi-premium' ) . '</span>';
-        echo '<select name="kelurahan" data-current="' . esc_attr( $kel ) . '"><option value="">' . esc_html__( 'Semua kelurahan', 'ptsbi-premium' ) . '</option></select></label>';
+        if ( self::can_view_sensitive_fields() ) {
+            $kel = (string) ( $filters['kelurahan'] ?? '' );
+            echo '<label><span>' . esc_html__( 'Kelurahan', 'ptsbi-premium' ) . '</span>';
+            echo '<select name="kelurahan" data-current="' . esc_attr( $kel ) . '"><option value="">' . esc_html__( 'Semua kelurahan', 'ptsbi-premium' ) . '</option></select></label>';
+        }
 
         echo '<div class="ptprm-member-filter-actions">';
         echo '<button type="submit" class="button button-primary">' . esc_html__( 'Cari', 'ptsbi-premium' ) . '</button>';
@@ -1553,7 +1570,7 @@ class PTPRM_Members {
                 echo '<td>' . esc_html( $status_label !== '' ? $status_label : '—' ) . '</td>';
                 echo '<td>' . esc_html( (string) ( $row['oppu'] ?? '' ) ) . '</td>';
                 echo '<td>' . esc_html( (string) ( $row['nomor_sundut'] ?? '' ) ) . '</td>';
-                echo '<td>' . esc_html( self::format_directory_address( $row, $can_full ) ) . '</td>';
+                echo '<td>' . ( $can_full ? esc_html( self::format_directory_address( $row, true ) ) : self::format_directory_address( $row, false ) ) . '</td>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
                 if ( $can_full ) {
                     echo '<td>' . esc_html( (string) ( $row['phone'] ?? '' ) ) . '</td>';
                 }
@@ -1680,7 +1697,10 @@ class PTPRM_Members {
     }
 
     public static function can_view_sensitive_fields(): bool {
-        return PTPRM_Access::can_manage();
+        if ( class_exists( 'PTPRM_Bidang_Registry' ) && PTPRM_Bidang_Registry::is_sekretariat_user() ) {
+            return true;
+        }
+        return PTPRM_Access::can_approve_members() || PTPRM_Access::can_manage_org_settings();
     }
 
     private function is_empty_csv_row( array $row ): bool {

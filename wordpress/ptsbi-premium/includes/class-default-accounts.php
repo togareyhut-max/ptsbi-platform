@@ -18,7 +18,7 @@ class PTPRM_Default_Accounts {
     public const OPTION_LOCK       = 'ptprm_demo_anggota_locked';
     public const OPTION_VERSION    = 'ptprm_default_accounts_version';
     public const OPTION_LOGINS     = 'ptprm_default_account_logins';
-    public const ACCOUNTS_VERSION  = 5;
+    public const ACCOUNTS_VERSION  = 6;
 
     public static function init(): void {
         add_action( 'init', [ __CLASS__, 'maybe_ensure' ], 6 );

@@ -120,6 +120,14 @@ class PTPRM_Bootstrap {
         if ( class_exists( 'PTPRM_Admin_Portal' ) ) {
             PTPRM_Admin_Portal::ensure_pages();
         }
+        if ( class_exists( 'PTPRM_Board_Registry' ) ) {
+            PTPRM_Board_Registry::maybe_seed_defaults();
+            PTPRM_Board_Registry::ensure_region_pages();
+        }
+        if ( class_exists( 'PTPRM_Bidang_Registry' ) ) {
+            PTPRM_Bidang_Registry::ensure_categories();
+            PTPRM_Bidang_Registry::ensure_pages();
+        }
         PTPRM_Access::ensure_capabilities();
         if ( class_exists( 'PTPRM_Default_Accounts' ) ) {
             PTPRM_Default_Accounts::ensure_all();

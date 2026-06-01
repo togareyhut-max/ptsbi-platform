@@ -53,7 +53,19 @@ function ptprm_portal_page_slugs(): array {
             $slugs[] = $s;
         }
     }
-    return array_values( array_unique( $slugs ) );
+    $slugs = array_values( array_unique( $slugs ) );
+    if ( class_exists( 'PTPRM_Board_Registry' ) ) {
+        foreach ( PTPRM_Board_Registry::regions() as $meta ) {
+            $slugs[] = (string) $meta['page_slug'];
+        }
+    }
+    if ( class_exists( 'PTPRM_Bidang_Registry' ) ) {
+        foreach ( PTPRM_Bidang_Registry::bidangs() as $meta ) {
+            $slugs[] = (string) $meta['page_slug'];
+            $slugs[] = (string) $meta['panel_slug'];
+        }
+    }
+    return array_values( array_unique( apply_filters( 'ptprm_portal_page_slugs', $slugs ) ) );
 }
 
 /**
@@ -1389,6 +1401,47 @@ function ptprm_get_header_menu_items( ?array $o = null ): array {
         return PTPRM_Pages::default_menu_items_for_options();
     }
     return [];
+}
+
+/**
+ * @param mixed $raw
+ * @return list<array{name:string,role:string,group:string,image:string,featured:int}>
+ */
+function ptprm_sanitize_board_items( $raw ): array {
+    if ( is_string( $raw ) ) {
+        $decoded = json_decode( wp_unslash( $raw ), true );
+        $raw     = is_array( $decoded ) ? $decoded : [];
+    }
+    if ( ! is_array( $raw ) ) {
+        return [];
+    }
+    $out = [];
+    foreach ( $raw as $row ) {
+        if ( ! is_array( $row ) ) {
+            continue;
+        }
+        $name = sanitize_text_field( $row['name'] ?? '' );
+        if ( $name === '' ) {
+            continue;
+        }
+        $image = $row['image'] ?? '';
+        if ( is_numeric( $image ) ) {
+            $image = (string) (int) $image;
+        } else {
+            $image = esc_url_raw( (string) $image );
+        }
+        $out[] = [
+            'name'     => $name,
+            'role'     => sanitize_text_field( $row['role'] ?? '' ),
+            'group'    => sanitize_text_field( $row['group'] ?? '' ),
+            'image'    => $image,
+            'featured' => ! empty( $row['featured'] ) ? 1 : 0,
+        ];
+        if ( count( $out ) >= 80 ) {
+            break;
+        }
+    }
+    return $out;
 }
 
 function ptprm_sanitize_team_items( $raw ): array {

@@ -292,6 +292,9 @@ class PTPRM_Access {
         if ( class_exists( 'PTPRM_Members' ) && PTPRM_Members::is_pending_registration_user( $user ) ) {
             return class_exists( 'PTPRM_Login_Portal' ) ? PTPRM_Login_Portal::login_url() : home_url( '/rumah-anggota/' );
         }
+        if ( class_exists( 'PTPRM_Bidang_Registry' ) && PTPRM_Bidang_Registry::is_bidang_user( $user ) ) {
+            return PTPRM_Bidang_Registry::panel_url( PTPRM_Bidang_Registry::get_user_bidang_slug( $user ) );
+        }
         if ( self::is_site_admin( $user ) ) {
             return admin_url();
         }

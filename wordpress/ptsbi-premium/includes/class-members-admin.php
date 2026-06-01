@@ -19,7 +19,6 @@ class PTPRM_Members_Admin {
         add_action( 'init', [ $this, 'handle_team_photos' ], 20 );
         add_filter( 'ptprm_admin_portal_tabs', [ $this, 'register_tabs' ] );
         add_action( 'ptprm_admin_portal_tab_anggota', [ $this, 'render_members_tab' ] );
-        add_action( 'ptprm_admin_portal_tab_struktur', [ $this, 'render_struktur_tab' ] );
     }
 
     public static function needs_directory_assets(): bool {
@@ -27,7 +26,7 @@ class PTPRM_Members_Admin {
             return false;
         }
         $tab = sanitize_key( (string) ( $_GET['tab'] ?? '' ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-        return in_array( $tab, [ 'anggota', 'struktur' ], true );
+        return $tab === 'anggota';
     }
 
     public function register_tabs( array $tabs ): array {
@@ -35,9 +34,6 @@ class PTPRM_Members_Admin {
             return $tabs;
         }
         $tabs['anggota'] = __( 'Data Anggota', 'ptsbi-premium' );
-        if ( class_exists( 'PTPRM_Access' ) && PTPRM_Access::can_manage_org_settings() ) {
-            $tabs['struktur'] = __( 'Foto Pengurus', 'ptsbi-premium' );
-        }
         return $tabs;
     }
 
