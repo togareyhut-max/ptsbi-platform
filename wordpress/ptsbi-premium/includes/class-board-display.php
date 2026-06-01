@@ -152,7 +152,7 @@ class PTPRM_Board_Display {
             return '';
         }
         if ( is_numeric( $image ) ) {
-            $url = wp_get_attachment_image_url( (int) $image, 'medium' );
+            $url = wp_get_attachment_image_url( (int) $image, 'medium_large' );
             return $url ? (string) $url : '';
         }
         $url = esc_url_raw( $image );

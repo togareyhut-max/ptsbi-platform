@@ -3568,12 +3568,20 @@ body.ptprm-mobile-nav-open {
     gap: 1.25rem;
     margin-bottom: 2rem;
 }
+/* Pengurus pusat: foto inti sedikit lebih besar */
+.ptprm-board--pusat .ptprm-board-featured {
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: 1.5rem;
+}
 .ptprm-board-card {
     text-align: center;
     padding: 1rem;
     border: 1px solid rgba(10, 31, 61, 0.12);
     border-radius: 12px;
     background: #fff;
+}
+.ptprm-board--pusat .ptprm-board-card {
+    padding: 1.25rem 1rem 1.1rem;
 }
 .ptprm-board-card-photo {
     width: 120px;
@@ -3582,6 +3590,11 @@ body.ptprm-mobile-nav-open {
     border-radius: 50%;
     overflow: hidden;
     background: var(--ptprm-surface-alt, #f0f3f8);
+}
+.ptprm-board--pusat .ptprm-board-card-photo {
+    width: 156px;
+    height: 156px;
+    margin-bottom: 0.9rem;
 }
 .ptprm-board-card-photo img {
     width: 100%;
