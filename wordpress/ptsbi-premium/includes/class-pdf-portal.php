@@ -59,7 +59,20 @@ class PTPRM_Pdf_Portal {
             return;
         }
         if ( ! isset( $_POST[ self::NONCE_SAVE ] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( (string) $_POST[ self::NONCE_SAVE ] ) ), 'ptprm_portal_pdf_save' ) ) {
-            return;
+            $url = class_exists( 'PTPRM_Admin_Portal' )
+                ? PTPRM_Admin_Portal::portal_url(
+                    'dokumen',
+                    [
+                        'ptprm_settings_error' => rawurlencode(
+                            function_exists( 'ptprm_portal_session_expired_message' )
+                                ? ptprm_portal_session_expired_message()
+                                : __( 'Sesi form kedaluwarsa. Muat ulang halaman lalu simpan lagi.', 'ptsbi-premium' )
+                        ),
+                    ]
+                )
+                : home_url( '/' );
+            wp_safe_redirect( $url );
+            exit;
         }
 
         $raw = isset( $_POST['ptprm_pdf_items_json'] ) ? wp_unslash( (string) $_POST['ptprm_pdf_items_json'] ) : '[]';
@@ -105,7 +118,8 @@ class PTPRM_Pdf_Portal {
         echo '<div class="ptprm-member-card ptprm-portal-card ptprm-pdf-portal">';
         echo '<p class="ptprm-portal-help">' . esc_html__( 'Kelola daftar PDF berdasarkan nama dokumen. ID shortcode dibuat otomatis dari judul. Salin shortcode tombol atau hover untuk dipakai di halaman.', 'ptsbi-premium' ) . '</p>';
 
-        echo '<form method="post" id="ptprm-portal-pdf-form" class="ptprm-pdf-list-form">';
+        $form_action = class_exists( 'PTPRM_Admin_Portal' ) ? PTPRM_Admin_Portal::portal_url( 'dokumen' ) : '';
+        echo '<form method="post" id="ptprm-portal-pdf-form" class="ptprm-pdf-list-form" action="' . esc_url( $form_action ) . '">';
         wp_nonce_field( 'ptprm_portal_pdf_save', self::NONCE_SAVE );
         echo '<input type="hidden" name="ptprm_portal_pdf_save" value="1">';
         echo '<input type="hidden" name="ptprm_pdf_items_json" id="ptprm-portal-pdf-json" value="">';

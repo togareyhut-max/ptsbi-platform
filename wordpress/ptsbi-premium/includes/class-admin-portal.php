@@ -153,7 +153,14 @@ class PTPRM_Admin_Portal {
             return;
         }
         if ( ! isset( $_POST[ self::NONCE_SETTINGS ] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( (string) $_POST[ self::NONCE_SETTINGS ] ) ), 'ptprm_admin_settings' ) ) {
-            return;
+            wp_safe_redirect(
+                add_query_arg(
+                    'ptprm_settings_error',
+                    rawurlencode( function_exists( 'ptprm_portal_session_expired_message' ) ? ptprm_portal_session_expired_message() : __( 'Sesi form kedaluwarsa. Muat ulang halaman lalu simpan lagi.', 'ptsbi-premium' ) ),
+                    self::portal_url( 'informasi' )
+                )
+            );
+            exit;
         }
 
         $keys = [
@@ -214,7 +221,14 @@ class PTPRM_Admin_Portal {
             return;
         }
         if ( ! isset( $_POST[ self::NONCE_POST ] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( (string) $_POST[ self::NONCE_POST ] ) ), 'ptprm_admin_post' ) ) {
-            return;
+            wp_safe_redirect(
+                add_query_arg(
+                    'ptprm_post_error',
+                    rawurlencode( function_exists( 'ptprm_portal_session_expired_message' ) ? ptprm_portal_session_expired_message() : __( 'Sesi form kedaluwarsa. Muat ulang halaman lalu simpan lagi.', 'ptsbi-premium' ) ),
+                    self::portal_url( 'berita' )
+                )
+            );
+            exit;
         }
 
         $post_id = (int) ( $_POST['post_id'] ?? 0 );
@@ -296,6 +310,7 @@ class PTPRM_Admin_Portal {
         echo '</nav>';
 
         echo '<div class="ptprm-portal-panel">';
+        $this->render_portal_flash_notices( $tab );
         switch ( $tab ) {
             case 'anggota':
             case 'struktur':
@@ -347,6 +362,31 @@ class PTPRM_Admin_Portal {
         echo '</div>';
 
         return (string) ob_get_clean();
+    }
+
+    /**
+     * Tampilkan pesan error/sukses dari query string (setelah redirect simpan).
+     */
+    private function render_portal_flash_notices( string $tab ): void {
+        $map = [
+            'informasi' => 'ptprm_settings_error',
+            'berita'    => 'ptprm_post_error',
+            'anggota'   => 'ptprm_members_error',
+            'struktur'  => 'ptprm_settings_error',
+            'dokumen'   => 'ptprm_settings_error',
+        ];
+        if ( ! isset( $map[ $tab ] ) ) {
+            return;
+        }
+        $key = $map[ $tab ];
+        if ( ! isset( $_GET[ $key ] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+            return;
+        }
+        $msg = sanitize_text_field( wp_unslash( (string) $_GET[ $key ] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+        if ( $msg === '' ) {
+            return;
+        }
+        echo '<p class="ptprm-member-alert ptprm-member-alert-error">' . esc_html( $msg ) . '</p>';
     }
 
     private function render_tab_dashboard(): void {
@@ -444,7 +484,7 @@ class PTPRM_Admin_Portal {
 
         echo '<div class="ptprm-member-card ptprm-portal-card">';
         echo '<h3 class="ptprm-admin-h3">' . esc_html( $post ? __( 'Edit Berita', 'ptsbi-premium' ) : __( 'Tulis Berita Baru', 'ptsbi-premium' ) ) . '</h3>';
-        echo '<form method="post" class="ptprm-member-form">';
+        echo '<form method="post" class="ptprm-member-form" action="' . esc_url( self::portal_url( 'berita', $edit_id ? [ 'edit' => $edit_id ] : [] ) ) . '">';
         wp_nonce_field( 'ptprm_admin_post', self::NONCE_POST );
         echo '<input type="hidden" name="ptprm_admin_post" value="1">';
         echo '<input type="hidden" name="post_id" value="' . esc_attr( (string) ( $post ? $post->ID : 0 ) ) . '">';
@@ -497,7 +537,7 @@ class PTPRM_Admin_Portal {
 
         echo '<div class="ptprm-member-card ptprm-portal-card">';
         echo '<p class="ptprm-portal-help">' . esc_html__( 'Informasi penting organisasi (kontak, nama, tampilan anggota). Pengaturan desain lengkap dapat ditambahkan di sini bertahap.', 'ptsbi-premium' ) . '</p>';
-        echo '<form method="post" class="ptprm-member-form">';
+        echo '<form method="post" class="ptprm-member-form" action="' . esc_url( self::portal_url( 'informasi' ) ) . '">';
         wp_nonce_field( 'ptprm_admin_settings', self::NONCE_SETTINGS );
         echo '<input type="hidden" name="ptprm_admin_settings" value="1">';
         echo '<div class="ptprm-member-grid">';
