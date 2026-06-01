@@ -74,18 +74,31 @@
             .replace(/^-+|-+$/g, '');
     }
 
+    function pdfShortcodes(id) {
+        var safe = id || '';
+        return {
+            button: '[ptprm_pdf id="' + safe + '" style="button"]',
+            hover: '[ptprm_pdf id="' + safe + '" style="hover" label="Lihat dokumen"]Teks di sini…[/ptprm_pdf]'
+        };
+    }
+
     function updatePdfShortcodePreview(row) {
         if (!row) return;
-        var code = row.querySelector('.ptprm-pdf-shortcode-preview');
         var idEl = row.querySelector('[data-field="id"]');
-        if (!code) return;
         var id = (idEl && idEl.value) ? idEl.value.trim() : '';
         if (!id) {
             var title = (row.querySelector('[data-field="title"]') || {}).value || '';
             id = slugifyPdfId(title);
             if (idEl) idEl.value = id;
         }
-        code.textContent = '[ptprm_pdf id="' + (id || '') + '"]';
+        var sc = pdfShortcodes(id);
+        var btnCode = row.querySelector('.ptprm-pdf-shortcode-preview[data-which="button"]') || row.querySelector('.ptprm-pdf-shortcode-preview');
+        var hoverCode = row.querySelector('.ptprm-pdf-shortcode-preview[data-which="hover"]');
+        if (btnCode) btnCode.textContent = sc.button;
+        if (hoverCode) hoverCode.textContent = sc.hover;
+        if (btnCode && !hoverCode && btnCode.getAttribute('data-which') !== 'button') {
+            btnCode.textContent = sc.button;
+        }
     }
 
     function initPdfMediaPickers() {
@@ -127,7 +140,9 @@
             e.preventDefault();
             var row = $(this).closest('.ptprm-repeater-row').get(0);
             updatePdfShortcodePreview(row);
-            var code = row && row.querySelector('.ptprm-pdf-shortcode-preview');
+            var which = $(this).data('which') || 'button';
+            var code = row && row.querySelector('.ptprm-pdf-shortcode-preview[data-which="' + which + '"]');
+            if (!code) code = row && row.querySelector('.ptprm-pdf-shortcode-preview');
             if (!code) return;
             var txt = code.textContent;
             if (navigator.clipboard && navigator.clipboard.writeText) {

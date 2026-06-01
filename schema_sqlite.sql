@@ -98,3 +98,13 @@ CREATE TABLE IF NOT EXISTS app_settings (
   value TEXT,
   updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE IF NOT EXISTS member_profiles (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  wp_user_id INTEGER,
+  email TEXT NOT NULL UNIQUE,
+  profile_json TEXT NOT NULL DEFAULT '{}',
+  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_member_profiles_wp_user ON member_profiles (wp_user_id);

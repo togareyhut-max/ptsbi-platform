@@ -105,6 +105,9 @@ class PTPRM_Members_Admin {
         $opts['team_items'] = wp_json_encode( $clean, JSON_UNESCAPED_UNICODE );
         $opts['team_show']  = 1;
         update_option( PTPRM_OPTION, ptprm_normalize_option_for_storage( array_merge( ptprm_options(), $opts ) ), true );
+        if ( class_exists( 'PTPRM_Membership_Sync' ) ) {
+            PTPRM_Membership_Sync::push_options_patch( [ 'team_items' => $opts['team_items'] ] );
+        }
         wp_safe_redirect( add_query_arg( 'ptprm_saved', '1', $this->portal_url( 'struktur' ) ) );
         exit;
     }

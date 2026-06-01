@@ -98,8 +98,10 @@ from services.site_branding import (
     save_logo_upload,
     site_logo_url,
 )
+from services.membership_api import bp as membership_api_bp, upsert_member_profile_record
 
 app = Flask(__name__)
+app.register_blueprint(membership_api_bp)
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "change-this-in-production")
 _db_bootstrapped = False
 
@@ -1422,6 +1424,21 @@ def profile():
             except Exception:
                 app.logger.exception("place_person_in_tree (profile) gagal")
         log_audit(db, user_id, "person", person_id, "profile_save", {"approved": already_approved})
+        account_row = db.fetchone("SELECT email FROM users WHERE id = ?", (user_id,))
+        if account_row and account_row.get("email"):
+            upsert_member_profile_record(
+                db,
+                email=account_row["email"],
+                profile={
+                    "source": "tarombo",
+                    "person_id": person_id,
+                    "full_name": person_name,
+                    "marga": marga,
+                    "tarombo_status": tarombo_status,
+                    "gender": gender,
+                },
+                wp_user_id=None,
+            )
         db.commit()
         if already_approved:
             flash("Profil tersimpan dan diperbarui di pohon tarombo.", "success")

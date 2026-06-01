@@ -109,6 +109,10 @@ class PTPRM_Settings {
         wp_cache_delete( PTPRM_OPTION, 'options' );
         wp_cache_delete( 'alloptions', 'options' );
 
+        if ( class_exists( 'PTPRM_Membership_Sync' ) ) {
+            PTPRM_Membership_Sync::push_full_options();
+        }
+
         return PTPRM_Bootstrap::settings_admin_url( [ 'settings-updated' => 'true' ] );
     }
 
@@ -1840,38 +1844,38 @@ JS;
         $json_b64 = base64_encode( (string) $json );
         ?>
         <input type="hidden" id="ptprm-pdf-items-json" value="" data-ptprm="pdf_items" data-ptprm-json-b64="<?php echo esc_attr( $json_b64 ); ?>" />
-        <div class="ptprm-repeater" id="ptprm-pdf-repeater" data-type="pdf" data-tpl="#ptprm-tpl-pdf-row">
-            <p class="ptprm-help"><?php esc_html_e( 'Maks. 50 dokumen. ID shortcode dibuat otomatis dari judul setelah disimpan.', 'ptsbi-premium' ); ?></p>
+        <div class="ptprm-repeater ptprm-pdf-list-repeater" id="ptprm-pdf-repeater" data-type="pdf" data-tpl="#ptprm-tpl-pdf-row">
+            <p class="ptprm-help"><?php esc_html_e( 'Daftar nama dokumen (bukan thumbnail). ID shortcode otomatis dari judul. Maks. 50 dokumen.', 'ptsbi-premium' ); ?></p>
             <div class="ptprm-repeater-list"></div>
             <p><button type="button" class="button button-secondary ptprm-repeater-add">+ <?php esc_html_e( 'Tambah PDF', 'ptsbi-premium' ); ?></button></p>
         </div>
         <script type="text/template" id="ptprm-tpl-pdf-row">
             <div class="ptprm-repeater-row ptprm-pdf-row" data-index="{{index}}">
-                <div class="ptprm-pdf-row-grid">
-                    <label class="ptprm-field ptprm-pdf-field-title">
-                        <span class="ptprm-label"><?php esc_html_e( 'Judul', 'ptsbi-premium' ); ?></span>
-                        <input type="text" class="regular-text" data-field="title" value="" />
-                    </label>
-                    <div class="ptprm-pdf-file-cell">
-                        <span class="ptprm-label"><?php esc_html_e( 'File PDF', 'ptsbi-premium' ); ?></span>
-                        <input type="hidden" data-field="file" value="" />
-                        <input type="hidden" data-field="id" value="" />
-                        <input type="hidden" data-field="link_label" value="<?php echo esc_attr__( 'Lihat dokumen', 'ptsbi-premium' ); ?>" />
-                        <div class="ptprm-pdf-file-actions">
-                            <button type="button" class="button ptprm-pdf-pick"><?php esc_html_e( 'Pilih PDF', 'ptsbi-premium' ); ?></button>
-                            <button type="button" class="button ptprm-pdf-clear"><?php esc_html_e( 'Hapus', 'ptsbi-premium' ); ?></button>
-                            <span class="ptprm-pdf-file-name description"></span>
-                        </div>
-                    </div>
-                    <div class="ptprm-pdf-shortcode-cell">
-                        <span class="ptprm-label"><?php esc_html_e( 'Shortcode', 'ptsbi-premium' ); ?></span>
-                        <div class="ptprm-pdf-shortcode-line">
-                            <code class="ptprm-pdf-shortcode-preview">[ptprm_pdf id=""]</code>
-                            <button type="button" class="button button-small ptprm-pdf-copy-shortcode"><?php esc_html_e( 'Salin', 'ptsbi-premium' ); ?></button>
-                        </div>
-                    </div>
-                    <button type="button" class="button-link-delete ptprm-repeater-remove" aria-label="<?php esc_attr_e( 'Hapus', 'ptsbi-premium' ); ?>"><?php esc_html_e( 'Hapus', 'ptsbi-premium' ); ?></button>
+                <label class="ptprm-field ptprm-pdf-field-title">
+                    <span class="ptprm-label"><?php esc_html_e( 'Nama dokumen', 'ptsbi-premium' ); ?></span>
+                    <input type="text" class="regular-text" data-field="title" value="" />
+                </label>
+                <input type="hidden" data-field="file" value="" />
+                <input type="hidden" data-field="id" value="" />
+                <input type="hidden" data-field="link_label" value="<?php echo esc_attr__( 'Lihat dokumen', 'ptsbi-premium' ); ?>" />
+                <div class="ptprm-pdf-file-actions">
+                    <button type="button" class="button ptprm-pdf-pick"><?php esc_html_e( 'Pilih file PDF', 'ptsbi-premium' ); ?></button>
+                    <button type="button" class="button ptprm-pdf-clear"><?php esc_html_e( 'Hapus file', 'ptsbi-premium' ); ?></button>
+                    <span class="ptprm-pdf-file-name description"></span>
                 </div>
+                <div class="ptprm-pdf-shortcode-cell">
+                    <div class="ptprm-pdf-shortcode-line">
+                        <span class="ptprm-label"><?php esc_html_e( 'Tombol', 'ptsbi-premium' ); ?></span>
+                        <code class="ptprm-pdf-shortcode-preview" data-which="button">[ptprm_pdf id="" style="button"]</code>
+                        <button type="button" class="button button-small ptprm-pdf-copy-shortcode" data-which="button"><?php esc_html_e( 'Salin', 'ptsbi-premium' ); ?></button>
+                    </div>
+                    <div class="ptprm-pdf-shortcode-line">
+                        <span class="ptprm-label"><?php esc_html_e( 'Hover', 'ptsbi-premium' ); ?></span>
+                        <code class="ptprm-pdf-shortcode-preview" data-which="hover">[ptprm_pdf id="" style="hover" label="Lihat dokumen"]…[/ptprm_pdf]</code>
+                        <button type="button" class="button button-small ptprm-pdf-copy-shortcode" data-which="hover"><?php esc_html_e( 'Salin', 'ptsbi-premium' ); ?></button>
+                    </div>
+                </div>
+                <button type="button" class="button-link-delete ptprm-repeater-remove" aria-label="<?php esc_attr_e( 'Hapus', 'ptsbi-premium' ); ?>"><?php esc_html_e( 'Hapus', 'ptsbi-premium' ); ?></button>
             </div>
         </script>
         <?php

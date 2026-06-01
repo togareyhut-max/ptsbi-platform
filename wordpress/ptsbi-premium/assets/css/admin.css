@@ -464,26 +464,20 @@
     flex-shrink: 0;
 }
 
-/* Panel PDF — baris ringkas, fokus shortcode */
+/* Panel PDF — daftar nama (bukan thumbnail) */
+.ptprm-pdf-list-repeater .ptprm-repeater-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
 .ptprm-pdf-row {
-    padding: 10px 12px;
-    margin-bottom: 8px;
+    padding: 12px 14px;
+    margin-bottom: 0;
     border: 1px solid #dcdcde;
     border-radius: 8px;
     background: #fff;
-}
-.ptprm-pdf-row-grid {
     display: grid;
-    grid-template-columns: minmax(140px, 1.2fr) minmax(160px, 1fr) minmax(220px, 1.4fr) auto;
-    gap: 12px 16px;
-    align-items: end;
-}
-@media (max-width: 960px) {
-    .ptprm-pdf-row-grid {
-        grid-template-columns: 1fr 1fr;
-    }
-    .ptprm-pdf-shortcode-cell { grid-column: 1 / -1; }
-    .ptprm-repeater-row.ptprm-pdf-row .ptprm-repeater-remove { grid-column: 1 / -1; justify-self: end; }
+    gap: 10px;
 }
 .ptprm-pdf-field-title .regular-text { width: 100%; }
 .ptprm-pdf-file-actions {
