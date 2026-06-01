@@ -63,4 +63,4 @@ docker exec ${WP_CONTAINER} chown -R www-data:www-data /var/www/html/wp-content/
 grep PTPRM_VERSION ${REMOTE_DIR}/ptsbi-premium.php | head -1
 EOF
 
-echo "Selesai. Buka WP Admin → Premium Plugin → tab Dokumen PDF (v3.0.6)."
+echo "Selesai. Buka WP Admin atau Panel Pengurus → tab Dokumen PDF (v3.0.7)."

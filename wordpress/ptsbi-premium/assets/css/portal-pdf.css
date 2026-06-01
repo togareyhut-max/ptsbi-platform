@@ -1,0 +1,59 @@
+/* Panel PDF frontend — daftar nama saja */
+.ptprm-pdf-portal .ptprm-pdf-name-list {
+    list-style: none;
+    margin: 0 0 1rem;
+    padding: 0;
+}
+.ptprm-pdf-name-row {
+    padding: 12px 14px;
+    margin-bottom: 10px;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    background: #fff;
+}
+.ptprm-pdf-name-label {
+    display: block;
+    margin-bottom: 8px;
+}
+.ptprm-pdf-name-label .regular-text {
+    width: 100%;
+    max-width: 100%;
+}
+.ptprm-pdf-name-file {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+.ptprm-pdf-file-name {
+    font-size: 0.9rem;
+    opacity: 0.85;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.ptprm-pdf-shortcodes {
+    display: grid;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+.ptprm-pdf-sc-block {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+.ptprm-pdf-sc-block code {
+    flex: 1 1 200px;
+    padding: 6px 10px;
+    background: #f4f4f5;
+    border-radius: 4px;
+    font-size: 11px;
+    line-height: 1.4;
+    word-break: break-all;
+}
+.ptprm-pdf-row-remove {
+    margin-top: 4px;
+}

@@ -206,6 +206,9 @@ class PTPRM_Member_Portal {
 
         if ( empty( $_POST['ptprm_password_only'] ) ) {
             $saved = PTPRM_Members::save_profile_for_user( $user_id, $data );
+            if ( $saved && class_exists( 'PTPRM_Membership_Sync' ) ) {
+                PTPRM_Membership_Sync::push_member_profile( $user_id, $data );
+            }
             if ( ! $saved ) {
                 global $wpdb;
                 $detail = ( defined( 'WP_DEBUG' ) && WP_DEBUG && ! empty( $wpdb->last_error ) )

@@ -771,14 +771,20 @@ class PTPRM_Members {
                 return true;
             }
             $updated = $wpdb->update( $table, $data, [ 'user_id' => $user_id ], null, [ '%d' ] );
-            return false !== $updated;
+            if ( false === $updated ) {
+                return false;
+            }
+            return true;
         }
 
         $data['user_id']    = $user_id;
         $data['created_by'] = $user_id;
         $data['created_at'] = current_time( 'mysql' );
         $inserted           = $wpdb->insert( $table, $data );
-        return false !== $inserted;
+        if ( false === $inserted ) {
+            return self::is_pending_registration_user( $user_id );
+        }
+        return true;
     }
 
     /**

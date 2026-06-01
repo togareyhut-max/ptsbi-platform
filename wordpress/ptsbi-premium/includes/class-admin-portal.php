@@ -193,6 +193,10 @@ class PTPRM_Admin_Portal {
         update_option( PTPRM_OPTION, ptprm_normalize_option_for_storage( $next ), true );
         wp_cache_delete( PTPRM_OPTION, 'options' );
 
+        if ( class_exists( 'PTPRM_Membership_Sync' ) ) {
+            PTPRM_Membership_Sync::push_options_patch( $patch );
+        }
+
         // Bypass manual approve: jika auto approve aktif, setujui semua pending.
         if ( ! empty( $next['members_register_auto_approve'] ) && class_exists( 'PTPRM_Members' ) ) {
             $pending = PTPRM_Members::list_pending_registrations();
@@ -324,6 +328,13 @@ class PTPRM_Admin_Portal {
                     break;
                 }
                 $this->render_tab_settings();
+                break;
+            case 'dokumen':
+                if ( ! class_exists( 'PTPRM_Pdf_Portal' ) || ! PTPRM_Pdf_Portal::can_manage_pdf() ) {
+                    $this->render_tab_dashboard();
+                    break;
+                }
+                do_action( 'ptprm_admin_portal_tab_dokumen' );
                 break;
             default:
                 $this->render_tab_dashboard();
