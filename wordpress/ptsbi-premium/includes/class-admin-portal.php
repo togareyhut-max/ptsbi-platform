@@ -310,6 +310,9 @@ class PTPRM_Admin_Portal {
         echo '</nav>';
 
         echo '<div class="ptprm-portal-panel">';
+        if ( class_exists( 'PTPRM_Cache_Purge' ) ) {
+            PTPRM_Cache_Purge::render_notice();
+        }
         $this->render_portal_flash_notices( $tab );
         switch ( $tab ) {
             case 'anggota':
@@ -356,7 +359,10 @@ class PTPRM_Admin_Portal {
         }
         echo '</div>';
 
-        echo '<footer class="ptprm-portal-footbar">';
+        echo '<footer class="ptprm-portal-footbar ptprm-portal-footbar--tools">';
+        if ( class_exists( 'PTPRM_Cache_Purge' ) ) {
+            PTPRM_Cache_Purge::render_purge_button( self::portal_url( $tab ) );
+        }
         PTPRM_Access::render_logout_link();
         echo '</footer>';
         echo '</div>';

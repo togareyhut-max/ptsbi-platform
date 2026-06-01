@@ -12,6 +12,7 @@ class PTPRM_Access {
     public const CAP_MANAGE          = 'ptprm_manage';
     public const CAP_APPROVE_MEMBERS = 'ptprm_approve_members';
     public const CAP_ORG_SETTINGS    = 'ptprm_manage_org_settings';
+    public const CAP_PURGE_CACHE     = 'ptprm_purge_cache';
     public const ROLE_ORG_ADMIN      = 'admin_organisasi';
 
     public static function init(): void {
@@ -210,6 +211,7 @@ class PTPRM_Access {
                     $pengurus->add_cap( $cap );
                 }
             }
+            $pengurus->add_cap( self::CAP_PURGE_CACHE );
         }
 
         add_role(
@@ -224,6 +226,12 @@ class PTPRM_Access {
                     $org_admin->add_cap( $cap );
                 }
             }
+            $org_admin->add_cap( self::CAP_PURGE_CACHE );
+        }
+
+        $anggota = get_role( 'anggota' );
+        if ( $anggota ) {
+            $anggota->add_cap( self::CAP_PURGE_CACHE );
         }
 
         $admin = get_role( 'administrator' );

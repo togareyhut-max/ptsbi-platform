@@ -306,6 +306,9 @@ class PTPRM_Member_Portal {
         echo '</nav>';
 
         echo '<div class="ptprm-portal-panel">';
+        if ( class_exists( 'PTPRM_Cache_Purge' ) ) {
+            PTPRM_Cache_Purge::render_notice();
+        }
         if ( $tab === 'cari' ) {
             echo do_shortcode( '[ptprm_member_directory]' );
         } elseif ( $tab === 'akun' ) {
@@ -315,7 +318,10 @@ class PTPRM_Member_Portal {
         }
         echo '</div>';
 
-        echo '<footer class="ptprm-portal-footbar">';
+        echo '<footer class="ptprm-portal-footbar ptprm-portal-footbar--tools">';
+        if ( class_exists( 'PTPRM_Cache_Purge' ) ) {
+            PTPRM_Cache_Purge::render_purge_button( self::navigation_url( [ 'tab' => $tab ] ) );
+        }
         PTPRM_Access::render_logout_link();
         echo '</footer>';
 

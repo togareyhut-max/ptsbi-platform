@@ -620,6 +620,16 @@ body.ptprm-is-home .ptprm-cta-row {
 .ptprm-portal-footbar form {
     display: inline-block;
 }
+.ptprm-portal-footbar--tools {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    justify-content: center;
+    align-items: center;
+}
+.ptprm-cache-purge-btn {
+    font-size: 14px;
+}
 .ptprm-login-form {
     max-width: 420px;
     margin: 0 auto;
