@@ -1900,6 +1900,205 @@ body.ptprm-pattern-off .ptprm-stats::before {
 .ptprm-lightbox-nav.next { right: 24px; }
 .ptprm-lightbox-nav:hover { background: var(--ptprm-accent); color: var(--ptprm-primary); }
 
+/* PDF lightbox */
+.ptprm-pdf-trigger {
+    cursor: pointer;
+    border: none;
+    font: inherit;
+}
+.ptprm-pdf-trigger-thumb {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 0;
+    background: transparent;
+    max-width: 160px;
+    text-align: center;
+}
+.ptprm-pdf-thumb-img {
+    width: 100px;
+    height: 130px;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid var(--ptprm-line);
+    box-shadow: var(--ptprm-shadow-sm);
+    background: var(--ptprm-cream);
+}
+.ptprm-pdf-thumb-img img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+.ptprm-pdf-thumb-placeholder {
+    display: grid;
+    place-items: center;
+    width: 100px;
+    height: 130px;
+    border-radius: 8px;
+    background: var(--ptprm-primary);
+    color: #fff;
+    font-weight: 700;
+    font-size: 0.85rem;
+}
+.ptprm-pdf-thumb-label {
+    font-size: 0.9rem;
+    color: var(--ptprm-primary);
+    font-weight: 600;
+}
+.ptprm-pdf-trigger-link {
+    font-weight: 600;
+    color: var(--ptprm-primary);
+    text-decoration: underline;
+}
+.ptprm-pdf-hover {
+    position: relative;
+    display: inline !important;
+    cursor: pointer;
+    color: inherit;
+    font: inherit;
+    font-size: inherit;
+    line-height: inherit;
+    letter-spacing: inherit;
+    text-decoration: underline;
+    text-decoration-style: dotted;
+    text-underline-offset: 3px;
+    text-decoration-color: var(--ptprm-accent);
+    white-space: normal;
+    vertical-align: baseline;
+    margin: 0;
+    padding: 0;
+}
+.entry-content .ptprm-pdf-hover,
+.ptprm-subpage .ptprm-pdf-hover {
+    display: inline !important;
+}
+.ptprm-pdf-hover-action {
+    position: absolute;
+    left: 50%;
+    bottom: calc(100% + 8px);
+    transform: translateX(-50%) translateY(4px);
+    padding: 6px 12px;
+    white-space: nowrap;
+    font-size: 0.8rem;
+    font-weight: 600;
+    line-height: 1.2;
+    color: var(--ptprm-primary);
+    background: var(--ptprm-accent);
+    border-radius: 6px;
+    box-shadow: var(--ptprm-shadow-sm);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s;
+    z-index: 20;
+}
+.ptprm-pdf-hover-action::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 100%;
+    transform: translateX(-50%);
+    border: 6px solid transparent;
+    border-top-color: var(--ptprm-accent);
+}
+.ptprm-pdf-hover:hover .ptprm-pdf-hover-action,
+.ptprm-pdf-hover:focus-visible .ptprm-pdf-hover-action,
+.ptprm-pdf-hover:focus-within .ptprm-pdf-hover-action {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(-50%) translateY(0);
+}
+.ptprm-pdf-hover:hover,
+.ptprm-pdf-hover:focus-visible {
+    text-decoration-color: var(--ptprm-primary);
+}
+.ptprm-pdf-lightbox {
+    position: fixed;
+    inset: 0;
+    z-index: 100000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    background: rgba(var(--ptprm-primary-rgb), .92);
+}
+.ptprm-pdf-lightbox[hidden] {
+    display: none !important;
+}
+.ptprm-pdf-lightbox.is-open {
+    display: flex;
+}
+.ptprm-pdf-lightbox-panel {
+    width: min(960px, 96vw);
+    max-height: 92vh;
+    display: flex;
+    flex-direction: column;
+    background: #fff;
+    border-radius: var(--ptprm-radius);
+    box-shadow: 0 24px 64px rgba(0, 0, 0, .35);
+    overflow: hidden;
+}
+.ptprm-pdf-lightbox-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--ptprm-line);
+    background: var(--ptprm-cream);
+}
+.ptprm-pdf-lightbox-title {
+    margin: 0;
+    font-family: var(--ptprm-font-heading);
+    font-size: 1.1rem;
+    color: var(--ptprm-primary);
+}
+.ptprm-pdf-lightbox-close {
+    flex-shrink: 0;
+    width: 40px;
+    height: 40px;
+    border: 0;
+    border-radius: 50%;
+    background: var(--ptprm-primary);
+    color: #fff;
+    font-size: 24px;
+    line-height: 1;
+    cursor: pointer;
+}
+.ptprm-pdf-lightbox-close:hover {
+    background: var(--ptprm-accent);
+    color: var(--ptprm-primary);
+}
+.ptprm-pdf-lightbox-body {
+    flex: 1;
+    min-height: 280px;
+    background: #525659;
+}
+.ptprm-pdf-lightbox-frame {
+    width: 100%;
+    height: min(70vh, 640px);
+    border: 0;
+    display: block;
+    background: #fff;
+}
+.ptprm-pdf-lightbox-foot {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 12px 18px;
+    border-top: 1px solid var(--ptprm-line);
+}
+.ptprm-pdf-lightbox-foot a {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--ptprm-primary);
+    text-decoration: none;
+}
+.ptprm-pdf-lightbox-foot a:hover {
+    color: var(--ptprm-accent-soft);
+}
+
 /* ==========================================================================
    BANNER CTA
    ========================================================================== */

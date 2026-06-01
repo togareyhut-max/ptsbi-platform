@@ -15,7 +15,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'PTPRM_VERSION', '3.0.4' );
+define( 'PTPRM_VERSION', '3.0.5' );
 define( 'PTPRM_FILE',    __FILE__ );
 define( 'PTPRM_DIR',     plugin_dir_path( __FILE__ ) );
 define( 'PTPRM_URL',     plugin_dir_url( __FILE__ ) );

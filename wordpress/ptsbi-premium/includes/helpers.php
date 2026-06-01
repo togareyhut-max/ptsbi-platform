@@ -739,6 +739,9 @@ function ptprm_defaults() {
         'gallery_speed'     => 35,       // s (marquee duration)
         'gallery_pause'     => 1,        // pause on hover (both modes)
 
+        /* -------- DOKUMEN PDF (lightbox) -------- */
+        'pdf_items'       => '',
+
         /* -------- BANNER CTA -------- */
         'banner_show'      => 0,
         'banner_image'     => '',
