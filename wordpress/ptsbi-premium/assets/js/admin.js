@@ -53,7 +53,108 @@
     function syncRepeaterFields(form) {
         syncRepeaterType(form, 'values', '#ptprm-values-items-json', collectValuesRow);
         syncRepeaterType(form, 'menu', '#ptprm-header-menu-json', collectMenuRow);
+        syncRepeaterType(form, 'pdf', '#ptprm-pdf-items-json', collectPdfRow);
     }
+
+    function collectPdfRow(row) {
+        var title = (row.querySelector('[data-field="title"]') || {}).value || '';
+        title = title.trim();
+        if (!title) return null;
+        return {
+            id: (row.querySelector('[data-field="id"]') || {}).value || '',
+            title: title,
+            file: (row.querySelector('[data-field="file"]') || {}).value || '',
+            link_label: (row.querySelector('[data-field="link_label"]') || {}).value || 'Lihat dokumen'
+        };
+    }
+
+    function slugifyPdfId(title) {
+        return String(title || '').trim().toLowerCase()
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/^-+|-+$/g, '');
+    }
+
+    function updatePdfShortcodePreview(row) {
+        if (!row) return;
+        var code = row.querySelector('.ptprm-pdf-shortcode-preview');
+        var idEl = row.querySelector('[data-field="id"]');
+        if (!code) return;
+        var id = (idEl && idEl.value) ? idEl.value.trim() : '';
+        if (!id) {
+            var title = (row.querySelector('[data-field="title"]') || {}).value || '';
+            id = slugifyPdfId(title);
+            if (idEl) idEl.value = id;
+        }
+        code.textContent = '[ptprm_pdf id="' + (id || '') + '"]';
+    }
+
+    function initPdfMediaPickers() {
+        $(document).on('click', '.ptprm-pdf-pick', function (e) {
+            e.preventDefault();
+            if (!wp || !wp.media) return;
+            var row = $(this).closest('.ptprm-repeater-row').get(0);
+            var $input = $(row).find('[data-field="file"]');
+            var $name = $(row).find('.ptprm-pdf-file-name');
+            var frame = wp.media({
+                title: 'Pilih file PDF',
+                button: { text: 'Pakai PDF ini' },
+                multiple: false,
+                library: { type: 'application/pdf' }
+            });
+            frame.on('select', function () {
+                var att = frame.state().get('selection').first().toJSON();
+                $input.val(att.id).trigger('change');
+                $name.text(att.filename || att.title || ('#' + att.id));
+                updatePdfShortcodePreview(row);
+            });
+            frame.open();
+        });
+        $(document).on('click', '.ptprm-pdf-clear', function (e) {
+            e.preventDefault();
+            var row = $(this).closest('.ptprm-repeater-row').get(0);
+            $(row).find('[data-field="file"]').val('').trigger('change');
+            $(row).find('.ptprm-pdf-file-name').text('');
+        });
+        $(document).on('input', '#ptprm-pdf-repeater [data-field="title"]', function () {
+            var row = $(this).closest('.ptprm-repeater-row').get(0);
+            var idEl = row && row.querySelector('[data-field="id"]');
+            if (idEl && !idEl.dataset.ptprmIdLocked) {
+                idEl.value = slugifyPdfId(this.value);
+            }
+            updatePdfShortcodePreview(row);
+        });
+        $(document).on('click', '.ptprm-pdf-copy-shortcode', function (e) {
+            e.preventDefault();
+            var row = $(this).closest('.ptprm-repeater-row').get(0);
+            updatePdfShortcodePreview(row);
+            var code = row && row.querySelector('.ptprm-pdf-shortcode-preview');
+            if (!code) return;
+            var txt = code.textContent;
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(txt);
+            } else {
+                var ta = document.createElement('textarea');
+                ta.value = txt;
+                document.body.appendChild(ta);
+                ta.select();
+                document.execCommand('copy');
+                document.body.removeChild(ta);
+            }
+            var btn = this;
+            var prev = btn.textContent;
+            btn.textContent = 'Tersalin';
+            setTimeout(function () { btn.textContent = prev; }, 1500);
+        });
+    }
+
+    function repeaterMax(type) {
+        if (type === 'menu') return 12;
+        if (type === 'team') return 12;
+        if (type === 'pdf') return 50;
+        return 24;
+    }
+
+
 
     function syncRepeaterType(form, type, hiddenSel, collector) {
         var hidden = form.querySelector(hiddenSel);
@@ -215,6 +316,23 @@
             if (hi) hi.checked = !!data.highlight;
             renderMenuChildren(row, data.children || []);
         });
+        initRepeater('pdf', '#ptprm-pdf-repeater', '#ptprm-tpl-pdf-row', '#ptprm-pdf-items-json', function (row, data) {
+            var idEl = row.querySelector('[data-field="id"]');
+            if (idEl) {
+                idEl.value = data.id || '';
+                if (data.id) idEl.dataset.ptprmIdLocked = '1';
+            }
+            row.querySelector('[data-field="title"]').value = data.title || '';
+            var fileEl = row.querySelector('[data-field="file"]');
+            if (fileEl) fileEl.value = data.file || '';
+            var linkEl = row.querySelector('[data-field="link_label"]');
+            if (linkEl) linkEl.value = data.link_label || 'Lihat dokumen';
+            if (data.file_name) {
+                var nameEl = row.querySelector('.ptprm-pdf-file-name');
+                if (nameEl) nameEl.textContent = data.file_name;
+            }
+            updatePdfShortcodePreview(row);
+        });
         initMenuChildrenControls();
         document.querySelectorAll('.ptprm-repeater').forEach(function (wrap) {
             wrap.addEventListener('click', function (e) {
@@ -222,16 +340,19 @@
                     e.preventDefault();
                     var list = wrap.querySelector('.ptprm-repeater-list');
                     var type = wrap.getAttribute('data-type');
-                    var max = type === 'menu' ? 12 : 24;
+                    var max = repeaterMax(type);
                     if (list.children.length >= max) {
                         window.alert('Batas maksimal item tercapai.');
                         return;
                     }
                     var tplId = wrap.getAttribute('data-tpl') || '#ptprm-tpl-value-row';
                     var fillRow = list.ptprmFillRow;
-                    var empty = type === 'menu'
-                        ? { label: '', url: '/', target: '_self', highlight: 0, children: [] }
-                        : { icon: 'users', title: '', desc: '' };
+                    var empty = { icon: 'users', title: '', desc: '' };
+                    if (type === 'menu') {
+                        empty = { label: '', url: '/', target: '_self', highlight: 0, children: [] };
+                    } else if (type === 'pdf') {
+                        empty = { id: '', title: '', file: '', link_label: 'Lihat dokumen' };
+                    }
                     addRepeaterRow(list, tplId, list.children.length, empty, fillRow);
                     if (type === 'menu') {
                         var newRow = list.lastElementChild;
@@ -249,13 +370,13 @@
                     }
                     var list = wrap.querySelector('.ptprm-repeater-list');
                     var typeR = wrap.getAttribute('data-type');
-                    var maxR = typeR === 'menu' ? 12 : 24;
+                    var maxR = repeaterMax(typeR);
                     updateRepeaterAddState(wrap, list, maxR);
                 }
             });
             var list0 = wrap.querySelector('.ptprm-repeater-list');
             var type0 = wrap.getAttribute('data-type');
-            var max0 = type0 === 'menu' ? 12 : 24;
+            var max0 = repeaterMax(type0);
             updateRepeaterAddState(wrap, list0, max0);
         });
     }
@@ -298,13 +419,15 @@
                 items = [{ icon: 'users', title: '', desc: '' }];
             } else if (type === 'menu') {
                 items = [{ label: '', url: '/', target: '_self', highlight: 0, children: [] }];
+            } else if (type === 'pdf') {
+                items = [{ id: '', title: '', file: '', link_label: 'Lihat dokumen' }];
             } else {
                 items = [{ image: '', name: '', role: '', url: '', group: '' }];
             }
         }
         list.innerHTML = '';
         list.ptprmFillRow = fillRow;
-        var max = type === 'menu' ? 12 : 24;
+        var max = repeaterMax(type);
         if (items.length > max) {
             items = items.slice(0, max);
         }

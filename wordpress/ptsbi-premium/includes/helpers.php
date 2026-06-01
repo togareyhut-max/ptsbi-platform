@@ -739,9 +739,6 @@ function ptprm_defaults() {
         'gallery_speed'     => 35,       // s (marquee duration)
         'gallery_pause'     => 1,        // pause on hover (both modes)
 
-        /* -------- DOKUMEN PDF (lightbox) -------- */
-        'pdf_items'       => '',
-
         /* -------- BANNER CTA -------- */
         'banner_show'      => 0,
         'banner_image'     => '',
@@ -1345,6 +1342,84 @@ function ptprm_sanitize_team_items( $raw ): array {
         }
     }
     return $out;
+}
+
+/**
+ * @return list<array{id:string,title:string,file:string,link_label:string}>
+ */
+function ptprm_sanitize_pdf_items( $raw ): array {
+    if ( is_string( $raw ) ) {
+        $decoded = json_decode( wp_unslash( $raw ), true );
+        $raw     = is_array( $decoded ) ? $decoded : [];
+    }
+    if ( ! is_array( $raw ) ) {
+        return [];
+    }
+
+    $seen = [];
+    $out  = [];
+    foreach ( $raw as $row ) {
+        if ( ! is_array( $row ) ) {
+            continue;
+        }
+        $title = sanitize_text_field( $row['title'] ?? '' );
+        $id    = sanitize_key( (string) ( $row['id'] ?? '' ) );
+        if ( $id === '' && $title !== '' ) {
+            $id = sanitize_title( $title );
+        }
+        if ( $id === '' || isset( $seen[ $id ] ) ) {
+            continue;
+        }
+        $file_id = is_numeric( $row['file'] ?? '' ) ? (int) $row['file'] : 0;
+        if ( $file_id <= 0 || ! get_post( $file_id ) ) {
+            continue;
+        }
+        $mime = get_post_mime_type( $file_id );
+        if ( $mime && strpos( $mime, 'pdf' ) === false ) {
+            continue;
+        }
+        $seen[ $id ] = true;
+        $out[]       = [
+            'id'         => $id,
+            'title'      => $title !== '' ? $title : $id,
+            'file'       => (string) $file_id,
+            'link_label' => sanitize_text_field( $row['link_label'] ?? __( 'Lihat dokumen', 'ptsbi-premium' ) ),
+        ];
+        if ( count( $out ) >= 50 ) {
+            break;
+        }
+    }
+    return $out;
+}
+
+/**
+ * @return list<array{id:string,title:string,file:string,link_label:string}>
+ */
+function ptprm_get_pdf_items( ?array $o = null ): array {
+    $o = $o ?? ptprm_options();
+    if ( ! empty( $o['pdf_items'] ) ) {
+        $decoded = json_decode( (string) $o['pdf_items'], true );
+        if ( is_array( $decoded ) ) {
+            return ptprm_sanitize_pdf_items( $decoded );
+        }
+    }
+    return [];
+}
+
+/**
+ * @return array{id:string,title:string,file:string,link_label:string}|null
+ */
+function ptprm_get_pdf_item( string $id, ?array $o = null ): ?array {
+    $id = sanitize_key( $id );
+    if ( $id === '' ) {
+        return null;
+    }
+    foreach ( ptprm_get_pdf_items( $o ) as $item ) {
+        if ( (string) ( $item['id'] ?? '' ) === $id ) {
+            return $item;
+        }
+    }
+    return null;
 }
 
 function ptprm_get( $key, $default = '' ) {

@@ -302,7 +302,8 @@ class PTPRM_Settings {
     function syncRepeaters(form) {
         [
             { type: 'values', hidden: '#ptprm-values-items-json', wrap: '#ptprm-values-repeater' },
-            { type: 'menu', hidden: '#ptprm-header-menu-json', wrap: '#ptprm-menu-repeater' }
+            { type: 'menu', hidden: '#ptprm-header-menu-json', wrap: '#ptprm-menu-repeater' },
+            { type: 'pdf', hidden: '#ptprm-pdf-items-json', wrap: '#ptprm-pdf-repeater' }
         ].forEach(function (cfg) {
             var hidden = form.querySelector(cfg.hidden);
             var list = form.querySelector(cfg.wrap + ' .ptprm-repeater-list');
@@ -324,6 +325,16 @@ class PTPRM_Settings {
                         icon: (row.querySelector('[data-field="icon"]') || {}).value || 'users',
                         title: t,
                         desc: (row.querySelector('[data-field="desc"]') || {}).value || ''
+                    });
+                } else if (cfg.type === 'pdf') {
+                    var pdfTitle = (row.querySelector('[data-field="title"]') || {}).value || '';
+                    pdfTitle = pdfTitle.trim();
+                    if (!pdfTitle) return;
+                    items.push({
+                        id: (row.querySelector('[data-field="id"]') || {}).value || '',
+                        title: pdfTitle,
+                        file: (row.querySelector('[data-field="file"]') || {}).value || '',
+                        link_label: (row.querySelector('[data-field="link_label"]') || {}).value || ''
                     });
                 } else {
                     var label = (row.querySelector('[data-field="label"]') || {}).value || '';
@@ -541,6 +552,13 @@ JS;
         }
         $c['team_items'] = wp_json_encode( $team_clean, JSON_UNESCAPED_UNICODE );
 
+        $pdf_raw   = $input['pdf_items'] ?? ( $existing['pdf_items'] ?? '' );
+        $pdf_clean = ptprm_sanitize_pdf_items( $pdf_raw );
+        if ( ! $pdf_clean ) {
+            $pdf_clean = ptprm_get_pdf_items( $existing );
+        }
+        $c['pdf_items'] = wp_json_encode( $pdf_clean, JSON_UNESCAPED_UNICODE );
+
         $sub_max_raw = isset( $input['header_submenu_max'] )
             ? (int) $input['header_submenu_max']
             : (int) ( $existing['header_submenu_max'] ?? $d['header_submenu_max'] ?? 10 );
@@ -745,6 +763,7 @@ JS;
             'hero'      => 'Hero',
             'beranda'   => 'Beranda',
             'popup'     => 'Pop-up Iklan',
+            'pdf'       => __( 'Dokumen PDF', 'ptsbi-premium' ),
             'subpage'   => 'Sub-halaman',
             'footer'    => 'Footer',
         ];
@@ -836,6 +855,7 @@ JS;
                         <?php $this->panel_hero( $o, $opt ); ?>
                         <?php $this->panel_beranda( $o, $opt ); ?>
                         <?php $this->panel_popup( $o, $opt ); ?>
+                        <?php $this->panel_pdf( $o, $opt ); ?>
                         <?php $this->panel_subpage( $o, $opt ); ?>
                         <?php $this->panel_footer( $o, $opt ); ?>
                     </main>
@@ -1803,6 +1823,57 @@ JS;
             </div>
             <p class="ptprm-help">Pilih beberapa foto sekaligus dari Media Library. Anda bisa men-drag untuk mengubah urutan.</p>
         </div>
+        <?php
+    }
+
+
+    private function repeater_pdf( $o, $opt ) {
+        $items = ptprm_get_pdf_items( $o );
+        foreach ( $items as $i => $item ) {
+            $fid = (int) ( $item['file'] ?? 0 );
+            if ( $fid > 0 ) {
+                $path = get_attached_file( $fid );
+                $items[ $i ]['file_name'] = $path ? basename( $path ) : get_the_title( $fid );
+            }
+        }
+        $json     = wp_json_encode( $items, JSON_UNESCAPED_UNICODE );
+        $json_b64 = base64_encode( (string) $json );
+        ?>
+        <input type="hidden" id="ptprm-pdf-items-json" value="" data-ptprm="pdf_items" data-ptprm-json-b64="<?php echo esc_attr( $json_b64 ); ?>" />
+        <div class="ptprm-repeater" id="ptprm-pdf-repeater" data-type="pdf" data-tpl="#ptprm-tpl-pdf-row">
+            <p class="ptprm-help"><?php esc_html_e( 'Maks. 50 dokumen. ID shortcode dibuat otomatis dari judul setelah disimpan.', 'ptsbi-premium' ); ?></p>
+            <div class="ptprm-repeater-list"></div>
+            <p><button type="button" class="button button-secondary ptprm-repeater-add">+ <?php esc_html_e( 'Tambah PDF', 'ptsbi-premium' ); ?></button></p>
+        </div>
+        <script type="text/template" id="ptprm-tpl-pdf-row">
+            <div class="ptprm-repeater-row ptprm-pdf-row" data-index="{{index}}">
+                <div class="ptprm-pdf-row-grid">
+                    <label class="ptprm-field ptprm-pdf-field-title">
+                        <span class="ptprm-label"><?php esc_html_e( 'Judul', 'ptsbi-premium' ); ?></span>
+                        <input type="text" class="regular-text" data-field="title" value="" />
+                    </label>
+                    <div class="ptprm-pdf-file-cell">
+                        <span class="ptprm-label"><?php esc_html_e( 'File PDF', 'ptsbi-premium' ); ?></span>
+                        <input type="hidden" data-field="file" value="" />
+                        <input type="hidden" data-field="id" value="" />
+                        <input type="hidden" data-field="link_label" value="<?php echo esc_attr__( 'Lihat dokumen', 'ptsbi-premium' ); ?>" />
+                        <div class="ptprm-pdf-file-actions">
+                            <button type="button" class="button ptprm-pdf-pick"><?php esc_html_e( 'Pilih PDF', 'ptsbi-premium' ); ?></button>
+                            <button type="button" class="button ptprm-pdf-clear"><?php esc_html_e( 'Hapus', 'ptsbi-premium' ); ?></button>
+                            <span class="ptprm-pdf-file-name description"></span>
+                        </div>
+                    </div>
+                    <div class="ptprm-pdf-shortcode-cell">
+                        <span class="ptprm-label"><?php esc_html_e( 'Shortcode', 'ptsbi-premium' ); ?></span>
+                        <div class="ptprm-pdf-shortcode-line">
+                            <code class="ptprm-pdf-shortcode-preview">[ptprm_pdf id=""]</code>
+                            <button type="button" class="button button-small ptprm-pdf-copy-shortcode"><?php esc_html_e( 'Salin', 'ptsbi-premium' ); ?></button>
+                        </div>
+                    </div>
+                    <button type="button" class="button-link-delete ptprm-repeater-remove" aria-label="<?php esc_attr_e( 'Hapus', 'ptsbi-premium' ); ?>"><?php esc_html_e( 'Hapus', 'ptsbi-premium' ); ?></button>
+                </div>
+            </div>
+        </script>
         <?php
     }
 
