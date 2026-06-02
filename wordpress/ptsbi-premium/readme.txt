@@ -48,6 +48,10 @@ Tidak hardcode untuk PTSBI — nama organisasi, warna, font, teks, ikon, tautan 
 
 == Changelog ==
 
+= 3.1.8 =
+* Deploy: salin plugin ke volume Docker (bukan hanya docker cp) + verifikasi versi + rollback otomatis jika gagal.
+* Pengurus pusat: perbaiki opsi kosong [], buat halaman /pengurus-pusat/, judul section di halaman wilayah.
+
 = 3.1.6 =
 * Pengurus Pusat: perbaikan tampilan di halaman depan setelah simpan panel (shortcode kosong tidak lagi menghalangi daftar).
 * Halaman Struktur Organisasi ikut menampilkan pengurus pusat.

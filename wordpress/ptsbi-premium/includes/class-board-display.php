@@ -132,6 +132,11 @@ class PTPRM_Board_Display {
         ob_start();
         echo '<div class="ptprm-board ptprm-board--' . esc_attr( $region ) . '">';
 
+        $board_title = trim( (string) ( $meta['title'] ?? '' ) );
+        if ( $board_title !== '' ) {
+            echo '<h2 class="ptprm-board-title">' . esc_html( $board_title ) . '</h2>';
+        }
+
         if ( ! empty( $meta['has_featured_photos'] ) ) {
             self::render_featured_row( $region, $items );
         }

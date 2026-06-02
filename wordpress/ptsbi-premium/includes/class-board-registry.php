@@ -13,7 +13,7 @@ class PTPRM_Board_Registry {
 
     public const OPTION_SEEDED          = 'ptprm_boards_seeded_v1';
     public const OPTION_CATALOG_VERSION = 'ptprm_board_catalog_version';
-    public const CATALOG_VERSION        = '3.1.7';
+    public const CATALOG_VERSION        = '3.1.8';
 
     /**
      * Halaman WP tambahan yang menampilkan pengurus pusat.
@@ -89,6 +89,8 @@ class PTPRM_Board_Registry {
         add_action( 'init', [ __CLASS__, 'ensure_region_pages' ], 13 );
         add_action( 'init', [ __CLASS__, 'maybe_apply_catalog_version' ], 14 );
         add_action( 'init', [ __CLASS__, 'maybe_migrate_standalone_storage' ], 15 );
+        add_action( 'init', [ __CLASS__, 'maybe_repair_empty_board_storage' ], 16 );
+        add_action( 'init', [ __CLASS__, 'ensure_extra_board_pages' ], 17 );
     }
 
     public static function maybe_seed_defaults(): void {
@@ -198,6 +200,74 @@ class PTPRM_Board_Registry {
         }
         update_option( 'ptprm_board_pages_v2', 1, false );
         flush_rewrite_rules( false );
+    }
+
+    /**
+     * Halaman alias (pengurus-pusat, struktur-organisasi) dengan shortcode pengurus pusat.
+     */
+    public static function ensure_extra_board_pages(): void {
+        if ( get_option( 'ptprm_board_extra_pages_v1' ) ) {
+            return;
+        }
+        $regions = self::regions();
+        foreach ( self::extra_page_slugs() as $page_slug => $region ) {
+            $region = sanitize_key( $region );
+            if ( ! isset( $regions[ $region ] ) ) {
+                continue;
+            }
+            $page_slug = sanitize_title( $page_slug );
+            $existing  = get_page_by_path( $page_slug, OBJECT, 'page' );
+            $shortcode = '[ptprm_board region="' . esc_attr( $region ) . '"]';
+            $title     = (string) ( $regions[ $region ]['title'] ?? __( 'Pengurus Pusat', 'ptsbi-premium' ) );
+            if ( $existing instanceof WP_Post ) {
+                if ( strpos( (string) $existing->post_content, '[ptprm_board' ) === false ) {
+                    wp_update_post(
+                        [
+                            'ID'           => (int) $existing->ID,
+                            'post_content' => $shortcode,
+                        ]
+                    );
+                }
+                continue;
+            }
+            wp_insert_post(
+                [
+                    'post_title'   => $title,
+                    'post_name'    => $page_slug,
+                    'post_content' => $shortcode,
+                    'post_status'  => 'publish',
+                    'post_type'    => 'page',
+                ]
+            );
+        }
+        update_option( 'ptprm_board_extra_pages_v1', 1, false );
+        flush_rewrite_rules( false );
+    }
+
+    /**
+     * Opsi kosong "[]" membuat daftar pengurus tidak tampil di versi lama — hapus agar fallback katalog jalan.
+     */
+    public static function maybe_repair_empty_board_storage(): void {
+        if ( get_option( 'ptprm_board_empty_repair_v1' ) ) {
+            return;
+        }
+        foreach ( self::regions() as $slug => $meta ) {
+            unset( $meta );
+            $key = self::standalone_option_key( $slug );
+            $raw = get_option( $key, '' );
+            if ( is_string( $raw ) && trim( $raw ) === '[]' ) {
+                delete_option( $key );
+            }
+            $legacy = self::read_legacy_raw( $slug );
+            if ( $legacy === '[]' ) {
+                $opts = (array) get_option( PTPRM_OPTION, [] );
+                if ( is_array( $opts ) ) {
+                    unset( $opts[ self::option_key( $slug ) ] );
+                    update_option( PTPRM_OPTION, $opts, true );
+                }
+            }
+        }
+        update_option( 'ptprm_board_empty_repair_v1', 1, false );
     }
 
     private static function read_legacy_raw( string $region ): string {
