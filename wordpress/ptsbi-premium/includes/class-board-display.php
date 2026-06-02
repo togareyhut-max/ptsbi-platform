@@ -9,6 +9,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 class PTPRM_Board_Display {
 
+    /** @var array<string, bool> */
+    private static $rendered = [];
+
     public function __construct() {
         add_shortcode( 'ptprm_board', [ $this, 'shortcode' ] );
         add_filter( 'the_content', [ $this, 'append_board_on_region_pages' ], 99 );
@@ -23,10 +26,6 @@ class PTPRM_Board_Display {
         return self::render( $region );
     }
 
-    /**
-     * Tampilkan daftar pengurus di halaman wilayah / struktur organisasi.
-     * Prioritas 99: shortcode di konten mungkin sudah jalan (prio 11) tetapi kosong — kita isi ulang jika belum ada baris nama.
-     */
     public function append_board_on_region_pages( string $content ): string {
         if ( ! is_page() || ! class_exists( 'PTPRM_Board_Registry' ) ) {
             return $content;
@@ -37,8 +36,7 @@ class PTPRM_Board_Display {
             return $content;
         }
 
-        $page_slug = (string) get_post_field( 'post_name', $page_id );
-        $region    = PTPRM_Board_Registry::region_for_page_slug( $page_slug );
+        $region = PTPRM_Board_Registry::region_for_page_slug( (string) get_post_field( 'post_name', $page_id ) );
         if ( $region === null ) {
             return $content;
         }
@@ -48,13 +46,33 @@ class PTPRM_Board_Display {
         }
 
         $content = self::strip_board_markup( $content );
-
-        $html = self::render( $region );
+        $html    = self::render( $region );
         if ( $html === '' ) {
             return $content;
         }
 
         return $content . $html;
+    }
+
+    /**
+     * Dipanggil dari template sub-halaman — selalu coba tampilkan jika belum ada entri.
+     */
+    public static function render_for_current_page(): string {
+        if ( ! is_page() || ! class_exists( 'PTPRM_Board_Registry' ) ) {
+            return '';
+        }
+        $page_id = get_queried_object_id();
+        if ( ! $page_id ) {
+            return '';
+        }
+        $region = PTPRM_Board_Registry::region_for_page_slug( (string) get_post_field( 'post_name', $page_id ) );
+        if ( $region === null ) {
+            return '';
+        }
+        if ( ! empty( self::$rendered[ $region ] ) ) {
+            return '';
+        }
+        return self::render( $region );
     }
 
     private static function content_has_board_entries( string $content ): bool {
@@ -63,11 +81,36 @@ class PTPRM_Board_Display {
     }
 
     private static function strip_board_markup( string $content ): string {
-        if ( strpos( $content, 'ptprm-board' ) === false ) {
-            return $content;
+        $needle = 'ptprm-board';
+        while ( ( $pos = strpos( $content, $needle ) ) !== false ) {
+            $start = strrpos( substr( $content, 0, $pos ), '<div' );
+            if ( $start === false ) {
+                break;
+            }
+            $depth = 0;
+            $len   = strlen( $content );
+            $end   = null;
+            for ( $i = $start; $i < $len; $i++ ) {
+                if ( substr( $content, $i, 4 ) === '<div' ) {
+                    $depth++;
+                    $i += 3;
+                    continue;
+                }
+                if ( substr( $content, $i, 6 ) === '</div>' ) {
+                    $depth--;
+                    if ( $depth === 0 ) {
+                        $end = $i + 6;
+                        break;
+                    }
+                    $i += 5;
+                }
+            }
+            if ( $end === null ) {
+                break;
+            }
+            $content = substr( $content, 0, $start ) . substr( $content, $end );
         }
-        $stripped = preg_replace( '#<div class="ptprm-board\b[^>]*>.*?</div>\s*(?=<|$)#s', '', $content, 1 );
-        return is_string( $stripped ) ? $stripped : $content;
+        return $content;
     }
 
     public static function render( string $region ): string {
@@ -79,8 +122,12 @@ class PTPRM_Board_Display {
         if ( ! isset( $regions[ $region ] ) ) {
             return '';
         }
+
         $meta  = $regions[ $region ];
         $items = PTPRM_Board_Registry::get_items( $region );
+        if ( $items === [] ) {
+            return '';
+        }
 
         ob_start();
         echo '<div class="ptprm-board ptprm-board--' . esc_attr( $region ) . '">';
@@ -90,13 +137,14 @@ class PTPRM_Board_Display {
         }
 
         self::render_list( $region, $items, ! empty( $meta['has_featured_photos'] ) );
+        echo '</div>';
 
-        if ( ! $items ) {
-            echo '<p class="ptprm-portal-help">' . esc_html__( 'Daftar pengurus belum diisi. Admin dapat mengelolanya di Panel Pengurus → Pengurus Wilayah.', 'ptsbi-premium' ) . '</p>';
+        $html = (string) ob_get_clean();
+        if ( self::content_has_board_entries( $html ) ) {
+            self::$rendered[ $region ] = true;
         }
 
-        echo '</div>';
-        return (string) ob_get_clean();
+        return $html;
     }
 
     /**
