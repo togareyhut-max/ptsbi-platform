@@ -3682,6 +3682,25 @@ body.ptprm-mobile-nav-open {
     border: 1px solid #ddd;
     border-radius: 8px;
 }
+.ptprm-board-admin-form:not(.ptprm-board-admin-form--photos) .ptprm-board-photo-field {
+    display: none;
+}
+.ptprm-board-photo-field label {
+    display: block;
+}
+.ptprm-board-photo-field input[type="url"] {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+.ptprm-board-photo-hint {
+    margin: 0.35rem 0 0;
+    font-size: 0.85rem;
+    color: var(--ptprm-text-soft, #666);
+}
+.ptprm-board-photo-actions {
+    margin: 0.5rem 0 0;
+}
 .ptprm-bidang-block {
     margin-bottom: 2rem;
 }

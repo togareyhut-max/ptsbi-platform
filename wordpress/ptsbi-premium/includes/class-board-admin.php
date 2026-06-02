@@ -146,7 +146,12 @@ class PTPRM_Board_Admin {
         $meta     = PTPRM_Board_Registry::regions()[ $region ];
 
         echo '<div class="ptprm-member-card ptprm-portal-card">';
-        echo '<p class="ptprm-portal-help">' . esc_html__( 'Kelola daftar pengurus per wilayah. Pengurus Pusat: unggah foto untuk Ketua Umum, Sekretaris Umum, dan Bendahara Umum.', 'ptsbi-premium' ) . '</p>';
+        echo '<p class="ptprm-portal-help">';
+        echo esc_html__( 'Kelola daftar pengurus per wilayah.', 'ptsbi-premium' );
+        if ( ! empty( $meta['has_featured_photos'] ) ) {
+            echo ' ' . esc_html__( 'Pengurus Pusat: isi URL foto (atau pilih dari media) untuk Ketua Umum, Sekretaris Umum, dan Bendahara Umum — centang “Tampilkan dengan foto”.', 'ptsbi-premium' );
+        }
+        echo '</p>';
 
         echo '<nav class="ptprm-board-region-tabs">';
         foreach ( PTPRM_Board_Registry::regions() as $slug => $rmeta ) {
@@ -156,7 +161,11 @@ class PTPRM_Board_Admin {
         }
         echo '</nav>';
 
-        echo '<form method="post" id="ptprm-board-admin-form" action="' . esc_url( PTPRM_Admin_Portal::portal_url( 'pengurus', [ 'board_region' => $region ] ) ) . '">';
+        $form_class = 'ptprm-board-admin-form';
+        if ( ! empty( $meta['has_featured_photos'] ) ) {
+            $form_class .= ' ptprm-board-admin-form--photos';
+        }
+        echo '<form method="post" id="ptprm-board-admin-form" class="' . esc_attr( $form_class ) . '" action="' . esc_url( PTPRM_Admin_Portal::portal_url( 'pengurus', [ 'board_region' => $region ] ) ) . '">';
         wp_nonce_field( 'ptprm_board_save' );
         echo '<input type="hidden" name="ptprm_board_save" value="1">';
         echo '<input type="hidden" name="board_region" value="' . esc_attr( $region ) . '">';
@@ -174,7 +183,13 @@ class PTPRM_Board_Admin {
         echo '<label><span>' . esc_html__( 'Jabatan', 'ptsbi-premium' ) . '</span><input type="text" data-field="role"></label>';
         echo '<label><span>' . esc_html__( 'Nama', 'ptsbi-premium' ) . '</span><input type="text" data-field="name" required></label>';
         echo '<label><span>' . esc_html__( 'Kelompok (opsional)', 'ptsbi-premium' ) . '</span><input type="text" data-field="group" placeholder="Dewan Penasehat"></label>';
-        echo '<label class="ptprm-board-photo-field" hidden><span>' . esc_html__( 'Foto (ID media)', 'ptsbi-premium' ) . '</span><input type="text" data-field="image"><button type="button" class="button ptprm-board-pick-image">' . esc_html__( 'Pilih foto', 'ptsbi-premium' ) . '</button></label>';
+        echo '<div class="ptprm-board-photo-field">';
+        echo '<label><span>' . esc_html__( 'URL foto', 'ptsbi-premium' ) . '</span>';
+        echo '<input type="url" data-field="image" placeholder="https://..." inputmode="url" autocomplete="off">';
+        echo '</label>';
+        echo '<p class="ptprm-board-photo-actions"><button type="button" class="button ptprm-board-pick-image">' . esc_html__( 'Pilih dari media', 'ptsbi-premium' ) . '</button></p>';
+        echo '<p class="ptprm-board-photo-hint">' . esc_html__( 'Kosongkan URL lalu pilih media untuk mengisi otomatis, atau tempel tautan gambar langsung.', 'ptsbi-premium' ) . '</p>';
+        echo '</div>';
         echo '<label><input type="checkbox" data-field="featured"> ' . esc_html__( 'Tampilkan dengan foto (pusat)', 'ptsbi-premium' ) . '</label>';
         echo '<button type="button" class="button-link-delete ptprm-board-remove">&times;</button>';
         echo '</li></script>';

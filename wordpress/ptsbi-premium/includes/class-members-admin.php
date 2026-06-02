@@ -19,6 +19,7 @@ class PTPRM_Members_Admin {
         add_action( 'init', [ $this, 'handle_team_photos' ], 20 );
         add_filter( 'ptprm_admin_portal_tabs', [ $this, 'register_tabs' ] );
         add_action( 'ptprm_admin_portal_tab_anggota', [ $this, 'render_members_tab' ] );
+        add_action( 'ptprm_admin_portal_tab_struktur', [ $this, 'render_struktur_tab' ] );
     }
 
     public static function needs_directory_assets(): bool {
@@ -30,10 +31,12 @@ class PTPRM_Members_Admin {
     }
 
     public function register_tabs( array $tabs ): array {
-        if ( ! $this->can_members() ) {
-            return $tabs;
+        if ( $this->can_members() ) {
+            $tabs['anggota'] = __( 'Data Anggota', 'ptsbi-premium' );
         }
-        $tabs['anggota'] = __( 'Data Anggota', 'ptsbi-premium' );
+        if ( class_exists( 'PTPRM_Access' ) && PTPRM_Access::can_manage_org_settings() ) {
+            $tabs['struktur'] = __( 'Foto Pengurus Pusat', 'ptsbi-premium' );
+        }
         return $tabs;
     }
 

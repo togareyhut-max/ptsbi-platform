@@ -48,6 +48,10 @@ Tidak hardcode untuk PTSBI — nama organisasi, warna, font, teks, ikon, tautan 
 
 == Changelog ==
 
+= 3.1.10 =
+* Panel Pengurus Wilayah (pusat): kolom **URL foto** tampil saat centang foto; tombol pilih media mengisi URL.
+* Tab **Foto Pengurus Pusat** (`struktur`) kembali terdaftar di panel admin.
+
 = 3.1.9 =
 * **[SELESAI — terverifikasi live Jun 2026]** Halaman pengurus pusat: `/ptsbi-pusat/`, `/pengurus-pusat/`, `/struktur-organisasi/` menampilkan daftar + kartu foto inti.
 * Shortcode `[ptprm_board]`: sumber data `ptprm_board_data_{region}` / `board_{region}` di wp_options, fallback katalog `board-default-data.php`.

@@ -36,28 +36,62 @@
         return items;
     }
 
-    function bindRow($row, hasFeatured) {
-        if (hasFeatured) {
-            $row.find('.ptprm-board-photo-field').prop('hidden', false);
+    function regionHasPhotos() {
+        return $('#ptprm-board-has-featured').val() === '1';
+    }
+
+    function setPhotoFieldVisible($row, visible) {
+        var $field = $row.find('.ptprm-board-photo-field');
+        if (visible) {
+            $field.removeAttr('hidden').show();
+        } else {
+            $field.attr('hidden', 'hidden').hide();
         }
+    }
+
+    function syncPhotoVisibility($row) {
+        if (!regionHasPhotos()) {
+            setPhotoFieldVisible($row, false);
+            return;
+        }
+        var featured = $row.find('[data-field="featured"]').is(':checked');
+        setPhotoFieldVisible($row, featured);
+    }
+
+    function bindRow($row) {
+        var hasPhotos = regionHasPhotos();
+
+        syncPhotoVisibility($row);
+
+        $row.find('[data-field="featured"]').on('change', function () {
+            syncPhotoVisibility($row);
+        });
+
         $row.find('.ptprm-board-remove').on('click', function () {
             $row.remove();
         });
+
         $row.find('.ptprm-board-pick-image').on('click', function (e) {
             e.preventDefault();
             if (typeof wp === 'undefined' || !wp.media) {
+                window.alert('Perpustakaan media tidak tersedia. Tempel URL foto secara manual.');
                 return;
             }
             var frame = wp.media({ title: 'Pilih foto pengurus', multiple: false });
             frame.on('select', function () {
                 var att = frame.state().get('selection').first().toJSON();
-                $row.find('[data-field="image"]').val(att.id || '');
+                var value = att.url || (att.id ? String(att.id) : '');
+                $row.find('[data-field="image"]').val(value);
             });
             frame.open();
         });
+
+        if (hasPhotos && $row.find('[data-field="featured"]').is(':checked')) {
+            setPhotoFieldVisible($row, true);
+        }
     }
 
-    function addRow($list, tpl, data, hasFeatured) {
+    function addRow($list, tpl, data) {
         var $row = rowFromTemplate(tpl);
         if (!$row.length) {
             return;
@@ -72,7 +106,7 @@
             }
         }
         $list.append($row);
-        bindRow($row, hasFeatured);
+        bindRow($row);
     }
 
     function syncJson($form, $list) {
@@ -88,16 +122,15 @@
             return;
         }
         var tpl = $('#ptprm-board-row-tpl').html();
-        var hasFeatured = $('#ptprm-board-has-featured').val() === '1';
         var items = decodeJsonB64($list.attr('data-json-b64'));
         if (!items.length) {
             items = [{ role: '', name: '', group: '', image: '', featured: 0 }];
         }
         items.forEach(function (item) {
-            addRow($list, tpl, item, hasFeatured);
+            addRow($list, tpl, item);
         });
         $('#ptprm-board-add').on('click', function () {
-            addRow($list, tpl, null, hasFeatured);
+            addRow($list, tpl, null);
         });
         $form.on('submit', function (e) {
             if (!syncJson($form, $list)) {
