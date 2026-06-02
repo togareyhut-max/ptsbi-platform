@@ -76,8 +76,24 @@ class PTPRM_Board_Display {
     }
 
     private static function content_has_board_entries( string $content ): bool {
-        return strpos( $content, 'ptprm-board-line' ) !== false
-            || strpos( $content, 'ptprm-board-card-role' ) !== false;
+        if ( strpos( $content, 'ptprm-board-line' ) !== false ) {
+            return true;
+        }
+        if ( strpos( $content, 'ptprm-board-card-role' ) !== false ) {
+            $name_pos = strpos( $content, 'ptprm-board-card-name' );
+            if ( $name_pos !== false ) {
+                $snippet = substr( $content, $name_pos, 400 );
+                if ( is_string( $snippet ) && preg_match( '/ptprm-board-card-name">\s*[^<\s]/', $snippet ) ) {
+                    return true;
+                }
+            }
+        }
+        // Shortcode lama: cangkang judul + daftar kosong dianggap belum ada entri.
+        if ( strpos( $content, 'ptprm-board' ) !== false
+            && preg_match( '/<div class="ptprm-board-list">\s*<\/div>/', $content ) ) {
+            return false;
+        }
+        return false;
     }
 
     private static function strip_board_markup( string $content ): string {
@@ -125,7 +141,7 @@ class PTPRM_Board_Display {
 
         $meta  = $regions[ $region ];
         $items = PTPRM_Board_Registry::get_items( $region );
-        if ( $items === [] ) {
+        if ( $items === [] || ! PTPRM_Board_Registry::items_have_displayable_names( $items ) ) {
             return '';
         }
 

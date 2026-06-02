@@ -13,7 +13,7 @@ class PTPRM_Board_Registry {
 
     public const OPTION_SEEDED          = 'ptprm_boards_seeded_v1';
     public const OPTION_CATALOG_VERSION = 'ptprm_board_catalog_version';
-    public const CATALOG_VERSION        = '3.1.8';
+    public const CATALOG_VERSION        = '3.1.9';
 
     /**
      * Halaman WP tambahan yang menampilkan pengurus pusat.
@@ -248,18 +248,19 @@ class PTPRM_Board_Registry {
      * Opsi kosong "[]" membuat daftar pengurus tidak tampil di versi lama — hapus agar fallback katalog jalan.
      */
     public static function maybe_repair_empty_board_storage(): void {
-        if ( get_option( 'ptprm_board_empty_repair_v1' ) ) {
+        $version = (string) get_option( 'ptprm_board_empty_repair_v1', '' );
+        if ( $version === '2' ) {
             return;
         }
         foreach ( self::regions() as $slug => $meta ) {
             unset( $meta );
             $key = self::standalone_option_key( $slug );
             $raw = get_option( $key, '' );
-            if ( is_string( $raw ) && trim( $raw ) === '[]' ) {
+            if ( is_string( $raw ) && self::raw_has_no_displayable_names( $raw ) ) {
                 delete_option( $key );
             }
             $legacy = self::read_legacy_raw( $slug );
-            if ( $legacy === '[]' ) {
+            if ( self::raw_has_no_displayable_names( $legacy ) ) {
                 $opts = (array) get_option( PTPRM_OPTION, [] );
                 if ( is_array( $opts ) ) {
                     unset( $opts[ self::option_key( $slug ) ] );
@@ -267,7 +268,34 @@ class PTPRM_Board_Registry {
                 }
             }
         }
-        update_option( 'ptprm_board_empty_repair_v1', 1, false );
+        update_option( 'ptprm_board_empty_repair_v1', '2', false );
+    }
+
+    /**
+     * @param list<array<string,mixed>> $items
+     */
+    public static function items_have_displayable_names( array $items ): bool {
+        foreach ( $items as $item ) {
+            if ( ! is_array( $item ) ) {
+                continue;
+            }
+            if ( trim( (string) ( $item['name'] ?? '' ) ) !== '' ) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static function raw_has_no_displayable_names( string $raw ): bool {
+        $raw = trim( $raw );
+        if ( $raw === '' || $raw === '[]' ) {
+            return true;
+        }
+        $decoded = json_decode( $raw, true );
+        if ( ! is_array( $decoded ) ) {
+            return true;
+        }
+        return ! self::items_have_displayable_names( ptprm_sanitize_board_items( $decoded ) );
     }
 
     private static function read_legacy_raw( string $region ): string {
@@ -310,7 +338,7 @@ class PTPRM_Board_Registry {
         }
 
         $items = self::decode_items( is_string( $raw ) ? $raw : '', $region );
-        if ( $items !== [] ) {
+        if ( $items !== [] && self::items_have_displayable_names( $items ) ) {
             return $items;
         }
 

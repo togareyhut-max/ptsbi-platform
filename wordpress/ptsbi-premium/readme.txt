@@ -48,6 +48,11 @@ Tidak hardcode untuk PTSBI — nama organisasi, warna, font, teks, ikon, tautan 
 
 == Changelog ==
 
+= 3.1.9 =
+* Shortcode `[ptprm_board]`: sumber data `ptprm_board_data_{region}` / `board_{region}` di wp_options, fallback katalog `board-default-data.php`.
+* Perbaiki data tersimpan tanpa nama + deteksi cangkang HTML kosong agar filter `the_content` mengisi ulang daftar.
+* Deploy otomatis saat push ke `main` (folder plugin) + verifikasi versi di ptsbi.org.
+
 = 3.1.8 =
 * Deploy: salin plugin ke volume Docker (bukan hanya docker cp) + verifikasi versi + rollback otomatis jika gagal.
 * Pengurus pusat: perbaiki opsi kosong [], buat halaman /pengurus-pusat/, judul section di halaman wilayah.

@@ -76,8 +76,14 @@ PLUGIN_IN_CONTAINER="${PLUGIN_IN_CONTAINER}"
 EXPECTED_VERSION="${EXPECTED_VERSION}"
 
 if ! docker volume inspect "\${WP_VOLUME}" >/dev/null 2>&1; then
-  echo "Volume \${WP_VOLUME} tidak ditemukan." >&2
-  exit 1
+  DETECTED="\$(docker inspect -f '{{range .Mounts}}{{if eq .Destination "/var/www/html"}}{{.Name}}{{end}}{{end}}' "\${WP_CONTAINER}" 2>/dev/null || true)"
+  if [[ -n "\${DETECTED}" ]] && docker volume inspect "\${DETECTED}" >/dev/null 2>&1; then
+    echo "Volume \${WP_VOLUME} tidak ada; memakai volume dari container: \${DETECTED}"
+    WP_VOLUME="\${DETECTED}"
+  else
+    echo "Volume \${WP_VOLUME} tidak ditemukan dan deteksi otomatis gagal." >&2
+    exit 1
+  fi
 fi
 
 rollback_restore() {
