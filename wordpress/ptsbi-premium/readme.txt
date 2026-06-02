@@ -48,6 +48,11 @@ Tidak hardcode untuk PTSBI — nama organisasi, warna, font, teks, ikon, tautan 
 
 == Changelog ==
 
+= 3.1.5 =
+* Pengurus: katalog pusat & wilayah (Pekanbaru, Medan, Samosir) diterapkan otomatis; foto yang sudah diunggah admin tetap.
+* Pengurus Pusat: Ketua/Sekretaris/Bendahara Umum dengan foto ukuran sedang; wilayah hanya daftar nama.
+* Judul halaman Kota Medan: teks periode "2025-2030" dihapus dari judul lama.
+
 = 1.4.3 =
 * Footer: judul brand = Judul situs (Pengaturan → Umum). Deskripsi custom atau otomatis dari Slogan situs jika field kosong.
 
