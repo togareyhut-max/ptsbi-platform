@@ -102,8 +102,9 @@ rollback_restore() {
 trap 'if [[ \$? -ne 0 ]]; then rollback_restore || true; fi' ERR
 
 echo "==> Cadangan plugin live ke \${REMOTE_ROLLBACK} ..."
-rm -rf "\${REMOTE_ROLLBACK}"
-mkdir -p "\${REMOTE_ROLLBACK}"
+docker run --rm \\
+  -v /home/togaa:/togaa \\
+  alpine:3.20 sh -c 'rm -rf /togaa/ptsbi-premium-rollback && mkdir -p /togaa/ptsbi-premium-rollback'
 docker run --rm \\
   -v "\${WP_VOLUME}:/html:ro" \\
   -v "\${REMOTE_ROLLBACK}:/backup" \\
