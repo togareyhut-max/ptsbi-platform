@@ -79,6 +79,7 @@ from services.db_admin import (
     wipe_all_data,
 )
 from services.member_registration import create_member_with_tarombo
+from services.wp_integration_api import register_wp_api
 from services.tree_editor import apply_tree_changes
 from services.sibling_order import (
     apply_child_orders,
@@ -103,6 +104,7 @@ from services.membership_api import bp as membership_api_bp, upsert_member_profi
 app = Flask(__name__)
 app.register_blueprint(membership_api_bp)
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "change-this-in-production")
+register_wp_api(app)
 _db_bootstrapped = False
 
 

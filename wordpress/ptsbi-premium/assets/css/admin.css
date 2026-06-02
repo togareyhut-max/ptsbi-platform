@@ -463,48 +463,19 @@
     background: rgba(201, 164, 76, .1);
     flex-shrink: 0;
 }
-
-/* Panel PDF — daftar nama (bukan thumbnail) */
-.ptprm-pdf-list-repeater .ptprm-repeater-list {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
+.ptprm-pdf-code-row {
+    margin: 0 0 1.25rem;
 }
-.ptprm-pdf-row {
-    padding: 12px 14px;
-    margin-bottom: 0;
-    border: 1px solid #dcdcde;
-    border-radius: 8px;
-    background: #fff;
-    display: grid;
-    gap: 10px;
-}
-.ptprm-pdf-field-title .regular-text { width: 100%; }
-.ptprm-pdf-file-actions {
+.ptprm-pdf-code-row-head {
     display: flex;
-    flex-wrap: wrap;
     align-items: center;
-    gap: 6px;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 6px;
 }
-.ptprm-pdf-file-name {
-    margin: 0;
-    max-width: 100%;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-.ptprm-pdf-shortcode-line {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 8px;
-}
-.ptprm-pdf-shortcode-preview {
-    display: inline-block;
-    padding: 6px 10px;
-    background: #f0f0f1;
-    border-radius: 4px;
+.ptprm-pdf-code-output {
+    font-family: Consolas, Monaco, monospace;
     font-size: 12px;
-    line-height: 1.4;
-    word-break: break-all;
+    line-height: 1.45;
+    min-height: 2.5em;
 }

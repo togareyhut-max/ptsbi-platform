@@ -258,6 +258,8 @@ def migrate_schema(db: DbConnection):
         "ALTER TABLE people ADD COLUMN IF NOT EXISTS child_order INTEGER",
         "ALTER TABLE submitted_children ADD COLUMN IF NOT EXISTS child_order INTEGER",
         "ALTER TABLE people ADD COLUMN IF NOT EXISTS mother_name_normalized TEXT",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS phone TEXT NOT NULL DEFAULT ''",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS wp_user_id INTEGER UNIQUE",
     ]
     sqlite_alters = [
         ("name_normalized", "TEXT"),
@@ -276,12 +278,27 @@ def migrate_schema(db: DbConnection):
     if db.backend == "postgres":
         for stmt in alters:
             try:
-                db.execute(stmt.replace(" IF NOT EXISTS", ""))
+                db.execute(stmt)
             except Exception:
                 try:
-                    db.execute(stmt)
+                    db.execute(stmt.replace(" IF NOT EXISTS", ""))
                 except Exception:
                     pass
+        # Pastikan kolom bridge WP — terpisah dari UNIQUE agar migrasi lama tidak gagal diam-diam.
+        for col_stmt in (
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS phone TEXT NOT NULL DEFAULT ''",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS wp_user_id INTEGER",
+        ):
+            try:
+                db.execute(col_stmt)
+            except Exception:
+                pass
+        try:
+            db.execute(
+                "CREATE UNIQUE INDEX IF NOT EXISTS idx_users_wp_user_id ON users (wp_user_id) WHERE wp_user_id IS NOT NULL"
+            )
+        except Exception:
+            pass
         try:
             db.execute(
                 """
@@ -349,6 +366,45 @@ def migrate_schema(db: DbConnection):
             pass
         migrate_consolidate_spouse_fields(db)
         migrate_user_roles(db)
+        try:
+            db.execute(
+                """
+                CREATE TABLE IF NOT EXISTS member_profiles (
+                  id SERIAL PRIMARY KEY,
+                  user_id INTEGER NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+                  wp_user_id INTEGER UNIQUE,
+                  family_no TEXT NOT NULL DEFAULT '',
+                  kepala_keluarga TEXT NOT NULL DEFAULT '',
+                  nama_istri TEXT NOT NULL DEFAULT '',
+                  tarombo TEXT NOT NULL DEFAULT '',
+                  oppu TEXT NOT NULL DEFAULT '',
+                  nomor_sundut TEXT NOT NULL DEFAULT '',
+                  hula_boru TEXT NOT NULL DEFAULT '',
+                  phone TEXT NOT NULL DEFAULT '',
+                  country_name TEXT NOT NULL DEFAULT 'Indonesia',
+                  country_code TEXT NOT NULL DEFAULT 'ID',
+                  province TEXT NOT NULL DEFAULT '',
+                  city TEXT NOT NULL DEFAULT '',
+                  district TEXT NOT NULL DEFAULT '',
+                  subdistrict TEXT NOT NULL DEFAULT '',
+                  postal_code TEXT NOT NULL DEFAULT '',
+                  state_city TEXT NOT NULL DEFAULT '',
+                  address_detail TEXT NOT NULL DEFAULT '',
+                  street_name TEXT NOT NULL DEFAULT '',
+                  house_number TEXT NOT NULL DEFAULT '',
+                  rt TEXT NOT NULL DEFAULT '',
+                  rw TEXT NOT NULL DEFAULT '',
+                  is_overseas BOOLEAN NOT NULL DEFAULT FALSE,
+                  profile_complete BOOLEAN NOT NULL DEFAULT FALSE,
+                  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                )
+                """
+            )
+            db.execute(
+                "CREATE INDEX IF NOT EXISTS idx_member_profiles_wp ON member_profiles (wp_user_id)"
+            )
+        except Exception:
+            pass
         db.commit()
     else:
         people_exists = db.fetchone(

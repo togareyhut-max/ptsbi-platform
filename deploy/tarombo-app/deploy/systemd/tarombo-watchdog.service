@@ -1,0 +1,11 @@
+[Unit]
+Description=Tarombo watchdog (API/DB self-heal)
+After=docker.service
+Wants=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/togaa/tarombo-app
+Environment=APP_DIR=/home/togaa/tarombo-app
+ExecStart=/bin/bash /home/togaa/tarombo-app/scripts/watchdog-tarombo.sh
+

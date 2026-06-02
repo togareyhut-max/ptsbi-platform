@@ -53,6 +53,14 @@ class PTPRM_Membership_Api_Client {
      * @param array<string,mixed>|null $payload
      * @return array<string,mixed>|\WP_Error
      */
+    public static function request_json( string $method, string $path, ?array $payload = null ) {
+        return self::request( $method, $path, $payload );
+    }
+
+    /**
+     * @param array<string,mixed>|null $payload
+     * @return array<string,mixed>|\WP_Error
+     */
     private static function request( string $method, string $path, ?array $payload ) {
         if ( ! self::enabled() ) {
             return new WP_Error( 'ptprm_api_disabled', __( 'Membership API belum diaktifkan.', 'ptsbi-premium' ) );

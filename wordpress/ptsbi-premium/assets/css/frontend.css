@@ -620,16 +620,6 @@ body.ptprm-is-home .ptprm-cta-row {
 .ptprm-portal-footbar form {
     display: inline-block;
 }
-.ptprm-portal-footbar--tools {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 12px;
-    justify-content: center;
-    align-items: center;
-}
-.ptprm-cache-purge-btn {
-    font-size: 14px;
-}
 .ptprm-login-form {
     max-width: 420px;
     margin: 0 auto;
@@ -1910,203 +1900,222 @@ body.ptprm-pattern-off .ptprm-stats::before {
 .ptprm-lightbox-nav.next { right: 24px; }
 .ptprm-lightbox-nav:hover { background: var(--ptprm-accent); color: var(--ptprm-primary); }
 
-/* PDF lightbox */
-.ptprm-pdf-trigger {
-    cursor: pointer;
-    border: none;
-    font: inherit;
+/* PDF gallery + lightbox */
+.ptprm-pdf-grid {
+    display: grid;
+    grid-template-columns: repeat(var(--ptprm-pdf-cols, 3), minmax(0, 1fr));
+    gap: 16px;
 }
-.ptprm-pdf-trigger-thumb {
-    display: inline-flex;
+@media (max-width: 768px) {
+    .ptprm-pdf-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 480px) {
+    .ptprm-pdf-grid { grid-template-columns: 1fr; }
+}
+.ptprm-pdf-card {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    text-decoration: none;
+    color: inherit;
+    border: 1px solid rgba(0,0,0,.08);
+    border-radius: 10px;
+    overflow: hidden;
+    background: #fff;
+    transition: transform .2s ease, box-shadow .2s ease;
+}
+.ptprm-pdf-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0,0,0,.08);
+}
+/* Varian hover — overlay + zoom sampul (shortcode variant="hover") */
+.ptprm-pdf-grid--hover .ptprm-pdf-card {
+    position: relative;
+}
+.ptprm-pdf-grid--hover .ptprm-pdf-cover {
+    transition: transform .35s ease;
+}
+.ptprm-pdf-grid--hover .ptprm-pdf-card:hover .ptprm-pdf-cover {
+    transform: scale(1.06);
+}
+.ptprm-pdf-grid--hover .ptprm-pdf-hover-cap {
+    position: absolute;
+    inset: 0;
+    display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 8px;
-    padding: 0;
-    background: transparent;
-    max-width: 160px;
+    justify-content: center;
+    gap: 6px;
+    padding: 12px;
     text-align: center;
-}
-.ptprm-pdf-thumb-img {
-    width: 100px;
-    height: 130px;
-    border-radius: 8px;
-    overflow: hidden;
-    border: 1px solid var(--ptprm-line);
-    box-shadow: var(--ptprm-shadow-sm);
-    background: var(--ptprm-cream);
-}
-.ptprm-pdf-thumb-img img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-.ptprm-pdf-thumb-placeholder {
-    display: grid;
-    place-items: center;
-    width: 100px;
-    height: 130px;
-    border-radius: 8px;
-    background: var(--ptprm-primary);
     color: #fff;
-    font-weight: 700;
-    font-size: 0.85rem;
-}
-.ptprm-pdf-thumb-label {
-    font-size: 0.9rem;
-    color: var(--ptprm-primary);
-    font-weight: 600;
-}
-.ptprm-pdf-trigger-link {
-    font-weight: 600;
-    color: var(--ptprm-primary);
-    text-decoration: underline;
-}
-.ptprm-pdf-hover {
-    position: relative;
-    display: inline !important;
-    cursor: pointer;
-    color: inherit;
-    font: inherit;
-    font-size: inherit;
-    line-height: inherit;
-    letter-spacing: inherit;
-    text-decoration: underline;
-    text-decoration-style: dotted;
-    text-underline-offset: 3px;
-    text-decoration-color: var(--ptprm-accent);
-    white-space: normal;
-    vertical-align: baseline;
-    margin: 0;
-    padding: 0;
-}
-.entry-content .ptprm-pdf-hover,
-.ptprm-subpage .ptprm-pdf-hover {
-    display: inline !important;
-}
-.ptprm-pdf-hover-action {
-    position: absolute;
-    left: 50%;
-    bottom: calc(100% + 8px);
-    transform: translateX(-50%) translateY(4px);
-    padding: 6px 12px;
-    white-space: nowrap;
-    font-size: 0.8rem;
-    font-weight: 600;
-    line-height: 1.2;
-    color: var(--ptprm-primary);
-    background: var(--ptprm-accent);
-    border-radius: 6px;
-    box-shadow: var(--ptprm-shadow-sm);
+    background: linear-gradient(180deg, rgba(10,31,61,.15) 0%, rgba(10,31,61,.72) 100%);
     opacity: 0;
-    visibility: hidden;
+    transition: opacity .25s ease;
     pointer-events: none;
-    transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s;
-    z-index: 20;
 }
-.ptprm-pdf-hover-action::after {
-    content: '';
-    position: absolute;
-    left: 50%;
-    top: 100%;
-    transform: translateX(-50%);
-    border: 6px solid transparent;
-    border-top-color: var(--ptprm-accent);
-}
-.ptprm-pdf-hover:hover .ptprm-pdf-hover-action,
-.ptprm-pdf-hover:focus-visible .ptprm-pdf-hover-action,
-.ptprm-pdf-hover:focus-within .ptprm-pdf-hover-action {
+.ptprm-pdf-grid--hover .ptprm-pdf-card:hover .ptprm-pdf-hover-cap {
     opacity: 1;
-    visibility: visible;
-    transform: translateX(-50%) translateY(0);
 }
-.ptprm-pdf-hover:hover,
-.ptprm-pdf-hover:focus-visible {
-    text-decoration-color: var(--ptprm-primary);
+.ptprm-pdf-grid--hover .ptprm-pdf-hover-title {
+    font-weight: 600;
+    font-size: 1rem;
+    line-height: 1.3;
 }
-.ptprm-pdf-lightbox {
-    position: fixed;
-    inset: 0;
-    z-index: 100000;
+.ptprm-pdf-grid--hover .ptprm-pdf-hover-hint {
+    font-size: .8rem;
+    opacity: .9;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+}
+.ptprm-pdf-grid--hover .ptprm-pdf-label {
+    position: relative;
+    z-index: 1;
+}
+/* Varian plain — tanpa border kartu, hanya label */
+.ptprm-pdf-grid--plain .ptprm-pdf-card {
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+}
+.ptprm-pdf-grid--plain .ptprm-pdf-card:hover {
+    transform: none;
+    box-shadow: none;
+}
+.ptprm-pdf-lightbox-embed {
+    margin: 1.5rem 0;
+}
+.ptprm-pdf-cover {
+    display: block;
+    aspect-ratio: 3 / 4;
+    background: #f3f3f3 center/cover no-repeat;
+}
+.ptprm-pdf-cover--placeholder {
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 16px;
-    background: rgba(var(--ptprm-primary-rgb), .92);
+    font-weight: 700;
+    letter-spacing: .08em;
+    color: var(--ptprm-primary, #1a365d);
+    background: linear-gradient(135deg, #f7f7f7, #ececec);
 }
-.ptprm-pdf-lightbox[hidden] {
-    display: none !important;
+.ptprm-pdf-label {
+    padding: 0 12px 12px;
+    font-size: .95rem;
+    line-height: 1.35;
 }
-.ptprm-pdf-lightbox.is-open {
-    display: flex;
-}
-.ptprm-pdf-lightbox-panel {
-    width: min(960px, 96vw);
-    max-height: 92vh;
+.ptprm-pdf-lightbox .ptprm-pdf-lightbox-body {
+    width: min(960px, 92vw);
+    height: min(80vh, 900px);
+    background: #fff;
+    border-radius: 8px;
+    overflow: hidden;
     display: flex;
     flex-direction: column;
-    background: #fff;
-    border-radius: var(--ptprm-radius);
-    box-shadow: 0 24px 64px rgba(0, 0, 0, .35);
-    overflow: hidden;
-}
-.ptprm-pdf-lightbox-head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    padding: 14px 18px;
-    border-bottom: 1px solid var(--ptprm-line);
-    background: var(--ptprm-cream);
 }
 .ptprm-pdf-lightbox-title {
     margin: 0;
-    font-family: var(--ptprm-font-heading);
-    font-size: 1.1rem;
-    color: var(--ptprm-primary);
+    padding: 10px 14px;
+    font-size: .95rem;
+    border-bottom: 1px solid rgba(0,0,0,.08);
 }
-.ptprm-pdf-lightbox-close {
-    flex-shrink: 0;
-    width: 40px;
-    height: 40px;
-    border: 0;
-    border-radius: 50%;
-    background: var(--ptprm-primary);
-    color: #fff;
-    font-size: 24px;
-    line-height: 1;
-    cursor: pointer;
-}
-.ptprm-pdf-lightbox-close:hover {
-    background: var(--ptprm-accent);
-    color: var(--ptprm-primary);
-}
-.ptprm-pdf-lightbox-body {
+.ptprm-pdf-lightbox iframe {
     flex: 1;
-    min-height: 280px;
-    background: #525659;
-}
-.ptprm-pdf-lightbox-frame {
     width: 100%;
-    height: min(70vh, 640px);
     border: 0;
-    display: block;
-    background: #fff;
+    background: #fafafa;
 }
-.ptprm-pdf-lightbox-foot {
+
+/* Halaman Publikasi & Dokumentasi */
+.ptprm-pdf-publications {
+    margin: 1.5rem 0 2.5rem;
+}
+.ptprm-pdf-publications-intro {
+    margin: 0 0 1.25rem;
+    color: rgba(0,0,0,.72);
+    line-height: 1.6;
+}
+.ptprm-pdf-publications-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(var(--ptprm-pdf-cols, 3), minmax(0, 1fr));
+    gap: 20px;
+}
+@media (max-width: 900px) {
+    .ptprm-pdf-publications-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 560px) {
+    .ptprm-pdf-publications-list { grid-template-columns: 1fr; }
+}
+.ptprm-pdf-publications-item {
+    display: flex;
+    flex-direction: column;
+    border: 1px solid rgba(0,0,0,.08);
+    border-radius: 12px;
+    overflow: hidden;
+    background: #fff;
+    box-shadow: 0 2px 12px rgba(0,0,0,.04);
+}
+.ptprm-pdf-publications-cover-wrap {
+    display: block;
+}
+.ptprm-pdf-publications-cover {
+    display: block;
+    text-decoration: none;
+    color: inherit;
+}
+.ptprm-pdf-publications-cover .ptprm-pdf-cover {
+    border-radius: 0;
+}
+.ptprm-pdf-publications-body {
+    padding: 14px 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    flex: 1;
+}
+.ptprm-pdf-publications-title {
+    margin: 0;
+    font-size: 1.05rem;
+    line-height: 1.35;
+    color: var(--ptprm-primary, #0A1F3D);
+}
+.ptprm-pdf-publications-actions {
     display: flex;
     flex-wrap: wrap;
-    gap: 12px;
-    padding: 12px 18px;
-    border-top: 1px solid var(--ptprm-line);
+    gap: 8px;
+    margin-top: auto;
 }
-.ptprm-pdf-lightbox-foot a {
-    font-size: 0.9rem;
+.ptprm-pdf-pub-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 14px;
+    border-radius: 8px;
+    font-size: .875rem;
     font-weight: 600;
-    color: var(--ptprm-primary);
     text-decoration: none;
+    border: 1px solid transparent;
+    transition: background .2s ease, color .2s ease, border-color .2s ease;
 }
-.ptprm-pdf-lightbox-foot a:hover {
-    color: var(--ptprm-accent-soft);
+.ptprm-pdf-pub-btn--read {
+    background: var(--ptprm-primary, #0A1F3D);
+    color: #fff;
+}
+.ptprm-pdf-pub-btn--read:hover {
+    background: var(--ptprm-accent, #C9A44C);
+    color: var(--ptprm-primary, #0A1F3D);
+}
+.ptprm-pdf-pub-btn--download {
+    background: transparent;
+    color: var(--ptprm-primary, #0A1F3D);
+    border-color: rgba(10,31,61,.25);
+}
+.ptprm-pdf-pub-btn--download:hover {
+    border-color: var(--ptprm-accent, #C9A44C);
+    color: var(--ptprm-accent, #C9A44C);
 }
 
 /* ==========================================================================
@@ -3552,107 +3561,6 @@ body.ptprm-mobile-nav-open {
 
     #ptprm-site-header {
         position: relative;
-    }
-}
-
-/* Pengurus wilayah & bidang */
-.ptprm-board-title,
-.ptprm-bidang-title {
-    font-family: var(--ptprm-font-heading);
-    color: var(--ptprm-primary);
-    margin: 0 0 1.25rem;
-}
-.ptprm-board-featured {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: 1.25rem;
-    margin-bottom: 2rem;
-}
-.ptprm-board-card {
-    text-align: center;
-    padding: 1rem;
-    border: 1px solid rgba(10, 31, 61, 0.12);
-    border-radius: 12px;
-    background: #fff;
-}
-.ptprm-board-card-photo {
-    width: 120px;
-    height: 120px;
-    margin: 0 auto 0.75rem;
-    border-radius: 50%;
-    overflow: hidden;
-    background: var(--ptprm-surface-alt, #f0f3f8);
-}
-.ptprm-board-card-photo img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-.ptprm-board-card-name {
-    margin: 0 0 0.25rem;
-    font-size: 1rem;
-}
-.ptprm-board-card-role {
-    margin: 0;
-    font-size: 0.875rem;
-    color: var(--ptprm-text-soft);
-}
-.ptprm-board-group {
-    margin: 1.25rem 0 0.5rem;
-    font-size: 1.05rem;
-    color: var(--ptprm-primary);
-}
-.ptprm-board-line {
-    margin: 0.35rem 0;
-    line-height: 1.5;
-}
-.ptprm-board-region-tabs {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    margin-bottom: 1rem;
-}
-.ptprm-board-admin-list {
-    list-style: none;
-    margin: 0 0 1rem;
-    padding: 0;
-}
-.ptprm-board-admin-row {
-    display: grid;
-    gap: 0.75rem;
-    padding: 1rem;
-    margin-bottom: 0.75rem;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-}
-.ptprm-bidang-block {
-    margin-bottom: 2rem;
-}
-.ptprm-bidang-block h3 {
-    color: var(--ptprm-primary);
-    margin-bottom: 0.75rem;
-}
-.ptprm-bidang-gallery {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-    gap: 1rem;
-}
-.ptprm-bidang-gallery-item img {
-    width: 100%;
-    height: auto;
-    border-radius: 8px;
-}
-.ptprm-data-blur {
-    filter: blur(4px);
-    user-select: none;
-    opacity: 0.65;
-    display: inline-block;
-}
-@media print {
-    .ptprm-portal-tabs,
-    .ptprm-member-filter,
-    .ptprm-portal-footbar {
-        display: none !important;
     }
 }
 

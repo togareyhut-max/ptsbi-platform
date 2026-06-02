@@ -64,3 +64,15 @@ docker logs traefik 2>&1 | tail -15
 ```
 
 **DB baru (PostgreSQL)** — data silsilah lama tidak otomatis pindah.
+
+---
+
+## Restart/repair aman (SSH manual)
+
+Jalankan dari PC (Git Bash/WSL):
+
+```bash
+SSH_HOST=5.175.245.78 SSH_USER=togaa bash scripts/ops/restart-tarombo-over-ssh.sh
+```
+
+Ini akan menjalankan `docker compose up -d --build` dan self-heal (`scripts/post-deploy-tarombo.sh`) di server, lalu ping `/v1/ping`.
