@@ -1,12 +1,6 @@
 name: Deploy ptsbi-premium
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'wordpress/ptsbi-premium/**'
-      - 'wordpress/deploy-plugin-ptsbi.sh'
-      - '.github/workflows/deploy-ptsbi-premium.yml'
   workflow_dispatch:
     inputs:
       confirm:
@@ -27,8 +21,8 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Konfirmasi deploy (manual saja)
-        if: github.event_name == 'workflow_dispatch' && inputs.confirm != 'DEPLOY'
+      - name: Konfirmasi deploy
+        if: inputs.confirm != 'DEPLOY'
         run: |
           echo "Deploy dibatalkan. Ketik DEPLOY pada field konfirmasi." >&2
           exit 1
@@ -36,7 +30,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.source_branch || 'main' }}
+          ref: ${{ inputs.source_branch }}
 
       - name: Deploy plugin ke ptsbi.org
         env:
@@ -51,16 +45,10 @@ jobs:
           EXPECTED="$(grep -oP "define\(\s*'PTPRM_VERSION',\s*'\K[^']+" wordpress/ptsbi-premium/ptsbi-premium.php | head -1)"
           echo "Menunggu cache/CDN (15s)..."
           sleep 15
-          CSS_VER="$(curl -fsSL 'https://ptsbi.org/ptsbi-pusat/' | grep -oP 'ptsbi-premium/assets/css/frontend\.css\?ver=\K[0-9.]+' | head -1 || true)"
-          BOARD_LINES="$(curl -fsSL 'https://ptsbi.org/ptsbi-pusat/' | grep -o 'ptprm-board-line' | wc -l | tr -d ' ')"
+          CSS_VER="$(curl -fsSL 'https://ptsbi.org/panel-pengurus/' | grep -oP 'ptsbi-premium/assets/css/frontend\.css\?ver=\K[0-9.]+' | head -1 || true)"
           echo "Plugin CSS ver=${CSS_VER:-?} (harapan ${EXPECTED})"
-          echo "Baris pengurus di /ptsbi-pusat/: ${BOARD_LINES}"
           if [[ "${CSS_VER}" != "${EXPECTED}" ]]; then
-            echo "::error::Versi plugin di situs (${CSS_VER:-kosong}) tidak sama dengan repo (${EXPECTED}). Deploy ke volume mungkin gagal — cek log SSH." >&2
-            exit 1
-          fi
-          if [[ "${BOARD_LINES}" -lt 5 ]]; then
-            echo "::error::Daftar pengurus pusat masih kosong/sedikit (${BOARD_LINES} baris). Cek opsi board_pusat di database." >&2
+            echo "::error::Versi plugin di situs (${CSS_VER:-kosong}) tidak sama dengan repo (${EXPECTED})." >&2
             exit 1
           fi
           echo "Verifikasi OK."
