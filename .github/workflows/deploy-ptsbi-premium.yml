@@ -26,8 +26,8 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Konfirmasi deploy
-        if: inputs.confirm != 'DEPLOY'
+      - name: Konfirmasi deploy (manual saja)
+        if: github.event_name == 'workflow_dispatch' && inputs.confirm != 'DEPLOY'
         run: |
           echo "Deploy dibatalkan. Ketik DEPLOY pada field konfirmasi." >&2
           exit 1
@@ -35,7 +35,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.source_branch }}
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.source_branch || 'main' }}
 
       - name: Deploy plugin ke ptsbi.org
         env:
