@@ -48,6 +48,11 @@ Tidak hardcode untuk PTSBI — nama organisasi, warna, font, teks, ikon, tautan 
 
 == Changelog ==
 
+= 3.1.14 =
+* Pengurus pusat: kolom URL foto selalu tampil untuk Ketua/Sekretaris/Bendahara Umum.
+* PDF panel: baris dirender di server (Tambah PDF kembali jalan); hapus script template yang merusak halaman.
+* Purge All cache: toolbar di atas tab + tombol di footer (sebelah Keluar) dikembalikan.
+
 = 3.1.13 =
 * Panel admin: gabung foto + nama pengurus pusat di tab Pengurus Wilayah (hapus tab Foto terpisah).
 * Form pengurus dirender di server (save kembali jalan); logout + Purge All cache di footer panel.

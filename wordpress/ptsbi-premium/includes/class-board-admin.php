@@ -174,12 +174,17 @@ class PTPRM_Board_Admin {
      * @param array<string,mixed> $item
      */
     private static function render_board_row( string $region, array $item, bool $show_photos ): void {
+        $role        = (string) ( $item['role'] ?? '' );
+        $is_core     = 'pusat' === $region && PTPRM_Board_Registry::is_core_photo_role( $role );
         $featured    = PTPRM_Board_Registry::is_featured_item( $region, $item );
-        $show_photo  = $show_photos && $featured;
+        $show_photo  = $show_photos && ( $is_core || $featured );
         $img_val     = self::image_field_value( $item );
-        $auto_attr   = $show_photos && $featured && empty( $item['featured'] ) ? ' data-auto-featured="1"' : '';
+        $row_attrs   = $is_core ? ' data-core-photo="1"' : '';
+        if ( $show_photos && $featured && empty( $item['featured'] ) && ! $is_core ) {
+            $row_attrs .= ' data-auto-featured="1"';
+        }
 
-        echo '<li class="ptprm-board-admin-row"' . $auto_attr . '>';
+        echo '<li class="ptprm-board-admin-row"' . $row_attrs . '>';
         echo '<label><span>' . esc_html__( 'Jabatan', 'ptsbi-premium' ) . '</span>';
         echo '<input type="text" data-field="role" value="' . esc_attr( (string) ( $item['role'] ?? '' ) ) . '"></label>';
         echo '<label><span>' . esc_html__( 'Nama', 'ptsbi-premium' ) . '</span>';
@@ -187,10 +192,15 @@ class PTPRM_Board_Admin {
         echo '<label><span>' . esc_html__( 'Kelompok (opsional)', 'ptsbi-premium' ) . '</span>';
         echo '<input type="text" data-field="group" value="' . esc_attr( (string) ( $item['group'] ?? '' ) ) . '" placeholder="' . esc_attr__( 'Dewan Penasehat', 'ptsbi-premium' ) . '"></label>';
 
-        $photo_hidden = $show_photo ? '' : ' hidden';
-        echo '<div class="ptprm-board-photo-field"' . $photo_hidden . '>';
+        $photo_class = 'ptprm-board-photo-field';
+        if ( $is_core ) {
+            $photo_class .= ' ptprm-board-photo-field--core';
+        } elseif ( ! $show_photo ) {
+            $photo_class .= ' is-hidden';
+        }
+        echo '<div class="' . esc_attr( $photo_class ) . '">';
         echo '<label><span>' . esc_html__( 'URL foto', 'ptsbi-premium' ) . '</span>';
-        echo '<input type="text" data-field="image" value="' . esc_attr( $img_val ) . '" placeholder="https://..."></label>';
+        echo '<input type="url" data-field="image" value="' . esc_attr( $img_val ) . '" placeholder="https://..." inputmode="url" autocomplete="off"></label>';
         echo '<p class="ptprm-board-photo-actions"><button type="button" class="button ptprm-board-pick-image">' . esc_html__( 'Pilih dari media', 'ptsbi-premium' ) . '</button></p>';
         echo '</div>';
 
@@ -235,7 +245,7 @@ class PTPRM_Board_Admin {
         echo '<p class="ptprm-portal-help">';
         echo esc_html__( 'Kelola daftar pengurus per wilayah.', 'ptsbi-premium' );
         if ( $show_photos ) {
-            echo ' ' . esc_html__( 'Untuk pengurus pusat: isi nama, jabatan, dan URL foto (Ketua/Sekretaris/Bendahara Umum otomatis tampil dengan foto di halaman depan).', 'ptsbi-premium' );
+            echo ' ' . esc_html__( 'Ketua Umum, Sekretaris Umum, dan Bendahara Umum memiliki kolom URL foto di bawah jabatan. Isi URL atau pilih dari media — foto ini tampil di beranda dan halaman pengurus pusat.', 'ptsbi-premium' );
         }
         echo '</p>';
 

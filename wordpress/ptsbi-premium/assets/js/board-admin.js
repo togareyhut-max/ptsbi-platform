@@ -1,22 +1,39 @@
 (function ($) {
     'use strict';
 
+    var CORE_ROLES = ['ketua umum', 'sekretaris umum', 'bendahara umum'];
+
     function regionHasPhotos() {
         return $('#ptprm-board-has-featured').val() === '1';
+    }
+
+    function isCoreRole(role) {
+        role = String(role || '').trim().toLowerCase();
+        if (!role) {
+            return false;
+        }
+        return CORE_ROLES.some(function (needle) {
+            return role === needle || role.indexOf(needle) !== -1;
+        });
     }
 
     function setPhotoFieldVisible($row, visible) {
         var $field = $row.find('.ptprm-board-photo-field');
         if (visible) {
-            $field.removeAttr('hidden').show();
+            $field.removeClass('is-hidden');
         } else {
-            $field.attr('hidden', 'hidden').hide();
+            $field.addClass('is-hidden');
         }
     }
 
     function syncPhotoVisibility($row) {
         if (!regionHasPhotos()) {
             setPhotoFieldVisible($row, false);
+            return;
+        }
+        if ($row.attr('data-core-photo') === '1' || isCoreRole($row.find('[data-field="role"]').val())) {
+            $row.attr('data-core-photo', '1');
+            setPhotoFieldVisible($row, true);
             return;
         }
         var featured = $row.find('[data-field="featured"]').is(':checked');
@@ -32,12 +49,14 @@
             if (!name) {
                 return;
             }
+            var role = $.trim($row.find('[data-field="role"]').val());
+            var core = $row.attr('data-core-photo') === '1' || isCoreRole(role);
             items.push({
-                role: $.trim($row.find('[data-field="role"]').val()),
+                role: role,
                 name: name,
                 group: $.trim($row.find('[data-field="group"]').val()),
                 image: $.trim($row.find('[data-field="image"]').val()),
-                featured: $row.find('[data-field="featured"]').is(':checked') ? 1 : 0,
+                featured: (core || $row.find('[data-field="featured"]').is(':checked')) ? 1 : 0,
             });
         });
         return items;
@@ -45,6 +64,10 @@
 
     function bindRow($row) {
         syncPhotoVisibility($row);
+
+        $row.find('[data-field="role"]').on('input change', function () {
+            syncPhotoVisibility($row);
+        });
 
         $row.find('[data-field="featured"]').on('change', function () {
             syncPhotoVisibility($row);
@@ -78,7 +101,8 @@
         var $row = $tpl.clone();
         $row.find('input[type="text"], input[type="url"]').val('');
         $row.find('input[type="checkbox"]').prop('checked', false);
-        $row.removeAttr('data-auto-featured');
+        $row.removeAttr('data-auto-featured data-core-photo');
+        $row.find('.ptprm-board-photo-field').addClass('is-hidden');
         $list.append($row);
         bindRow($row);
         return $row;

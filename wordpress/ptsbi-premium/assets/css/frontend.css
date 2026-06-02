@@ -3685,6 +3685,16 @@ body.ptprm-mobile-nav-open {
 .ptprm-board-admin-form:not(.ptprm-board-admin-form--photos) .ptprm-board-photo-field {
     display: none;
 }
+.ptprm-board-photo-field.is-hidden {
+    display: none;
+}
+.ptprm-board-photo-field--core {
+    display: block;
+    padding: 0.75rem;
+    background: #f8fafc;
+    border: 1px solid #c5d9f5;
+    border-radius: 6px;
+}
 .ptprm-board-photo-field label {
     display: block;
 }

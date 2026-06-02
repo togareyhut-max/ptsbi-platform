@@ -390,6 +390,20 @@ class PTPRM_Board_Registry {
         return [ 'ketua umum', 'sekretaris umum', 'bendahara umum' ];
     }
 
+    /** Jabatan inti yang wajib punya kolom URL foto di panel admin pusat. */
+    public static function is_core_photo_role( string $role ): bool {
+        $role = strtolower( trim( $role ) );
+        if ( $role === '' ) {
+            return false;
+        }
+        foreach ( self::featured_roles_for_region( 'pusat' ) as $needle ) {
+            if ( $role === $needle || strpos( $role, $needle ) !== false ) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public static function is_featured_item( string $region, array $item ): bool {
         if ( ! empty( $item['featured'] ) ) {
             return true;
