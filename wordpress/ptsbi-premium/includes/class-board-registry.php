@@ -79,15 +79,37 @@ class PTPRM_Board_Registry {
         if ( get_option( 'ptprm_board_pages_v1' ) ) {
             return;
         }
+        self::restore_region_pages();
+    }
+
+    /**
+     * Buat ulang halaman pengurus wilayah yang hilang atau di Trash.
+     */
+    public static function restore_region_pages(): void {
         foreach ( self::regions() as $meta ) {
-            $slug = (string) $meta['page_slug'];
-            $existing = get_page_by_path( $slug, OBJECT, 'page' );
+            $slug     = (string) $meta['page_slug'];
+            $content  = '[ptprm_board region="' . esc_attr( $meta['slug'] ) . '"]';
+            $existing = class_exists( 'PTPRM_Bidang_Registry' )
+                ? PTPRM_Bidang_Registry::locate_page( $slug )
+                : get_page_by_path( $slug, OBJECT, 'page' );
             if ( $existing instanceof WP_Post ) {
+                if ( $existing->post_status === 'trash' ) {
+                    wp_untrash_post( (int) $existing->ID );
+                    $existing = get_post( (int) $existing->ID );
+                }
+                if ( $existing instanceof WP_Post && $existing->post_status !== 'publish' ) {
+                    wp_update_post(
+                        [
+                            'ID'          => (int) $existing->ID,
+                            'post_status' => 'publish',
+                        ]
+                    );
+                }
                 if ( strpos( (string) $existing->post_content, '[ptprm_board' ) === false ) {
                     wp_update_post(
                         [
                             'ID'           => (int) $existing->ID,
-                            'post_content' => '[ptprm_board region="' . esc_attr( $meta['slug'] ) . '"]',
+                            'post_content' => $content,
                         ]
                     );
                 }
@@ -97,7 +119,7 @@ class PTPRM_Board_Registry {
                 [
                     'post_title'   => (string) $meta['title'],
                     'post_name'    => $slug,
-                    'post_content' => '[ptprm_board region="' . esc_attr( $meta['slug'] ) . '"]',
+                    'post_content' => $content,
                     'post_status'  => 'publish',
                     'post_type'    => 'page',
                 ]

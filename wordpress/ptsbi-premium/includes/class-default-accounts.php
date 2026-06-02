@@ -21,7 +21,7 @@ class PTPRM_Default_Accounts {
     public const OPTION_LOCK       = 'ptprm_demo_anggota_locked';
     public const OPTION_VERSION    = 'ptprm_default_accounts_version';
     public const OPTION_LOGINS     = 'ptprm_default_account_logins';
-    public const ACCOUNTS_VERSION  = 7;
+    public const ACCOUNTS_VERSION  = 8;
 
     public static function init(): void {
         add_action( 'init', [ __CLASS__, 'maybe_ensure' ], 6 );
@@ -147,18 +147,31 @@ class PTPRM_Default_Accounts {
      * Pulihkan akun yang terhapus (ptprm-local, bidang, admin organisasi).
      */
     public static function repair_missing_accounts(): void {
+        self::restore_all_accounts( false );
+    }
+
+    /**
+     * Buat ulang semua akun standar (lokal, organisasi, lima bidang).
+     *
+     * @param bool $reset_demo_passwords Set true saat perbaikan penuh dari wp-admin.
+     */
+    public static function restore_all_accounts( bool $reset_demo_passwords = false ): void {
+        PTPRM_Members::ensure_roles();
+        if ( class_exists( 'PTPRM_Access' ) ) {
+            PTPRM_Access::ensure_capabilities();
+        }
         self::ensure_local_admin_account();
         self::ensure_user(
             self::resolve_login( self::LOGIN_ADMIN, 'admin' ),
             'admin_organisasi',
             'admin',
-            false
+            $reset_demo_passwords
         );
         self::ensure_user(
             self::resolve_login( self::LOGIN_PENGURUS, 'pengurus' ),
             'pengurus',
             'pengurus',
-            false
+            $reset_demo_passwords
         );
         self::ensure_bidang_accounts();
     }

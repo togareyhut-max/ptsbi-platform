@@ -58,6 +58,67 @@ class PTPRM_Bidang_Registry {
         add_action( 'init', [ __CLASS__, 'ensure_categories' ], 11 );
         add_action( 'init', [ __CLASS__, 'ensure_pages' ], 14 );
         add_action( 'init', [ __CLASS__, 'repair_panel_pages' ], 15 );
+        add_action( 'init', [ __CLASS__, 'maybe_restore_missing_pages' ], 16 );
+    }
+
+    /**
+     * Cari halaman berdasarkan slug (termasuk draft / trash).
+     */
+    public static function locate_page( string $slug ): ?WP_Post {
+        $slug = sanitize_title( $slug );
+        if ( $slug === '' ) {
+            return null;
+        }
+        $page = get_page_by_path( $slug, OBJECT, 'page' );
+        if ( $page instanceof WP_Post ) {
+            return $page;
+        }
+        $posts = get_posts(
+            [
+                'name'           => $slug,
+                'post_type'      => 'page',
+                'post_status'    => [ 'publish', 'draft', 'pending', 'private', 'trash' ],
+                'posts_per_page' => 1,
+                'no_found_rows'  => true,
+            ]
+        );
+        return ( ! empty( $posts[0] ) && $posts[0] instanceof WP_Post ) ? $posts[0] : null;
+    }
+
+    /**
+     * Buat ulang halaman bidang & panel yang hilang atau ada di Trash.
+     */
+    public static function restore_all_pages(): void {
+        self::ensure_categories();
+        foreach ( self::bidangs() as $meta ) {
+            self::ensure_page(
+                (string) $meta['page_slug'],
+                (string) $meta['title'],
+                '[ptprm_bidang slug="' . esc_attr( $meta['slug'] ) . '"]'
+            );
+            self::ensure_page(
+                (string) $meta['panel_slug'],
+                sprintf(
+                    /* translators: %s: bidang name */
+                    __( 'Panel %s', 'ptsbi-premium' ),
+                    $meta['title']
+                ),
+                '[ptprm_bidang_panel slug="' . esc_attr( $meta['slug'] ) . '"]'
+            );
+        }
+        self::repair_panel_pages();
+        update_option( 'ptprm_bidang_pages_v1', 1, false );
+        flush_rewrite_rules( false );
+    }
+
+    public static function maybe_restore_missing_pages(): void {
+        foreach ( self::bidangs() as $meta ) {
+            $page = self::locate_page( (string) $meta['panel_slug'] );
+            if ( ! $page instanceof WP_Post || $page->post_status !== 'publish' ) {
+                self::restore_all_pages();
+                return;
+            }
+        }
     }
 
     public static function content_option_key( string $slug ): string {
@@ -156,8 +217,17 @@ class PTPRM_Bidang_Registry {
         foreach ( self::bidangs() as $meta ) {
             $panel_slug = (string) $meta['panel_slug'];
             $correct    = '[ptprm_bidang_panel slug="' . esc_attr( (string) $meta['slug'] ) . '"]';
-            $page       = get_page_by_path( $panel_slug, OBJECT, 'page' );
+            $page       = self::locate_page( $panel_slug );
             if ( ! $page instanceof WP_Post ) {
+                self::ensure_page(
+                    $panel_slug,
+                    sprintf(
+                        /* translators: %s: bidang name */
+                        __( 'Panel %s', 'ptsbi-premium' ),
+                        $meta['title']
+                    ),
+                    $correct
+                );
                 continue;
             }
             $content = (string) $page->post_content;
@@ -175,8 +245,20 @@ class PTPRM_Bidang_Registry {
     }
 
     private static function ensure_page( string $slug, string $title, string $content ): void {
-        $existing = get_page_by_path( $slug, OBJECT, 'page' );
+        $existing = self::locate_page( $slug );
         if ( $existing instanceof WP_Post ) {
+            if ( $existing->post_status === 'trash' ) {
+                wp_untrash_post( (int) $existing->ID );
+                $existing = get_post( (int) $existing->ID );
+            }
+            if ( $existing instanceof WP_Post && $existing->post_status !== 'publish' ) {
+                wp_update_post(
+                    [
+                        'ID'          => (int) $existing->ID,
+                        'post_status' => 'publish',
+                    ]
+                );
+            }
             $current = (string) $existing->post_content;
             if ( strpos( $current, 'ptprm_bidang_panel' ) === false || strpos( $current, 'ptprm_bidang_portal' ) !== false ) {
                 wp_update_post(
