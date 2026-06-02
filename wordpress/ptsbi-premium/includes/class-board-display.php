@@ -11,7 +11,7 @@ class PTPRM_Board_Display {
 
     public function __construct() {
         add_shortcode( 'ptprm_board', [ $this, 'shortcode' ] );
-        add_filter( 'the_content', [ $this, 'append_board_on_region_pages' ], 25 );
+        add_filter( 'the_content', [ $this, 'append_board_on_region_pages' ], 99 );
     }
 
     /**
@@ -24,39 +24,50 @@ class PTPRM_Board_Display {
     }
 
     /**
-     * Selalu tampilkan daftar pengurus di halaman wilayah meski konten halaman sudah berisi judul/blok lain.
+     * Tampilkan daftar pengurus di halaman wilayah / struktur organisasi.
+     * Prioritas 99: shortcode di konten mungkin sudah jalan (prio 11) tetapi kosong — kita isi ulang jika belum ada baris nama.
      */
     public function append_board_on_region_pages( string $content ): string {
-        if ( ! is_page() || ! in_the_loop() || ! is_main_query() ) {
-            return $content;
-        }
-        if ( ! class_exists( 'PTPRM_Board_Registry' ) ) {
+        if ( ! is_page() || ! class_exists( 'PTPRM_Board_Registry' ) ) {
             return $content;
         }
 
-        $page_slug = (string) get_post_field( 'post_name', get_queried_object_id() );
-        foreach ( PTPRM_Board_Registry::regions() as $meta ) {
-            if ( (string) $meta['page_slug'] !== $page_slug ) {
-                continue;
-            }
-
-            if ( strpos( $content, 'ptprm-board' ) !== false ) {
-                return $content;
-            }
-
-            if ( strpos( $content, '[ptprm_board' ) !== false ) {
-                return do_shortcode( $content );
-            }
-
-            $html = self::render( (string) $meta['slug'] );
-            if ( $html === '' ) {
-                return $content;
-            }
-
-            return $content . $html;
+        $page_id = get_queried_object_id();
+        if ( ! $page_id ) {
+            return $content;
         }
 
-        return $content;
+        $page_slug = (string) get_post_field( 'post_name', $page_id );
+        $region    = PTPRM_Board_Registry::region_for_page_slug( $page_slug );
+        if ( $region === null ) {
+            return $content;
+        }
+
+        if ( self::content_has_board_entries( $content ) ) {
+            return $content;
+        }
+
+        $content = self::strip_board_markup( $content );
+
+        $html = self::render( $region );
+        if ( $html === '' ) {
+            return $content;
+        }
+
+        return $content . $html;
+    }
+
+    private static function content_has_board_entries( string $content ): bool {
+        return strpos( $content, 'ptprm-board-line' ) !== false
+            || strpos( $content, 'ptprm-board-card-role' ) !== false;
+    }
+
+    private static function strip_board_markup( string $content ): string {
+        if ( strpos( $content, 'ptprm-board' ) === false ) {
+            return $content;
+        }
+        $stripped = preg_replace( '#<div class="ptprm-board\b[^>]*>.*?</div>\s*(?=<|$)#s', '', $content, 1 );
+        return is_string( $stripped ) ? $stripped : $content;
     }
 
     public static function render( string $region ): string {
@@ -103,15 +114,21 @@ class PTPRM_Board_Display {
         }
         echo '<div class="ptprm-board-featured">';
         foreach ( $featured as $item ) {
-            $img = self::image_url( (string) ( $item['image'] ?? '' ) );
+            $role = trim( (string) ( $item['role'] ?? '' ) );
+            $name = trim( (string) ( $item['name'] ?? '' ) );
+            $img  = self::image_url( (string) ( $item['image'] ?? '' ) );
             echo '<article class="ptprm-board-card">';
             if ( $img !== '' ) {
                 echo '<div class="ptprm-board-card-photo"><img src="' . esc_url( $img ) . '" alt="" loading="lazy"></div>';
             } else {
                 echo '<div class="ptprm-board-card-photo ptprm-board-card-photo--placeholder" aria-hidden="true"></div>';
             }
-            echo '<h3 class="ptprm-board-card-name">' . esc_html( (string) ( $item['name'] ?? '' ) ) . '</h3>';
-            echo '<p class="ptprm-board-card-role">' . esc_html( (string) ( $item['role'] ?? '' ) ) . '</p>';
+            if ( $role !== '' ) {
+                echo '<p class="ptprm-board-card-role">' . esc_html( $role ) . '</p>';
+            }
+            if ( $name !== '' ) {
+                echo '<h3 class="ptprm-board-card-name">' . esc_html( $name ) . '</h3>';
+            }
             echo '</article>';
         }
         echo '</div>';
