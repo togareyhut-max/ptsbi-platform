@@ -1,0 +1,77 @@
+name: Sync Production Baseline
+
+on:
+  workflow_dispatch:
+    inputs:
+      update_main:
+        description: 'Perbarui juga branch main agar sama dengan live'
+        required: true
+        default: 'true'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sync-production-baseline
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Tarik plugin dari server production
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          DEPLOY_HOST: 5.175.245.78
+          PTPRM_SSH_PORT: '22'
+        run: bash wordpress/pull-plugin-ptsbi-from-production.sh
+
+      - name: Commit ke branch production-live
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          VERSION="$(grep 'PTPRM_VERSION' wordpress/ptsbi-premium/ptsbi-premium.php | head -1 || echo unknown)"
+          STAMP="$(date -u +%Y-%m-%dT%H%MZ)"
+          git checkout -B production-live
+          git add wordpress/ptsbi-premium
+          if git diff --staged --quiet; then
+            echo "Tidak ada perubahan dibanding commit sebelumnya."
+          else
+            git commit -m "chore(production-live): snapshot plugin dari server ${STAMP}
+
+${VERSION}"
+          fi
+          git tag -f production-live
+          git push origin production-live --force
+          git push origin refs/tags/production-live --force
+        id: commit_live
+
+      - name: Samakan main dengan baseline (opsional)
+        if: inputs.update_main == 'true'
+        run: |
+          set -euo pipefail
+          git checkout main
+          git pull origin main
+          git checkout production-live -- wordpress/ptsbi-premium
+          git add wordpress/ptsbi-premium
+          if git diff --staged --quiet; then
+            echo "main sudah sama dengan production-live untuk folder plugin."
+          else
+            git commit -m "chore(main): samakan plugin dengan production-live (website live)"
+            git push origin main
+          fi
+
+      - name: Ringkasan
+        run: |
+          echo "Branch production-live dan tag production-live diperbarui."
+          echo "Deploy otomatis TIDAK dijalankan — gunakan workflow Deploy ptsbi-premium jika perlu."

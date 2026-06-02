@@ -1,13 +1,17 @@
 name: Deploy ptsbi-premium
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'wordpress/ptsbi-premium/**'
-      - 'wordpress/deploy-plugin-ptsbi.sh'
-      - '.github/workflows/deploy-ptsbi-premium.yml'
   workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Ketik DEPLOY untuk mengirim repo ke production (ptsbi.org)'
+        required: true
+        type: string
+      source_branch:
+        description: 'Branch sumber plugin (default: main)'
+        required: false
+        default: 'main'
+        type: string
 
 concurrency:
   group: deploy-ptsbi-premium
@@ -17,8 +21,16 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
+      - name: Konfirmasi deploy
+        if: inputs.confirm != 'DEPLOY'
+        run: |
+          echo "Deploy dibatalkan. Ketik DEPLOY pada field konfirmasi." >&2
+          exit 1
+
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.source_branch }}
 
       - name: Deploy plugin ke ptsbi.org
         env:

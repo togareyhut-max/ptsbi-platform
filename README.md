@@ -6,6 +6,7 @@ Monorepo untuk **ptsbi.org** dan **tarombo.ptsbi.org**.
 |--------|-----|
 | `/` (root) | Aplikasi Tarombo (Flask): `app.py`, `services/`, `templates/` |
 | `wordpress/ptsbi-premium/` | Plugin WordPress resmi (Premium Organization) |
+| `wordpress/PRODUCTION-BASELINE.md` | Snapshot website live & rollback (branch `production-live`) |
 | `deploy/tarombo-app/` | Paket production Tarombo (hasil `PACK-UBUNTU.bat`) |
 | `deploy-ubuntu/` | Script backup/restore server |
 
