@@ -27,15 +27,7 @@ class PTPRM_Board_Display {
      * Selalu tampilkan daftar pengurus di halaman wilayah meski konten halaman sudah berisi judul/blok lain.
      */
     public function append_board_on_region_pages( string $content ): string {
-        if ( ! is_singular( 'page' ) ) {
-            return $content;
-        }
-
-        if ( strpos( $content, '[ptprm_board' ) !== false && strpos( $content, 'ptprm-board' ) === false ) {
-            return do_shortcode( $content );
-        }
-
-        if ( ! in_the_loop() || ! is_main_query() ) {
+        if ( ! is_page() || ! in_the_loop() || ! is_main_query() ) {
             return $content;
         }
         if ( ! class_exists( 'PTPRM_Board_Registry' ) ) {
