@@ -8,8 +8,42 @@ CREATE TABLE IF NOT EXISTS users (
   role TEXT NOT NULL CHECK (role IN ('member', 'pengurus', 'admin', 'developer')),
   member_status TEXT NOT NULL DEFAULT 'pending'
     CHECK (member_status IN ('pending', 'active', 'rejected')),
+  phone TEXT NOT NULL DEFAULT '',
+  wp_user_id INTEGER UNIQUE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+CREATE TABLE IF NOT EXISTS member_profiles (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+  wp_user_id INTEGER UNIQUE,
+  family_no TEXT NOT NULL DEFAULT '',
+  kepala_keluarga TEXT NOT NULL DEFAULT '',
+  nama_istri TEXT NOT NULL DEFAULT '',
+  tarombo TEXT NOT NULL DEFAULT '',
+  oppu TEXT NOT NULL DEFAULT '',
+  nomor_sundut TEXT NOT NULL DEFAULT '',
+  hula_boru TEXT NOT NULL DEFAULT '',
+  phone TEXT NOT NULL DEFAULT '',
+  country_name TEXT NOT NULL DEFAULT 'Indonesia',
+  country_code TEXT NOT NULL DEFAULT 'ID',
+  province TEXT NOT NULL DEFAULT '',
+  city TEXT NOT NULL DEFAULT '',
+  district TEXT NOT NULL DEFAULT '',
+  subdistrict TEXT NOT NULL DEFAULT '',
+  postal_code TEXT NOT NULL DEFAULT '',
+  state_city TEXT NOT NULL DEFAULT '',
+  address_detail TEXT NOT NULL DEFAULT '',
+  street_name TEXT NOT NULL DEFAULT '',
+  house_number TEXT NOT NULL DEFAULT '',
+  rt TEXT NOT NULL DEFAULT '',
+  rw TEXT NOT NULL DEFAULT '',
+  is_overseas BOOLEAN NOT NULL DEFAULT FALSE,
+  profile_complete BOOLEAN NOT NULL DEFAULT FALSE,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_member_profiles_wp ON member_profiles (wp_user_id);
 
 CREATE TABLE IF NOT EXISTS people (
   id SERIAL PRIMARY KEY,

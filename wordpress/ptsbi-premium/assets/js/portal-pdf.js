@@ -1,181 +1,172 @@
-/* Panel Dokumen PDF — frontend portal pengurus (daftar nama, tanpa thumbnail) */
+/* Panel pengurus — repeater PDF lightbox (frontend) */
 (function ($) {
     'use strict';
 
-    function slugify(title) {
-        return String(title || '').trim().toLowerCase()
-            .replace(/[^a-z0-9]+/g, '-')
-            .replace(/^-+|-+$/g, '');
-    }
-
-    function readInitial(list) {
-        var b64 = list.getAttribute('data-json-b64');
-        if (!b64) return [];
-        try {
-            var raw = atob(b64);
-            try { raw = decodeURIComponent(escape(raw)); } catch (e2) {}
-            var parsed = JSON.parse(raw);
-            return Array.isArray(parsed) ? parsed : [];
-        } catch (e) {
-            return [];
-        }
-    }
-
-    function shortcodesFor(id) {
-        var safe = id || '';
+    function collectPdfRow(row) {
+        var title = (row.querySelector('[data-field="title"]') || {}).value || '';
+        var pdf = (row.querySelector('[data-field="pdf"]') || {}).value || '';
+        pdf = String(pdf).trim();
+        if (!pdf) return null;
         return {
-            button: '[ptprm_pdf id="' + safe + '" style="button"]',
-            hover: '[ptprm_pdf id="' + safe + '" style="hover" label="Lihat dokumen"]Teks di sini…[/ptprm_pdf]'
+            title: String(title).trim(),
+            pdf: pdf,
+            cover: String((row.querySelector('[data-field="cover"]') || {}).value || '').trim()
         };
     }
 
-    function updateRowPreview(row) {
-        var titleEl = row.querySelector('[data-field="title"]');
-        var idEl = row.querySelector('[data-field="id"]');
-        var title = titleEl ? titleEl.value.trim() : '';
-        var id = idEl && idEl.value ? idEl.value.trim() : slugify(title);
-        if (idEl && !idEl.dataset.ptprmIdLocked) {
-            idEl.value = id;
-        }
-        var sc = shortcodesFor(id);
-        var btnCode = row.querySelector('.ptprm-pdf-sc-button');
-        var hoverCode = row.querySelector('.ptprm-pdf-sc-hover');
-        if (btnCode) btnCode.textContent = sc.button;
-        if (hoverCode) hoverCode.textContent = sc.hover;
-    }
-
-    function fillRow(row, data, index) {
-        row.setAttribute('data-index', String(index));
-        var idEl = row.querySelector('[data-field="id"]');
-        if (idEl) {
-            idEl.value = data.id || '';
-            if (data.id) idEl.dataset.ptprmIdLocked = '1';
-        }
-        row.querySelector('[data-field="title"]').value = data.title || '';
-        row.querySelector('[data-field="file"]').value = data.file || '';
-        var nameEl = row.querySelector('.ptprm-pdf-file-name');
-        if (nameEl) nameEl.textContent = data.file_name || '';
-        updateRowPreview(row);
-    }
-
-    function collectRows(list) {
+    function syncPdfRepeater(form) {
+        var hidden = form.querySelector('#ptprm-pdf-items-json');
+        var list = form.querySelector('#ptprm-pdf-repeater .ptprm-repeater-list');
+        if (!hidden || !list) return;
         var items = [];
-        list.querySelectorAll('.ptprm-pdf-name-row').forEach(function (row) {
-            var title = (row.querySelector('[data-field="title"]') || {}).value || '';
-            title = title.trim();
-            if (!title) return;
-            items.push({
-                id: (row.querySelector('[data-field="id"]') || {}).value || '',
-                title: title,
-                file: (row.querySelector('[data-field="file"]') || {}).value || '',
-                link_label: (row.querySelector('[data-field="link_label"]') || {}).value || 'Lihat dokumen'
-            });
+        list.querySelectorAll('.ptprm-repeater-row').forEach(function (row) {
+            var item = collectPdfRow(row);
+            if (item) items.push(item);
         });
-        return items;
+        hidden.value = JSON.stringify(items);
     }
 
-    function addRow(list, tpl, data, index) {
-        var html = tpl.innerHTML.replace(/\{\{index\}\}/g, String(index));
-        var wrap = document.createElement('div');
-        wrap.innerHTML = html.trim();
-        var row = wrap.firstElementChild;
-        list.appendChild(row);
-        fillRow(row, data, index);
+    function addRow(wrap, data, index) {
+        var tplEl = document.querySelector(wrap.getAttribute('data-tpl'));
+        if (!tplEl) return null;
+        var html = tplEl.innerHTML
+            .replace(/\{\{index\}\}/g, String(index))
+            .replace(/\{\{num\}\}/g, String(index + 1))
+            .replace(/\{\{pdf\}\}/g, data.pdf || '')
+            .replace(/\{\{cover\}\}/g, data.cover || '')
+            .replace(/\{\{cover_preview\}\}/g, data.cover_preview || '')
+            .replace(/\{\{pdf_name\}\}/g, data.pdf_name || '');
+        var div = document.createElement('div');
+        div.innerHTML = html.trim();
+        var row = div.firstElementChild;
+        wrap.querySelector('.ptprm-repeater-list').appendChild(row);
         return row;
     }
 
-    function copyText(txt, btn) {
-        if (!txt) return;
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-            navigator.clipboard.writeText(txt);
-        } else {
-            var ta = document.createElement('textarea');
-            ta.value = txt;
-            document.body.appendChild(ta);
-            ta.select();
-            document.execCommand('copy');
-            document.body.removeChild(ta);
+    function initPdfRepeater() {
+        var wrap = document.getElementById('ptprm-pdf-repeater');
+        var hidden = document.getElementById('ptprm-pdf-items-json');
+        if (!wrap || !hidden) return;
+
+        var items = [];
+        try {
+            var b64 = hidden.getAttribute('data-ptprm-json-b64') || '';
+            if (b64) {
+                items = JSON.parse(atob(b64));
+            }
+        } catch (e) {
+            items = [];
         }
-        if (btn) {
-            var prev = btn.textContent;
-            btn.textContent = 'Tersalin';
-            setTimeout(function () { btn.textContent = prev; }, 1500);
+        if (!items.length) {
+            items = [{ title: '', pdf: '', cover: '' }];
+        }
+
+        items.forEach(function (item, i) {
+            var data = {
+                title: item.title || '',
+                pdf: item.pdf || '',
+                cover: item.cover || '',
+                cover_preview: item.cover_url || '',
+                pdf_name: item.pdf_url ? item.pdf_url.split('/').pop() : (item.pdf ? ('#' + item.pdf) : '')
+            };
+            var row = addRow(wrap, data, i);
+            if (row) {
+                var titleEl = row.querySelector('[data-field="title"]');
+                if (titleEl) titleEl.value = data.title;
+            }
+        });
+
+        wrap.addEventListener('click', function (e) {
+            if (e.target.classList.contains('ptprm-repeater-add')) {
+                e.preventDefault();
+                var list = wrap.querySelector('.ptprm-repeater-list');
+                var max = 24;
+                if (list.children.length >= max) return;
+                addRow(wrap, { title: '', pdf: '', cover: '', cover_preview: '', pdf_name: '' }, list.children.length);
+            }
+            if (e.target.classList.contains('ptprm-repeater-remove')) {
+                e.preventDefault();
+                var row = e.target.closest('.ptprm-repeater-row');
+                if (row) row.remove();
+                var list = wrap.querySelector('.ptprm-repeater-list');
+                list.querySelectorAll('.ptprm-repeater-row').forEach(function (r, idx) {
+                    var strong = r.querySelector('.ptprm-repeater-row-head strong');
+                    if (strong) strong.textContent = 'Dokumen ' + (idx + 1);
+                });
+            }
+        });
+
+        var form = wrap.closest('form');
+        if (form) {
+            form.addEventListener('submit', function () {
+                syncPdfRepeater(form);
+            });
         }
     }
 
-    $(function () {
-        var list = document.getElementById('ptprm-portal-pdf-list');
-        var tpl = document.getElementById('ptprm-portal-pdf-row-tpl');
-        var form = document.getElementById('ptprm-portal-pdf-form');
-        if (!list || !tpl || !form) return;
-
-        var items = readInitial(list);
-        if (!items.length) {
-            items = [{ id: '', title: '', file: '', link_label: 'Lihat dokumen' }];
-        }
-        list.innerHTML = '';
-        items.forEach(function (data, i) {
-            addRow(list, tpl, data, i);
-        });
-
-        $('#ptprm-portal-pdf-add').on('click', function (e) {
+    function initMediaPickers() {
+        $(document).on('click', '.ptprm-image-pick', function (e) {
             e.preventDefault();
-            if (list.children.length >= 50) {
-                window.alert('Maksimal 50 dokumen.');
-                return;
-            }
-            addRow(list, tpl, { id: '', title: '', file: '', link_label: 'Lihat dokumen' }, list.children.length);
-        });
-
-        $(list).on('click', '.ptprm-pdf-row-remove', function (e) {
-            e.preventDefault();
-            var row = $(this).closest('.ptprm-pdf-name-row').get(0);
-            if (list.children.length > 1 && row) row.remove();
-        });
-
-        $(list).on('input', '[data-field="title"]', function () {
-            updateRowPreview($(this).closest('.ptprm-pdf-name-row').get(0));
-        });
-
-        $(list).on('click', '.ptprm-pdf-pick', function (e) {
-            e.preventDefault();
-            if (!wp || !wp.media) return;
-            var row = $(this).closest('.ptprm-pdf-name-row').get(0);
-            var $input = $(row).find('[data-field="file"]');
-            var $name = $(row).find('.ptprm-pdf-file-name');
+            if (!wp.media) return;
+            var $wrap = $(this).closest('.ptprm-image-field');
+            var $input = $wrap.find('.ptprm-image-value');
+            var $prev = $wrap.find('.ptprm-image-preview');
             var frame = wp.media({
-                title: 'Pilih file PDF',
-                button: { text: 'Pakai PDF ini' },
+                title: 'Pilih gambar',
+                button: { text: 'Pakai gambar ini' },
                 multiple: false,
-                library: { type: 'application/pdf' }
+                library: { type: 'image' }
             });
             frame.on('select', function () {
                 var att = frame.state().get('selection').first().toJSON();
                 $input.val(att.id);
-                $name.text(att.filename || att.title || ('#' + att.id));
-                updateRowPreview(row);
+                var url = att.sizes && att.sizes.medium ? att.sizes.medium.url : att.url;
+                $prev.css('background-image', 'url(' + url + ')');
             });
             frame.open();
         });
 
-        $(list).on('click', '.ptprm-pdf-clear', function (e) {
+        $(document).on('click', '.ptprm-image-clear', function (e) {
             e.preventDefault();
-            var row = $(this).closest('.ptprm-pdf-name-row').get(0);
-            $(row).find('[data-field="file"]').val('');
-            $(row).find('.ptprm-pdf-file-name').text('');
+            var $wrap = $(this).closest('.ptprm-image-field');
+            $wrap.find('.ptprm-image-value').val('');
+            $wrap.find('.ptprm-image-preview').css('background-image', '');
         });
 
-        $(list).on('click', '.ptprm-pdf-copy', function (e) {
+        $(document).on('click', '.ptprm-pdf-pick', function (e) {
             e.preventDefault();
-            var row = $(this).closest('.ptprm-pdf-name-row').get(0);
-            updateRowPreview(row);
-            var which = $(this).data('which');
-            var el = row.querySelector(which === 'hover' ? '.ptprm-pdf-sc-hover' : '.ptprm-pdf-sc-button');
-            copyText(el ? el.textContent : '', this);
+            if (!wp.media) return;
+            var $wrap = $(this).closest('.ptprm-repeater-pdf-field');
+            var $input = $wrap.find('.ptprm-pdf-value');
+            var $label = $wrap.find('.ptprm-pdf-filename');
+            var frame = wp.media({
+                title: 'Pilih PDF',
+                button: { text: 'Pakai PDF ini' },
+                multiple: false,
+                library: { type: 'application' }
+            });
+            frame.on('select', function () {
+                var att = frame.state().get('selection').first().toJSON();
+                if (att && att.mime && att.mime.indexOf('pdf') === -1 && att.url && att.url.indexOf('.pdf') === -1) {
+                    window.alert('Pilih file PDF.');
+                    return;
+                }
+                $input.val(att.id);
+                if ($label.length) $label.text(att.filename || att.title || att.url || '');
+            });
+            frame.open();
         });
 
-        form.addEventListener('submit', function () {
-            document.getElementById('ptprm-portal-pdf-json').value = JSON.stringify(collectRows(list));
+        $(document).on('click', '.ptprm-pdf-clear', function (e) {
+            e.preventDefault();
+            var $wrap = $(this).closest('.ptprm-repeater-pdf-field');
+            $wrap.find('.ptprm-pdf-value').val('');
+            $wrap.find('.ptprm-pdf-filename').text('');
         });
+    }
+
+    $(function () {
+        initPdfRepeater();
+        initMediaPickers();
     });
-}(jQuery));
+})(jQuery);

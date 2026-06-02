@@ -18,6 +18,7 @@
         animateStats();
         initGallerySliders();
         initLightbox();
+        initPdfLightbox();
         initPopup();
     }
 
@@ -598,6 +599,69 @@
         function hide() {
             box.classList.remove('is-open');
             img.src = '';
+            document.body.style.overflow = '';
+        }
+
+        Array.prototype.forEach.call(items, function (a, i) {
+            a.addEventListener('click', function (e) {
+                e.preventDefault();
+                show(i);
+            });
+        });
+
+        close.addEventListener('click', hide);
+        prev.addEventListener('click', function () { show(idx - 1); });
+        next.addEventListener('click', function () { show(idx + 1); });
+        box.addEventListener('click', function (e) { if (e.target === box) hide(); });
+        document.addEventListener('keydown', function (e) {
+            if (!box.classList.contains('is-open')) return;
+            if (e.key === 'Escape') hide();
+            else if (e.key === 'ArrowLeft') show(idx - 1);
+            else if (e.key === 'ArrowRight') show(idx + 1);
+        });
+    }
+
+    function initPdfLightbox() {
+        var items = document.querySelectorAll('[data-ptprm-pdf-lightbox]');
+        if (!items.length) return;
+
+        var pdfs = Array.prototype.map.call(items, function (a) {
+            return {
+                url: a.getAttribute('href'),
+                title: a.getAttribute('data-title') || a.textContent.trim()
+            };
+        });
+        var idx = 0;
+
+        var box = document.createElement('div');
+        box.className = 'ptprm-lightbox ptprm-pdf-lightbox';
+        box.innerHTML =
+            '<button class="ptprm-lightbox-close" aria-label="Tutup">&times;</button>' +
+            '<button class="ptprm-lightbox-nav prev" aria-label="Sebelumnya">&#8592;</button>' +
+            '<div class="ptprm-pdf-lightbox-body">' +
+            '<p class="ptprm-pdf-lightbox-title"></p>' +
+            '<iframe title="PDF" src="" loading="lazy"></iframe>' +
+            '</div>' +
+            '<button class="ptprm-lightbox-nav next" aria-label="Berikutnya">&#8594;</button>';
+        document.body.appendChild(box);
+
+        var iframe = box.querySelector('iframe');
+        var titleEl = box.querySelector('.ptprm-pdf-lightbox-title');
+        var close  = box.querySelector('.ptprm-lightbox-close');
+        var prev   = box.querySelector('.prev');
+        var next   = box.querySelector('.next');
+
+        function show(i) {
+            idx = (i + pdfs.length) % pdfs.length;
+            var item = pdfs[idx];
+            if (titleEl) titleEl.textContent = item.title || '';
+            if (iframe) iframe.src = item.url + '#view=FitH';
+            box.classList.add('is-open');
+            document.body.style.overflow = 'hidden';
+        }
+        function hide() {
+            box.classList.remove('is-open');
+            if (iframe) iframe.src = '';
             document.body.style.overflow = '';
         }
 

@@ -38,6 +38,10 @@ deploy/tarombo-app.zip
 deploy-ubuntu.zip
 wordpress/*.zip
 
+# Generated into deploy/ during packaging
+deploy/tarombo-app/scripts/post-deploy-tarombo.sh
+deploy/tarombo-app/services/wp_integration_api.py
+
 # ---- Situs WordPress lain (bukan PTSBI) ----
 deploy/wordpress/
 

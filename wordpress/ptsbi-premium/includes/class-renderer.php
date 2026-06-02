@@ -36,6 +36,21 @@ class PTPRM_Renderer {
                 case 'gallery':
                     if ( ! empty( $o['gallery_show'] ) ) self::gallery( $o );
                     break;
+                case 'pdf_lightbox':
+                    if ( ! empty( $o['pdf_lightbox_show'] ) && class_exists( 'PTPRM_Pdf_Lightbox' ) ) {
+                        PTPRM_Pdf_Lightbox::render(
+                            $o,
+                            0,
+                            'default',
+                            true,
+                            [
+                                'eyebrow'  => (string) ( $o['pdf_lightbox_eyebrow'] ?? '' ),
+                                'title'    => (string) ( $o['pdf_lightbox_title'] ?? '' ),
+                                'subtitle' => (string) ( $o['pdf_lightbox_subtitle'] ?? '' ),
+                            ]
+                        );
+                    }
+                    break;
                 case 'stats':
                     if ( ! empty( $o['stats_show'] ) ) self::stats( $o );
                     break;

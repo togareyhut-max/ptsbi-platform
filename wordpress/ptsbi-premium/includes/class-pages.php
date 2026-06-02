@@ -74,6 +74,11 @@ class PTPRM_Pages {
                     __( 'Kumpulan dokumentasi pertemuan, acara adat, dan program sosial. Aktifkan section Galeri di pengaturan plugin Beranda untuk menampilkan cuplikan di halaman depan.', 'ptsbi-premium' )
                 ),
             ],
+            'publikasi-dan-dokumentasi' => [
+                'title'   => __( 'Publikasi dan Dokumentasi', 'ptsbi-premium' ),
+                'excerpt' => __( 'Daftar buku, publikasi, dan dokumen PDF organisasi.', 'ptsbi-premium' ),
+                'content' => self::publications_page_content(),
+            ],
             'kontak' => [
                 'title'   => __( 'Kontak', 'ptsbi-premium' ),
                 'excerpt' => __( 'Hubungi sekretariat organisasi.', 'ptsbi-premium' ),
@@ -98,6 +103,9 @@ class PTPRM_Pages {
         ];
 
         foreach ( self::blueprints() as $slug => $bp ) {
+            if ( $slug === 'publikasi-dan-dokumentasi' ) {
+                continue;
+            }
             $existing = get_page_by_path( $slug, OBJECT, 'page' );
             if ( $existing instanceof WP_Post ) {
                 $result['page_ids'][ $slug ] = (int) $existing->ID;
@@ -132,6 +140,12 @@ class PTPRM_Pages {
             }
             $result['page_ids'][ $slug ] = (int) $id;
             $result['created']++;
+        }
+
+        $pub_id = self::ensure_publications_page();
+        if ( $pub_id > 0 ) {
+            $pub_slug = ptprm_publications_page_slug();
+            $result['page_ids'][ $pub_slug ] = $pub_id;
         }
 
         $menu_id = self::sync_main_menu( $result['page_ids'] );
@@ -183,6 +197,10 @@ class PTPRM_Pages {
             [
                 'title' => __( 'Galeri', 'ptsbi-premium' ),
                 'slug'  => 'galeri',
+            ],
+            [
+                'title' => __( 'Publikasi & Dokumentasi', 'ptsbi-premium' ),
+                'slug'  => ptprm_publications_page_slug(),
             ],
             [
                 'title' => __( 'Kontak', 'ptsbi-premium' ),
@@ -293,6 +311,13 @@ class PTPRM_Pages {
                 'children'  => [],
             ],
             [
+                'label'     => __( 'Publikasi & Dokumentasi', 'ptsbi-premium' ),
+                'url'       => '/' . ptprm_publications_page_slug() . '/',
+                'target'    => '_self',
+                'highlight' => 0,
+                'children'  => [],
+            ],
+            [
                 'label'     => __( 'Kontak', 'ptsbi-premium' ),
                 'url'       => '/kontak/',
                 'target'    => '_self',
@@ -307,6 +332,128 @@ class PTPRM_Pages {
                 'children'  => [],
             ],
         ];
+    }
+
+    public static function publications_page_content(): string {
+        $intro = __( 'Daftar buku, publikasi, dan dokumen PDF organisasi. Gunakan tombol Baca untuk melihat di layar, atau Unduh untuk menyimpan file.', 'ptsbi-premium' );
+
+        return self::block_content(
+            __( 'Publikasi dan Dokumentasi', 'ptsbi-premium' ),
+            $intro
+        ) . "\n\n<!-- wp:shortcode -->\n[ptprm_pdf_publications]\n<!-- /wp:shortcode -->\n";
+    }
+
+    /**
+     * Buat / perbarui halaman publikasi + shortcode daftar PDF.
+     */
+    public static function ensure_publications_page(): int {
+        $slug = ptprm_publications_page_slug();
+        $bp   = self::blueprints()['publikasi-dan-dokumentasi'] ?? null;
+        $title   = $bp['title'] ?? __( 'Publikasi dan Dokumentasi', 'ptsbi-premium' );
+        $excerpt = $bp['excerpt'] ?? '';
+        $content = self::publications_page_content();
+
+        $existing = get_page_by_path( $slug, OBJECT, 'page' );
+        if ( $existing instanceof WP_Post ) {
+            $needs_update = strpos( (string) $existing->post_content, '[ptprm_pdf_publications]' ) === false;
+            if ( $needs_update ) {
+                wp_update_post(
+                    [
+                        'ID'           => $existing->ID,
+                        'post_content' => $content,
+                        'post_excerpt' => $excerpt,
+                    ]
+                );
+            }
+            return (int) $existing->ID;
+        }
+
+        $id = wp_insert_post(
+            [
+                'post_title'   => $title,
+                'post_name'    => $slug,
+                'post_status'  => 'publish',
+                'post_type'    => 'page',
+                'post_excerpt' => $excerpt,
+                'post_content' => $content,
+            ],
+            true
+        );
+
+        return is_wp_error( $id ) ? 0 : (int) $id;
+    }
+
+    /**
+     * Tambahkan item menu header plugin jika belum ada.
+     */
+    public static function ensure_publications_menu_in_options(): void {
+        $o         = ptprm_options();
+        $path      = '/' . ptprm_publications_page_slug( $o ) . '/';
+        $items     = ptprm_get_header_menu_items( $o );
+        $has_entry = false;
+
+        foreach ( $items as $it ) {
+            $url = strtolower( (string) ( $it['url'] ?? '' ) );
+            if ( str_contains( $url, 'publikasi' ) || str_contains( $url, 'dokumentasi' ) ) {
+                $has_entry = true;
+                break;
+            }
+        }
+        if ( $has_entry ) {
+            return;
+        }
+
+        $new_item = [
+            'label'     => __( 'Publikasi & Dokumentasi', 'ptsbi-premium' ),
+            'url'       => $path,
+            'target'    => '_self',
+            'highlight' => 0,
+            'children'  => [],
+        ];
+
+        $out      = [];
+        $inserted = false;
+        foreach ( $items as $it ) {
+            $lab = strtolower( (string) ( $it['label'] ?? '' ) );
+            if ( ! $inserted && ( $lab === 'kontak' || str_contains( $lab, 'rumah anggota' ) ) ) {
+                $out[]    = $new_item;
+                $inserted = true;
+            }
+            $out[] = $it;
+        }
+        if ( ! $inserted ) {
+            $out[] = $new_item;
+        }
+
+        $o['header_menu_items'] = wp_json_encode(
+            ptprm_sanitize_header_menu_items( $out ),
+            JSON_UNESCAPED_UNICODE
+        );
+        update_option( PTPRM_OPTION, ptprm_normalize_option_for_storage( $o ), true );
+        wp_cache_delete( PTPRM_OPTION, 'options' );
+    }
+
+    /**
+     * Halaman publikasi + menu header + menu WP (sekali per versi plugin).
+     */
+    public static function setup_publications_front(): void {
+        $page_id = self::ensure_publications_page();
+        self::ensure_publications_menu_in_options();
+
+        if ( $page_id > 0 ) {
+            $slug     = ptprm_publications_page_slug();
+            $page_ids = [ $slug => $page_id ];
+            foreach ( self::blueprints() as $s => $bp ) {
+                $p = get_page_by_path( $s, OBJECT, 'page' );
+                if ( $p instanceof WP_Post ) {
+                    $page_ids[ $s ] = (int) $p->ID;
+                }
+            }
+            if ( $slug !== 'publikasi-dan-dokumentasi' ) {
+                $page_ids[ $slug ] = $page_id;
+            }
+            self::sync_main_menu( $page_ids );
+        }
     }
 
     private static function block_content( string $heading, string $paragraphs ): string {

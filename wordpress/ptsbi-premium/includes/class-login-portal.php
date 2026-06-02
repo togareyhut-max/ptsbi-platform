@@ -185,11 +185,9 @@ class PTPRM_Login_Portal {
         }
 
         if ( $requested !== '' ) {
-            $valid = wp_validate_redirect( $requested, false );
-            if ( $valid ) {
-                return $valid;
-            }
+            return PTPRM_Access::sanitize_redirect_for_user( $user, $requested );
         }
+
         return PTPRM_Access::portal_url_for_user( $user );
     }
 
@@ -249,8 +247,31 @@ class PTPRM_Login_Portal {
             'remember'      => ! empty( $_POST['rememberme'] ),
         ];
 
-        // Login utama: WordPress lokal (tidak menunggu API eksternal).
-        $user = wp_signon( $creds, is_ssl() );
+        $user = null;
+        if ( class_exists( 'PTPRM_Membership_Sync' ) && PTPRM_Membership_Api_Client::enabled() && is_email( $email_input ) ) {
+            $api = PTPRM_Membership_Sync::auth_login( $email_input, $password );
+            if ( ! is_wp_error( $api ) && ! empty( $api['user'] ) && is_array( $api['user'] ) ) {
+                $synced = PTPRM_Membership_Sync::ensure_wp_user( (array) $api['user'], $password );
+                if ( $synced instanceof WP_User ) {
+                    $user = $synced;
+                    wp_set_current_user( (int) $user->ID );
+                    wp_set_auth_cookie( (int) $user->ID, ! empty( $_POST['rememberme'] ), is_ssl() );
+                    $token = (string) ( $api['access_token'] ?? '' );
+                    if ( $token !== '' ) {
+                        setcookie( 'ptprm_api_access_token', $token, time() + DAY_IN_SECONDS, COOKIEPATH ?: '/', COOKIE_DOMAIN ?: '', is_ssl(), true );
+                    }
+                } elseif ( is_wp_error( $synced ) ) {
+                    wp_safe_redirect(
+                        add_query_arg( 'ptprm_login_error', rawurlencode( $synced->get_error_message() ), self::login_url() )
+                    );
+                    exit;
+                }
+            }
+        }
+
+        if ( ! $user instanceof WP_User ) {
+            $user = wp_signon( $creds, is_ssl() );
+        }
 
         // Fallback: verifikasi via email + password (user_login bisa berbeda dari email).
         if ( is_wp_error( $user ) && strpos( $email_input, '@' ) !== false && is_email( $email_input ) ) {
@@ -315,8 +336,8 @@ class PTPRM_Login_Portal {
             exit;
         }
 
-        // Opsional: sinkron token API setelah login lokal sukses (tidak memblokir redirect).
-        if ( class_exists( 'PTPRM_Membership_Api_Client' ) && PTPRM_Membership_Api_Client::enabled() ) {
+        // Fallback lokal: sinkron token jika login WP saja (admin situs).
+        if ( class_exists( 'PTPRM_Membership_Api_Client' ) && PTPRM_Membership_Api_Client::enabled() && $user instanceof WP_User ) {
             $api = PTPRM_Membership_Api_Client::post(
                 '/auth/login',
                 [
@@ -326,13 +347,8 @@ class PTPRM_Login_Portal {
             );
             if ( ! is_wp_error( $api ) ) {
                 $token = (string) ( $api['access_token'] ?? '' );
-                $role  = (string) ( $api['user']['role'] ?? $api['role'] ?? '' );
-                $ttl   = time() + DAY_IN_SECONDS;
                 if ( $token !== '' ) {
-                    setcookie( 'ptprm_api_access_token', $token, $ttl, COOKIEPATH ?: '/', COOKIE_DOMAIN ?: '', is_ssl(), true );
-                }
-                if ( $role !== '' ) {
-                    setcookie( 'ptprm_api_role', $role, $ttl, COOKIEPATH ?: '/', COOKIE_DOMAIN ?: '', is_ssl(), false );
+                    setcookie( 'ptprm_api_access_token', $token, time() + DAY_IN_SECONDS, COOKIEPATH ?: '/', COOKIE_DOMAIN ?: '', is_ssl(), true );
                 }
             }
         }

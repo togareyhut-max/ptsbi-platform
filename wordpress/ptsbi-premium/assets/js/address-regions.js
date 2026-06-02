@@ -266,7 +266,9 @@
             syncOverseasFromWilayah();
             toggleOverseas();
             if (!isOverseasMode()) {
-                fillSelect(prov, filterProvinces(currentWilayah()), options.provincePlaceholder || '— Pilih provinsi —', '');
+                if (!saved.province) {
+                    fillSelect(prov, filterProvinces(currentWilayah()), options.provincePlaceholder || '— Pilih provinsi —', '');
+                }
             }
         } else {
             fillSelect(prov, filterProvinces(currentWilayah()), options.provincePlaceholder || '— Pilih provinsi —', saved.province);
