@@ -1427,6 +1427,47 @@ function ptprm_get_header_menu_items( ?array $o = null ): array {
  * @param mixed $raw
  * @return list<array{name:string,role:string,group:string,image:string,featured:int}>
  */
+/**
+ * Gabungkan katalog pengurus baru dengan data tersimpan; foto yang sudah diunggah dipertahankan.
+ *
+ * @param list<array<string,mixed>> $existing
+ * @param list<array<string,mixed>> $catalog
+ * @return list<array{name:string,role:string,group:string,image:string,featured:int}>
+ */
+function ptprm_merge_board_catalog( array $existing, array $catalog ): array {
+    $find = static function ( array $rows, string $role, string $group ) {
+        $role_lc  = strtolower( trim( $role ) );
+        $group_lc = strtolower( trim( $group ) );
+        foreach ( $rows as $row ) {
+            if ( ! is_array( $row ) ) {
+                continue;
+            }
+            $r = strtolower( trim( (string) ( $row['role'] ?? '' ) ) );
+            $g = strtolower( trim( (string) ( $row['group'] ?? '' ) ) );
+            if ( $r === $role_lc && $g === $group_lc ) {
+                return $row;
+            }
+        }
+        return null;
+    };
+
+    $merged = [];
+    foreach ( $catalog as $row ) {
+        if ( ! is_array( $row ) ) {
+            continue;
+        }
+        $role  = (string) ( $row['role'] ?? '' );
+        $group = (string) ( $row['group'] ?? '' );
+        $prev  = $find( $existing, $role, $group );
+        if ( is_array( $prev ) && ! empty( $prev['image'] ) ) {
+            $row['image'] = (string) $prev['image'];
+        }
+        $merged[] = $row;
+    }
+
+    return ptprm_sanitize_board_items( $merged );
+}
+
 function ptprm_sanitize_board_items( $raw ): array {
     if ( is_string( $raw ) ) {
         $decoded = json_decode( wp_unslash( $raw ), true );

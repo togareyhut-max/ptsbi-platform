@@ -75,6 +75,55 @@ class PTPRM_Board_Registry {
         update_option( self::OPTION_SEEDED, 1, false );
     }
 
+    /**
+     * Terapkan katalog pengurus terbaru sekali per versi plugin (nama/jabatan); foto admin tetap.
+     */
+    public static function maybe_apply_catalog_version(): void {
+        if ( get_option( self::OPTION_CATALOG_VERSION ) === self::CATALOG_VERSION ) {
+            return;
+        }
+
+        $catalog = ptprm_board_default_catalog();
+        foreach ( self::regions() as $slug => $meta ) {
+            unset( $meta );
+            $existing = self::get_items( $slug );
+            $items    = function_exists( 'ptprm_merge_board_catalog' )
+                ? ptprm_merge_board_catalog( $existing, $catalog[ $slug ] ?? [] )
+                : ptprm_sanitize_board_items( $catalog[ $slug ] ?? [] );
+            self::save_items( $slug, $items );
+        }
+
+        self::sync_region_page_titles();
+        update_option( self::OPTION_CATALOG_VERSION, self::CATALOG_VERSION, false );
+    }
+
+    /** Perbarui judul halaman wilayah (mis. hilangkan "2025-2030" di Medan). */
+    public static function sync_region_page_titles(): void {
+        foreach ( self::regions() as $meta ) {
+            $slug  = (string) $meta['page_slug'];
+            $title = (string) $meta['title'];
+            $page  = get_page_by_path( $slug, OBJECT, 'page' );
+            if ( ! $page instanceof WP_Post ) {
+                continue;
+            }
+            $current = (string) $page->post_title;
+            $clean   = preg_replace( '/\s*20\d{2}\s*[-–]\s*20\d{2}\s*/u', ' ', $current );
+            $clean   = is_string( $clean ) ? trim( preg_replace( '/\s+/u', ' ', $clean ) ) : $current;
+            $next    = $title;
+            if ( $clean !== '' && $clean !== $current && stripos( $current, '2025' ) !== false ) {
+                $next = $clean;
+            }
+            if ( $next !== $current ) {
+                wp_update_post(
+                    [
+                        'ID'         => (int) $page->ID,
+                        'post_title' => $next,
+                    ]
+                );
+            }
+        }
+    }
+
     public static function ensure_region_pages(): void {
         if ( get_option( 'ptprm_board_pages_v1' ) ) {
             return;

@@ -3610,10 +3610,10 @@ body.ptprm-mobile-nav-open {
     gap: 1.25rem;
     margin-bottom: 2rem;
 }
-/* Pengurus pusat: foto inti sedikit lebih besar */
+/* Pengurus pusat: foto inti ukuran sedang */
 .ptprm-board--pusat .ptprm-board-featured {
-    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
-    gap: 1.5rem;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.35rem;
 }
 .ptprm-board-card {
     text-align: center;
