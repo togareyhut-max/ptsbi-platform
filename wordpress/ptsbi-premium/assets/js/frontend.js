@@ -20,6 +20,92 @@
         initLightbox();
         initPdfLightbox();
         initPopup();
+        initPtprmModal();
+        initBidangProgramEditor();
+    }
+
+    function initBidangProgramEditor() {
+        var editors = document.querySelectorAll('.ptprm-bidang-program-editor');
+        if (!editors.length) return;
+
+        editors.forEach(function (wrap) {
+            wrap.addEventListener('click', function (e) {
+                var add = e.target.closest && e.target.closest('[data-ptprm-add-row]');
+                if (add) {
+                    e.preventDefault();
+                    var tpl = wrap.querySelector('.ptprm-bidang-program-row');
+                    if (!tpl) return;
+                    var clone = tpl.cloneNode(true);
+                    clone.querySelectorAll('input,textarea').forEach(function (el) {
+                        el.value = '';
+                    });
+                    // Insert before actions anchor (stable even if markup changes).
+                    var anchor = wrap.querySelector('[data-ptprm-program-actions]');
+                    if (anchor && anchor.parentNode === wrap) {
+                        wrap.insertBefore(clone, anchor);
+                    } else {
+                        wrap.appendChild(clone);
+                    }
+                    return;
+                }
+
+                var rm = e.target.closest && e.target.closest('[data-ptprm-remove-row]');
+                if (rm) {
+                    e.preventDefault();
+                    var row = rm.closest('.ptprm-bidang-program-row');
+                    if (!row) return;
+                    var rows = wrap.querySelectorAll('.ptprm-bidang-program-row');
+                    if (rows.length <= 1) {
+                        row.querySelectorAll('input,textarea').forEach(function (el) {
+                            el.value = '';
+                        });
+                        return;
+                    }
+                    row.remove();
+                }
+            });
+        });
+    }
+
+    function initPtprmModal() {
+        var modals = document.querySelectorAll('[data-ptprm-modal]');
+        if (!modals.length) return;
+
+        function openModal(id) {
+            var m = document.querySelector('[data-ptprm-modal="' + id + '"]');
+            if (!m) return;
+            m.classList.add('is-open');
+            m.setAttribute('aria-hidden', 'false');
+            document.body.classList.add('ptprm-modal-open');
+        }
+
+        function closeModal(m) {
+            if (!m) return;
+            m.classList.remove('is-open');
+            m.setAttribute('aria-hidden', 'true');
+            document.body.classList.remove('ptprm-modal-open');
+        }
+
+        document.addEventListener('click', function (e) {
+            var openBtn = e.target.closest && e.target.closest('[data-ptprm-modal-open]');
+            if (openBtn) {
+                e.preventDefault();
+                openModal(openBtn.getAttribute('data-ptprm-modal-open'));
+                return;
+            }
+            var closeBtn = e.target.closest && e.target.closest('[data-ptprm-modal-close]');
+            if (closeBtn) {
+                e.preventDefault();
+                var modal = closeBtn.closest('[data-ptprm-modal]');
+                closeModal(modal);
+            }
+        });
+
+        document.addEventListener('keydown', function (e) {
+            if (e.key !== 'Escape') return;
+            var open = document.querySelector('[data-ptprm-modal].is-open');
+            if (open) closeModal(open);
+        });
     }
 
     /* Hero banner slideshow (hingga 5 gambar) */

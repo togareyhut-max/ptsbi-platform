@@ -112,6 +112,137 @@ body.ptprm-is-subpage .widget-area {
     width: 100%;
     max-width: 100%;
 }
+
+/* ==========================================================================
+   Bidang pages (public)
+   ========================================================================== */
+.ptprm-bidang-public {
+    max-width: 980px;
+    margin: 0 auto;
+    padding: 2rem 1rem;
+}
+.ptprm-bidang-title {
+    margin: 0 0 1.25rem;
+    font-size: clamp(1.4rem, 1.1rem + 1vw, 2rem);
+}
+.ptprm-bidang-block {
+    margin: 1.25rem 0;
+    padding: 1.1rem 1.1rem;
+    border: 1px solid var(--ptprm-line);
+    border-radius: var(--ptprm-radius);
+    background: rgba(255,255,255,.6);
+    backdrop-filter: blur(8px);
+}
+.ptprm-bidang-block h3 {
+    margin-top: 0;
+    margin-bottom: .75rem;
+}
+.ptprm-bidang-muted {
+    opacity: .75;
+}
+.ptprm-bidang-program-grid {
+    display: grid;
+    grid-template-columns: repeat( auto-fit, minmax( 240px, 1fr ) );
+    gap: .9rem;
+}
+.ptprm-bidang-program-card {
+    border: 1px solid var(--ptprm-line);
+    border-radius: 14px;
+    background: rgba(255,255,255,.85);
+    padding: .9rem;
+}
+.ptprm-bidang-program-title {
+    margin: 0 0 .35rem;
+    font-size: 1.05rem;
+}
+.ptprm-bidang-program-meta {
+    margin: 0 0 .55rem;
+    opacity: .9;
+}
+.ptprm-bidang-post-list {
+    margin: .5rem 0 0;
+    padding-left: 1.1rem;
+}
+.ptprm-bidang-post-list--compact li {
+    margin: .25rem 0;
+}
+
+/* ==========================================================================
+   Modal (undangan/pengumuman)
+   ========================================================================== */
+body.ptprm-modal-open {
+    overflow: hidden;
+}
+.ptprm-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: none;
+}
+.ptprm-modal.is-open {
+    display: block;
+}
+.ptprm-modal__backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,.55);
+}
+.ptprm-modal__dialog {
+    position: relative;
+    margin: 6vh auto;
+    max-width: 920px;
+    width: min(920px, calc(100% - 2rem));
+    background: #fff;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 30px 90px rgba(0,0,0,.25);
+}
+.ptprm-modal__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1rem 1rem;
+    border-bottom: 1px solid var(--ptprm-line);
+}
+.ptprm-modal__title {
+    margin: 0;
+    font-size: 1.15rem;
+}
+.ptprm-modal__meta {
+    margin-top: .15rem;
+    opacity: .7;
+    font-size: .95rem;
+}
+.ptprm-modal__close {
+    appearance: none;
+    border: 0;
+    background: transparent;
+    font-size: 1.7rem;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0 .25rem;
+    opacity: .8;
+}
+.ptprm-modal__body {
+    padding: 1rem 1rem;
+    max-height: 70vh;
+    overflow: auto;
+}
+.ptprm-modal__poster {
+    width: 100%;
+    height: auto;
+    border-radius: 12px;
+    border: 1px solid var(--ptprm-line);
+}
+.ptprm-modal__footer {
+    padding: .9rem 1rem 1.1rem;
+    border-top: 1px solid var(--ptprm-line);
+    display: flex;
+    gap: .6rem;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+}
 .ptprm-section,
 .ptprm-hero,
 .ptprm-subhero,

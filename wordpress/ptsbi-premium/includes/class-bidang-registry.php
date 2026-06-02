@@ -64,45 +64,159 @@ class PTPRM_Bidang_Registry {
     }
 
     /**
-     * @return array{visi:string,misi:string,program:string}
+     * @return array{visi:string,misi:string,program:string,program_items:array<int,array{judul:string,tujuan:string,sasaran:string,waktu:string}>,undangan_post_id:int}
      */
     public static function get_content( string $slug ): array {
         $slug = sanitize_key( $slug );
         $o    = ptprm_options();
         $key  = self::content_option_key( $slug );
         $raw  = isset( $o[ $key ] ) ? trim( (string) $o[ $key ] ) : '';
-        $base = [ 'visi' => '', 'misi' => '', 'program' => '' ];
+        $base = [
+            'visi'            => '',
+            'misi'            => '',
+            'program'         => '',
+            'program_items'   => [],
+            'undangan_post_id'=> 0,
+        ];
         if ( $raw === '' ) {
-            return $base;
+            return self::default_content( $slug, $base );
         }
         $decoded = json_decode( $raw, true );
         if ( ! is_array( $decoded ) ) {
-            return $base;
+            return self::default_content( $slug, $base );
         }
-        return [
-            'visi'    => sanitize_textarea_field( (string) ( $decoded['visi'] ?? '' ) ),
-            'misi'    => sanitize_textarea_field( (string) ( $decoded['misi'] ?? '' ) ),
-            'program' => sanitize_textarea_field( (string) ( $decoded['program'] ?? '' ) ),
+        $items = [];
+        if ( isset( $decoded['program_items'] ) && is_array( $decoded['program_items'] ) ) {
+            foreach ( $decoded['program_items'] as $row ) {
+                if ( ! is_array( $row ) ) {
+                    continue;
+                }
+                $judul  = sanitize_text_field( (string) ( $row['judul'] ?? '' ) );
+                $tujuan = sanitize_textarea_field( (string) ( $row['tujuan'] ?? '' ) );
+                $sas    = sanitize_textarea_field( (string) ( $row['sasaran'] ?? '' ) );
+                $waktu  = sanitize_text_field( (string) ( $row['waktu'] ?? '' ) );
+                if ( $judul === '' && $tujuan === '' && $sas === '' && $waktu === '' ) {
+                    continue;
+                }
+                $items[] = [
+                    'judul'  => $judul,
+                    'tujuan' => $tujuan,
+                    'sasaran'=> $sas,
+                    'waktu'  => $waktu,
+                ];
+            }
+        }
+        $out = [
+            'visi'            => sanitize_textarea_field( (string) ( $decoded['visi'] ?? '' ) ),
+            'misi'            => sanitize_textarea_field( (string) ( $decoded['misi'] ?? '' ) ),
+            'program'         => sanitize_textarea_field( (string) ( $decoded['program'] ?? '' ) ),
+            'program_items'   => $items,
+            'undangan_post_id'=> (int) ( $decoded['undangan_post_id'] ?? 0 ),
         ];
+        return self::default_content( $slug, $out );
     }
 
     /**
-     * @param array{visi?:string,misi?:string,program?:string} $content
+     * @param array{visi?:string,misi?:string,program?:string,program_items?:array<int,array{judul?:string,tujuan?:string,sasaran?:string,waktu?:string}>,undangan_post_id?:int} $content
      */
     public static function save_content( string $slug, array $content ): void {
         $slug = sanitize_key( $slug );
         if ( ! isset( self::bidangs()[ $slug ] ) ) {
             return;
         }
+        $items = [];
+        if ( isset( $content['program_items'] ) && is_array( $content['program_items'] ) ) {
+            foreach ( $content['program_items'] as $row ) {
+                if ( ! is_array( $row ) ) {
+                    continue;
+                }
+                $judul  = sanitize_text_field( (string) ( $row['judul'] ?? '' ) );
+                $tujuan = sanitize_textarea_field( (string) ( $row['tujuan'] ?? '' ) );
+                $sas    = sanitize_textarea_field( (string) ( $row['sasaran'] ?? '' ) );
+                $waktu  = sanitize_text_field( (string) ( $row['waktu'] ?? '' ) );
+                if ( $judul === '' && $tujuan === '' && $sas === '' && $waktu === '' ) {
+                    continue;
+                }
+                $items[] = [
+                    'judul'  => $judul,
+                    'tujuan' => $tujuan,
+                    'sasaran'=> $sas,
+                    'waktu'  => $waktu,
+                ];
+            }
+        }
         $payload = [
             'visi'    => sanitize_textarea_field( (string) ( $content['visi'] ?? '' ) ),
             'misi'    => sanitize_textarea_field( (string) ( $content['misi'] ?? '' ) ),
             'program' => sanitize_textarea_field( (string) ( $content['program'] ?? '' ) ),
+            'program_items'    => $items,
+            'undangan_post_id' => (int) ( $content['undangan_post_id'] ?? 0 ),
         ];
         $opts         = (array) get_option( PTPRM_OPTION, [] );
         $opts[ self::content_option_key( $slug ) ] = wp_json_encode( $payload, JSON_UNESCAPED_UNICODE );
         update_option( PTPRM_OPTION, ptprm_normalize_option_for_storage( $opts ), true );
         wp_cache_delete( PTPRM_OPTION, 'options' );
+    }
+
+    /**
+     * Isi demo copywriting jika konten kosong.
+     *
+     * @param array{visi:string,misi:string,program:string,program_items:array<int,array{judul:string,tujuan:string,sasaran:string,waktu:string}>,undangan_post_id:int} $current
+     * @return array{visi:string,misi:string,program:string,program_items:array<int,array{judul:string,tujuan:string,sasaran:string,waktu:string}>,undangan_post_id:int}
+     */
+    private static function default_content( string $slug, array $current ): array {
+        if ( $current['visi'] !== '' || $current['misi'] !== '' || $current['program'] !== '' || $current['program_items'] !== [] ) {
+            return $current;
+        }
+        $slug = sanitize_key( $slug );
+        $title = isset( self::bidangs()[ $slug ] ) ? (string) self::bidangs()[ $slug ]['title'] : '';
+        $base = [
+            'visi'          => sprintf( 'Menjadi bidang yang tanggap, terukur, dan berdampak nyata bagi anggota melalui program %s yang berkelanjutan.', $title !== '' ? $title : 'organisasi' ),
+            'misi'          => "1) Menyusun program kerja tahunan yang realistis.\n2) Menggerakkan kolaborasi lintas bidang.\n3) Mencatat, mengevaluasi, dan melaporkan hasil kegiatan secara terbuka.",
+            'program'       => '',
+            'program_items' => [
+                [
+                    'judul'  => 'Program unggulan 1',
+                    'tujuan' => 'Menjawab kebutuhan prioritas anggota dan organisasi.',
+                    'sasaran'=> 'Anggota aktif, keluarga anggota, dan mitra kegiatan.',
+                    'waktu'  => 'Juni 2006 – Desember 2027',
+                ],
+                [
+                    'judul'  => 'Program unggulan 2',
+                    'tujuan' => 'Meningkatkan partisipasi dan kualitas pelayanan bidang.',
+                    'sasaran'=> 'Pengurus bidang, relawan, dan perwakilan wilayah.',
+                    'waktu'  => 'Januari 2026 – Desember 2026',
+                ],
+            ],
+            'undangan_post_id' => 0,
+        ];
+        if ( $slug === 'hukum' ) {
+            $base['program_items'][0]['judul']  = 'Klinik konsultasi hukum anggota';
+            $base['program_items'][0]['tujuan'] = 'Memberi edukasi dan pendampingan awal terkait isu perdata/keluarga/administrasi.';
+            $base['program_items'][0]['sasaran']= 'Anggota yang membutuhkan konsultasi dasar dan rujukan.';
+            $base['program_items'][0]['waktu']  = 'Juli 2026 – Desember 2027';
+        } elseif ( $slug === 'sekretariat' ) {
+            $base['program_items'][0]['judul']  = 'Tata kelola administrasi & data organisasi';
+            $base['program_items'][0]['tujuan'] = 'Merapikan administrasi, surat-menyurat, dan arsip kegiatan.';
+            $base['program_items'][0]['sasaran']= 'Seluruh bidang & pengurus.';
+            $base['program_items'][0]['waktu']  = 'Juni 2026 – Desember 2027';
+        } elseif ( $slug === 'adat-budaya' ) {
+            $base['program_items'][0]['judul']  = 'Pelestarian adat & budaya melalui kegiatan rutin';
+            $base['program_items'][0]['tujuan'] = 'Memperkuat identitas budaya dan edukasi lintas generasi.';
+            $base['program_items'][0]['sasaran']= 'Anggota dan generasi muda.';
+            $base['program_items'][0]['waktu']  = 'Agustus 2026 – Desember 2027';
+        } elseif ( $slug === 'usaha-dana' ) {
+            $base['program_items'][0]['judul']  = 'Penguatan usaha & dana kegiatan organisasi';
+            $base['program_items'][0]['tujuan'] = 'Membangun sumber dana yang sehat, transparan, dan berkelanjutan.';
+            $base['program_items'][0]['sasaran']= 'Bidang dan panitia kegiatan.';
+            $base['program_items'][0]['waktu']  = 'Juni 2026 – Desember 2027';
+        } elseif ( $slug === 'sos-dik-mud' ) {
+            $base['program_items'][0]['judul']  = 'Program sosial & pengembangan pemuda';
+            $base['program_items'][0]['tujuan'] = 'Meningkatkan kepedulian sosial dan kapasitas generasi muda.';
+            $base['program_items'][0]['sasaran']= 'Anggota, pemuda, dan keluarga anggota.';
+            $base['program_items'][0]['waktu']  = 'Juni 2026 – Desember 2027';
+        }
+        return $base;
     }
 
     public static function category_slug( string $bidang_slug, string $type ): string {
