@@ -60,7 +60,12 @@ ssh "${SSH_OPTS[@]}" "${SSH_HOST}" bash -s <<EOF
 set -euo pipefail
 docker cp ${REMOTE_DIR} ${WP_CONTAINER}:/var/www/html/wp-content/plugins/ptsbi-premium
 docker exec ${WP_CONTAINER} chown -R www-data:www-data /var/www/html/wp-content/plugins/ptsbi-premium
+echo "==> Versi di host:"
 grep PTPRM_VERSION ${REMOTE_DIR}/ptsbi-premium.php | head -1
+echo "==> Versi di container:"
+docker exec ${WP_CONTAINER} grep PTPRM_VERSION /var/www/html/wp-content/plugins/ptsbi-premium/ptsbi-premium.php | head -1
+docker exec ${WP_CONTAINER} wp cache flush --allow-root 2>/dev/null || true
+docker exec ${WP_CONTAINER} wp litespeed-purge all --allow-root 2>/dev/null || true
 EOF
 
 echo "Selesai. Plugin ptsbi-premium terpasang — cek PTPRM_VERSION di atas."

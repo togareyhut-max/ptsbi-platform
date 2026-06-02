@@ -19,6 +19,10 @@ get_header(); ?>
             while ( have_posts() ) {
                 the_post();
                 the_content();
+                if ( class_exists( 'PTPRM_Board_Display' ) ) {
+                    // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+                    echo PTPRM_Board_Display::render_for_current_page();
+                }
             }
             ?>
         </div>

@@ -105,7 +105,11 @@ class PTPRM_Settings {
 
         $clean = $this->sanitize( $raw );
         $clean['_site_fingerprint'] = PTPRM_Bootstrap::site_fingerprint();
-        update_option( PTPRM_OPTION, ptprm_normalize_option_for_storage( $clean ), true );
+        $stored = get_option( PTPRM_OPTION, [] );
+        if ( is_array( $stored ) && $stored ) {
+            $clean = array_merge( $stored, $clean );
+        }
+        update_option( PTPRM_OPTION, ptprm_preserve_board_keys_for_storage( $clean ), true );
         wp_cache_delete( PTPRM_OPTION, 'options' );
         wp_cache_delete( 'alloptions', 'options' );
 

@@ -13,7 +13,7 @@ class PTPRM_Board_Registry {
 
     public const OPTION_SEEDED          = 'ptprm_boards_seeded_v1';
     public const OPTION_CATALOG_VERSION = 'ptprm_board_catalog_version';
-    public const CATALOG_VERSION        = '3.1.6';
+    public const CATALOG_VERSION        = '3.1.7';
 
     /**
      * Halaman WP tambahan yang menampilkan pengurus pusat.
@@ -23,6 +23,7 @@ class PTPRM_Board_Registry {
     public static function extra_page_slugs(): array {
         return [
             'struktur-organisasi' => 'pusat',
+            'pengurus-pusat'      => 'pusat',
         ];
     }
 
@@ -73,14 +74,21 @@ class PTPRM_Board_Registry {
         ];
     }
 
+    /** Key di ptprm_options (legacy). */
     public static function option_key( string $region ): string {
         return 'board_' . sanitize_key( $region );
+    }
+
+    /** Opsi WP terpisah — tidak ikut tertimpa saat simpan pengaturan plugin. */
+    public static function standalone_option_key( string $region ): string {
+        return 'ptprm_board_data_' . sanitize_key( $region );
     }
 
     public static function init(): void {
         add_action( 'init', [ __CLASS__, 'maybe_seed_defaults' ], 12 );
         add_action( 'init', [ __CLASS__, 'ensure_region_pages' ], 13 );
         add_action( 'init', [ __CLASS__, 'maybe_apply_catalog_version' ], 14 );
+        add_action( 'init', [ __CLASS__, 'maybe_migrate_standalone_storage' ], 15 );
     }
 
     public static function maybe_seed_defaults(): void {
@@ -88,22 +96,33 @@ class PTPRM_Board_Registry {
             return;
         }
         $catalog = ptprm_board_default_catalog();
-        $opts    = (array) get_option( PTPRM_OPTION, [] );
         foreach ( self::regions() as $slug => $meta ) {
             unset( $meta );
-            $key = self::option_key( $slug );
-            if ( empty( $opts[ $key ] ) ) {
-                $items        = $catalog[ $slug ] ?? [];
-                $opts[ $key ] = wp_json_encode( ptprm_sanitize_board_items( $items ), JSON_UNESCAPED_UNICODE );
+            if ( self::get_items( $slug ) === [] ) {
+                self::save_items( $slug, $catalog[ $slug ] ?? [], false );
             }
         }
-        update_option( PTPRM_OPTION, ptprm_normalize_option_for_storage( $opts ), true );
         update_option( self::OPTION_SEEDED, 1, false );
     }
 
-    /**
-     * Terapkan katalog pengurus terbaru sekali per versi plugin (nama/jabatan); foto admin tetap.
-     */
+    public static function maybe_migrate_standalone_storage(): void {
+        if ( get_option( 'ptprm_board_standalone_v1' ) ) {
+            return;
+        }
+        foreach ( self::regions() as $slug => $meta ) {
+            unset( $meta );
+            $legacy = self::read_legacy_raw( $slug );
+            if ( $legacy === '' || $legacy === '[]' ) {
+                continue;
+            }
+            $existing = get_option( self::standalone_option_key( $slug ), '' );
+            if ( ! is_string( $existing ) || $existing === '' || $existing === '[]' ) {
+                update_option( self::standalone_option_key( $slug ), $legacy, false );
+            }
+        }
+        update_option( 'ptprm_board_standalone_v1', 1, false );
+    }
+
     public static function maybe_apply_catalog_version(): void {
         if ( get_option( self::OPTION_CATALOG_VERSION ) === self::CATALOG_VERSION ) {
             return;
@@ -123,7 +142,6 @@ class PTPRM_Board_Registry {
         update_option( self::OPTION_CATALOG_VERSION, self::CATALOG_VERSION, false );
     }
 
-    /** Perbarui judul halaman wilayah (mis. hilangkan "2025-2030" di Medan). */
     public static function sync_region_page_titles(): void {
         foreach ( self::regions() as $meta ) {
             $slug  = (string) $meta['page_slug'];
@@ -151,7 +169,7 @@ class PTPRM_Board_Registry {
     }
 
     public static function ensure_region_pages(): void {
-        if ( get_option( 'ptprm_board_pages_v1' ) ) {
+        if ( get_option( 'ptprm_board_pages_v2' ) ) {
             return;
         }
         foreach ( self::regions() as $meta ) {
@@ -178,8 +196,33 @@ class PTPRM_Board_Registry {
                 ]
             );
         }
-        update_option( 'ptprm_board_pages_v1', 1, false );
+        update_option( 'ptprm_board_pages_v2', 1, false );
         flush_rewrite_rules( false );
+    }
+
+    private static function read_legacy_raw( string $region ): string {
+        $opts = get_option( PTPRM_OPTION, [] );
+        if ( ! is_array( $opts ) ) {
+            return '';
+        }
+        $key = self::option_key( $region );
+        return isset( $opts[ $key ] ) ? trim( (string) $opts[ $key ] ) : '';
+    }
+
+    private static function catalog_items( string $region ): array {
+        $catalog = ptprm_board_default_catalog();
+        return ptprm_sanitize_board_items( $catalog[ $region ] ?? [] );
+    }
+
+    private static function decode_items( string $raw, string $region ): array {
+        if ( $raw === '' || $raw === '[]' ) {
+            return [];
+        }
+        $decoded = json_decode( $raw, true );
+        if ( ! is_array( $decoded ) ) {
+            return [];
+        }
+        return ptprm_sanitize_board_items( $decoded );
     }
 
     /**
@@ -190,27 +233,18 @@ class PTPRM_Board_Registry {
         if ( ! isset( self::regions()[ $region ] ) ) {
             return [];
         }
-        $opts = get_option( PTPRM_OPTION, [] );
-        if ( ! is_array( $opts ) ) {
-            $opts = [];
+
+        $raw = get_option( self::standalone_option_key( $region ), '' );
+        if ( ! is_string( $raw ) || $raw === '' ) {
+            $raw = self::read_legacy_raw( $region );
         }
-        $key = self::option_key( $region );
-        $raw = isset( $opts[ $key ] ) ? trim( (string) $opts[ $key ] ) : '';
-        if ( $raw === '' || $raw === '[]' ) {
-            $catalog = ptprm_board_default_catalog();
-            return ptprm_sanitize_board_items( $catalog[ $region ] ?? [] );
-        }
-        $decoded = json_decode( $raw, true );
-        if ( ! is_array( $decoded ) ) {
-            $catalog = ptprm_board_default_catalog();
-            return ptprm_sanitize_board_items( $catalog[ $region ] ?? [] );
-        }
-        $items = ptprm_sanitize_board_items( $decoded );
+
+        $items = self::decode_items( is_string( $raw ) ? $raw : '', $region );
         if ( $items !== [] ) {
             return $items;
         }
-        $catalog = ptprm_board_default_catalog();
-        return ptprm_sanitize_board_items( $catalog[ $region ] ?? [] );
+
+        return self::catalog_items( $region );
     }
 
     /**
@@ -222,6 +256,9 @@ class PTPRM_Board_Registry {
             return;
         }
         $items = ptprm_sanitize_board_items( $items );
+        if ( $items === [] ) {
+            return;
+        }
         if ( 'pusat' === $region ) {
             foreach ( $items as $i => $item ) {
                 if ( self::is_featured_item( 'pusat', $item ) ) {
@@ -229,14 +266,19 @@ class PTPRM_Board_Registry {
                 }
             }
         }
+
+        $json = wp_json_encode( $items, JSON_UNESCAPED_UNICODE );
+        update_option( self::standalone_option_key( $region ), $json, false );
+
         $opts = (array) get_option( PTPRM_OPTION, [] );
         if ( ! is_array( $opts ) ) {
             $opts = [];
         }
-        $opts[ self::option_key( $region ) ] = wp_json_encode( $items, JSON_UNESCAPED_UNICODE );
-        update_option( PTPRM_OPTION, ptprm_normalize_option_for_storage( $opts ), true );
+        $opts[ self::option_key( $region ) ] = $json;
+        update_option( PTPRM_OPTION, ptprm_preserve_board_keys_for_storage( $opts ), true );
         wp_cache_delete( PTPRM_OPTION, 'options' );
         wp_cache_delete( 'alloptions', 'options' );
+        wp_cache_delete( self::standalone_option_key( $region ), 'options' );
 
         if ( $purge_cache && class_exists( 'PTPRM_Cache_Purge' ) ) {
             PTPRM_Cache_Purge::purge_all();
