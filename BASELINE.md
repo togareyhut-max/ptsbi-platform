@@ -28,10 +28,9 @@ Live  versi              : 3.1.1
 
 ## Aturan kerja setelah baseline
 
-1. **Jangan deploy otomatis** — deploy ke ptsbi.org hanya lewat GitHub Actions **Deploy ptsbi-premium** (ketik `DEPLOY`).
-2. **Sync dari live** — workflow **Sync Production Baseline** jika server berubah di luar repo.
-3. **Rollback** — `bash wordpress/rollback-plugin-to-production-baseline.sh` lalu commit.
-4. **Eksperimen** — buat branch terpisah; jangan push langsung ke `main` tanpa verifikasi.
+1. **Baseline asli:** tag `baseline-v3.1.1` — plugin sebelum perbaikan save pengurus.
+2. **Perbaikan save pengurus:** v3.1.2 (render server-side, tolak JSON kosong).
+3. **Deploy ke ptsbi.org** — GitHub Actions → Deploy ptsbi-premium → ketik `DEPLOY`.
 
 ## Yang dibuang saat baseline
 

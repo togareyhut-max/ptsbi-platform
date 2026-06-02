@@ -134,10 +134,35 @@ class PTPRM_Board_Registry {
         if ( ! isset( self::regions()[ $region ] ) ) {
             return;
         }
-        $opts         = (array) get_option( PTPRM_OPTION, [] );
-        $opts[ self::option_key( $region ) ] = wp_json_encode( ptprm_sanitize_board_items( $items ), JSON_UNESCAPED_UNICODE );
+        $items = ptprm_sanitize_board_items( $items );
+        if ( $items === [] ) {
+            return;
+        }
+        if ( 'pusat' === $region ) {
+            foreach ( $items as $i => $item ) {
+                if ( self::is_featured_item( 'pusat', $item ) ) {
+                    $items[ $i ]['featured'] = 1;
+                }
+            }
+        }
+        $opts                              = (array) get_option( PTPRM_OPTION, [] );
+        $opts[ self::option_key( $region ) ] = wp_json_encode( $items, JSON_UNESCAPED_UNICODE );
         update_option( PTPRM_OPTION, ptprm_normalize_option_for_storage( $opts ), true );
         wp_cache_delete( PTPRM_OPTION, 'options' );
+    }
+
+    /** Jabatan inti yang wajib punya kolom URL foto di panel admin pusat. */
+    public static function is_core_photo_role( string $role ): bool {
+        $role = strtolower( trim( $role ) );
+        if ( $role === '' ) {
+            return false;
+        }
+        foreach ( self::featured_roles_for_region( 'pusat' ) as $needle ) {
+            if ( $role === $needle || strpos( $role, $needle ) !== false ) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public static function featured_roles_for_region( string $region ): array {
