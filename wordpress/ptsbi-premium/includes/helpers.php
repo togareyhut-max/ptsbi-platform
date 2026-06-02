@@ -756,9 +756,9 @@ function ptprm_defaults() {
         'members_register_notify_wa'     => 1,
 
         /* -------- Membership API (service terpisah) -------- */
-        'membership_api_enabled'         => 0,
-        'membership_api_base_url'        => '',
-        'membership_api_integration_key' => '',
+        'membership_api_enabled'         => 1,
+        'membership_api_base_url'        => 'https://tarombo.ptsbi.org/v1',
+        'membership_api_integration_key' => 'ptsbi-wp-bridge-2026',
         'membership_api_timeout_sec'     => 15,
 
         /* -------- HOME ORDER -------- */
@@ -834,6 +834,16 @@ function ptprm_defaults() {
         'gallery_dots'      => 1,        // slider dots
         'gallery_speed'     => 35,       // s (marquee duration)
         'gallery_pause'     => 1,        // pause on hover (both modes)
+
+        /* -------- PDF LIGHTBOX -------- */
+        'pdf_lightbox_show'     => 0,
+        'pdf_lightbox_eyebrow'  => 'DOKUMEN',
+        'pdf_lightbox_title'    => 'Arsip & Publikasi',
+        'pdf_lightbox_subtitle' => 'Unduh atau baca dokumen PDF organisasi.',
+        'pdf_lightbox_items'    => '',
+        'pdf_lightbox_columns'  => 3,
+        'pdf_publications_page_slug' => 'publikasi-dan-dokumentasi',
+        'pdf_publications_intro'     => '',
 
         /* -------- BANNER CTA -------- */
         'banner_show'      => 0,
@@ -919,7 +929,7 @@ function ptprm_retired_home_section_slugs(): array {
  * @return list<string>
  */
 function ptprm_home_section_slugs(): array {
-    return [ 'about', 'values', 'activities', 'gallery', 'stats', 'tarombo_digital', 'visit' ];
+    return [ 'about', 'values', 'activities', 'gallery', 'pdf_lightbox', 'stats', 'tarombo_digital', 'visit' ];
 }
 
 /**
@@ -933,6 +943,7 @@ function ptprm_home_section_labels(): array {
         'values'          => 'Nilai-Nilai',
         'activities'      => 'Kegiatan',
         'gallery'         => 'Galeri',
+        'pdf_lightbox'    => 'Galeri PDF',
         'stats'           => 'Statistik',
         'tarombo_digital' => 'Tarombo Digital',
         'visit'           => 'Kunjungi',
@@ -945,7 +956,7 @@ function ptprm_home_section_labels(): array {
  * @return list<string>
  */
 function ptprm_default_home_sections_order(): array {
-    return [ 'about', 'values', 'activities', 'gallery', 'stats', 'tarombo_digital', 'visit' ];
+    return [ 'about', 'values', 'activities', 'gallery', 'pdf_lightbox', 'stats', 'tarombo_digital', 'visit' ];
 }
 
 /**
@@ -1204,6 +1215,86 @@ function ptprm_get_team_items( ?array $o = null ): array {
         }
     }
     return ptprm_migrate_team_from_legacy( $o );
+}
+
+function ptprm_get_pdf_lightbox_items( ?array $o = null ): array {
+    $o = $o ?? ptprm_options();
+    if ( ! empty( $o['pdf_lightbox_items'] ) ) {
+        $decoded = json_decode( (string) $o['pdf_lightbox_items'], true );
+        if ( is_array( $decoded ) ) {
+            return ptprm_sanitize_pdf_lightbox_items( $decoded );
+        }
+    }
+    return [];
+}
+
+function ptprm_sanitize_pdf_lightbox_items( $raw ): array {
+    if ( is_string( $raw ) ) {
+        $decoded = json_decode( wp_unslash( $raw ), true );
+        $raw     = is_array( $decoded ) ? $decoded : [];
+    }
+    if ( ! is_array( $raw ) ) {
+        return [];
+    }
+    $out = [];
+    foreach ( $raw as $row ) {
+        if ( ! is_array( $row ) ) {
+            continue;
+        }
+        $title = sanitize_text_field( $row['title'] ?? '' );
+        $pdf   = $row['pdf'] ?? '';
+        if ( is_numeric( $pdf ) ) {
+            $pdf_id  = (int) $pdf;
+            $pdf_url = $pdf_id > 0 ? (string) wp_get_attachment_url( $pdf_id ) : '';
+        } else {
+            $pdf_id  = 0;
+            $pdf_url = esc_url_raw( (string) $pdf );
+        }
+        if ( $pdf_url === '' ) {
+            continue;
+        }
+        $cover = $row['cover'] ?? '';
+        if ( is_numeric( $cover ) ) {
+            $cover_id  = (int) $cover;
+            $cover_url = $cover_id > 0 ? (string) wp_get_attachment_image_url( $cover_id, 'medium' ) : '';
+        } else {
+            $cover_url = esc_url_raw( (string) $cover );
+        }
+        $out[] = [
+            'title'     => $title !== '' ? $title : basename( (string) parse_url( $pdf_url, PHP_URL_PATH ) ),
+            'pdf'       => $pdf_id > 0 ? (string) $pdf_id : $pdf_url,
+            'pdf_url'   => $pdf_url,
+            'cover'     => is_numeric( $cover ) ? (string) (int) $cover : $cover_url,
+            'cover_url' => $cover_url,
+        ];
+        if ( count( $out ) >= 24 ) {
+            break;
+        }
+    }
+    return $out;
+}
+
+/**
+ * Slug halaman publikasi PDF (dari pengaturan plugin).
+ *
+ * @param array<string,mixed>|null $o
+ */
+function ptprm_publications_page_slug( ?array $o = null ): string {
+    $o    = $o ?? ptprm_options();
+    $slug = sanitize_title( (string) ( $o['pdf_publications_page_slug'] ?? 'publikasi-dan-dokumentasi' ) );
+    return $slug !== '' ? $slug : 'publikasi-dan-dokumentasi';
+}
+
+/**
+ * @param array<string,mixed>|null $o
+ */
+function ptprm_publications_page_url( ?array $o = null ): string {
+    $slug = ptprm_publications_page_slug( $o );
+    $page = get_page_by_path( $slug, OBJECT, 'page' );
+    if ( $page instanceof WP_Post ) {
+        return (string) get_permalink( $page );
+    }
+    return trailingslashit( home_url( '/' . $slug ) );
 }
 
 function ptprm_sanitize_values_items( $raw ): array {
