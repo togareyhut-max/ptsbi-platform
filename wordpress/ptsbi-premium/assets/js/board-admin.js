@@ -1,30 +1,6 @@
 (function ($) {
     'use strict';
 
-    var labels = {
-        role: 'Jabatan',
-        name: 'Nama',
-        group: 'Kelompok (opsional)',
-        image: 'URL foto',
-        featured: 'Tampilkan dengan foto (pusat)',
-        pickImage: 'Pilih dari media',
-        imageHint: 'Kosongkan URL lalu pilih media untuk mengisi otomatis, atau tempel tautan gambar langsung.',
-        groupPlaceholder: 'Dewan Penasehat',
-        imagePlaceholder: 'https://... atau ID media',
-    };
-
-    if (typeof window.ptprmBoardAdminL10n === 'object' && window.ptprmBoardAdminL10n) {
-        labels = $.extend(labels, window.ptprmBoardAdminL10n);
-    }
-
-    function decodeJsonB64(b64) {
-        try {
-            return JSON.parse(atob(b64 || '') || '[]');
-        } catch (e) {
-            return [];
-        }
-    }
-
     function regionHasPhotos() {
         return $('#ptprm-board-has-featured').val() === '1';
     }
@@ -43,26 +19,9 @@
             setPhotoFieldVisible($row, false);
             return;
         }
-        setPhotoFieldVisible($row, $row.find('[data-field="featured"]').is(':checked'));
-    }
-
-    function buildRowHtml() {
-        return (
-            '<li class="ptprm-board-admin-row">' +
-            '<label><span>' + labels.role + '</span><input type="text" data-field="role"></label>' +
-            '<label><span>' + labels.name + '</span><input type="text" data-field="name" required></label>' +
-            '<label><span>' + labels.group + '</span><input type="text" data-field="group" placeholder="' + labels.groupPlaceholder + '"></label>' +
-            '<div class="ptprm-board-photo-field" hidden>' +
-            '<label><span>' + labels.image + '</span>' +
-            '<input type="text" data-field="image" placeholder="' + labels.imagePlaceholder + '" inputmode="url" autocomplete="off">' +
-            '</label>' +
-            '<p class="ptprm-board-photo-actions"><button type="button" class="button ptprm-board-pick-image">' + labels.pickImage + '</button></p>' +
-            '<p class="ptprm-board-photo-hint">' + labels.imageHint + '</p>' +
-            '</div>' +
-            '<label><input type="checkbox" data-field="featured"> ' + labels.featured + '</label>' +
-            '<button type="button" class="button-link-delete ptprm-board-remove">&times;</button>' +
-            '</li>'
-        );
+        var featured = $row.find('[data-field="featured"]').is(':checked');
+        var auto = $row.attr('data-auto-featured') === '1';
+        setPhotoFieldVisible($row, featured || auto);
     }
 
     function collectRows($list) {
@@ -111,25 +70,21 @@
         });
     }
 
-    function addRow($list, data) {
-        var $row = $(buildRowHtml());
-        if (!$row.length) {
-            return;
+    function cloneRowFromTemplate($list) {
+        var $tpl = $('#ptprm-board-row-tpl .ptprm-board-admin-row').first();
+        if (!$tpl.length) {
+            return null;
         }
-        if (data) {
-            $row.find('[data-field="role"]').val(data.role || '');
-            $row.find('[data-field="name"]').val(data.name || '');
-            $row.find('[data-field="group"]').val(data.group || '');
-            $row.find('[data-field="image"]').val(data.image || '');
-            if (data.featured) {
-                $row.find('[data-field="featured"]').prop('checked', true);
-            }
-        }
+        var $row = $tpl.clone();
+        $row.find('input[type="text"], input[type="url"]').val('');
+        $row.find('input[type="checkbox"]').prop('checked', false);
+        $row.removeAttr('data-auto-featured');
         $list.append($row);
         bindRow($row);
+        return $row;
     }
 
-    function syncJson($form, $list) {
+    function syncJson($list) {
         var items = collectRows($list);
         $('#ptprm-board-json').val(JSON.stringify(items));
         return items.length;
@@ -141,24 +96,28 @@
         if (!$list.length || !$form.length) {
             return;
         }
-        var items = decodeJsonB64($list.attr('data-json-b64'));
-        if (!items.length) {
-            items = [{ role: '', name: '', group: '', image: '', featured: 0 }];
+
+        $list.find('.ptprm-board-admin-row').each(function () {
+            bindRow($(this));
+        });
+
+        if (!$list.find('.ptprm-board-admin-row').length) {
+            cloneRowFromTemplate($list);
         }
-        items.forEach(function (item) {
-            addRow($list, item);
-        });
+
         $('#ptprm-board-add').on('click', function () {
-            addRow($list, null);
+            cloneRowFromTemplate($list);
         });
+
         $form.on('submit', function (e) {
-            if (!syncJson($form, $list)) {
+            if (!syncJson($list)) {
                 e.preventDefault();
                 window.alert('Setiap baris pengurus harus memiliki nama sebelum disimpan.');
             }
         });
+
         $form.find('button[type="submit"]').on('click', function () {
-            syncJson($form, $list);
+            syncJson($list);
         });
     });
 })(jQuery);

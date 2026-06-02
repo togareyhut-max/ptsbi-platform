@@ -115,6 +115,7 @@ class PTPRM_Admin_Portal {
         if ( ! isset( $out['ringkasan'] ) ) {
             $out = array_merge( [ 'ringkasan' => __( 'Ringkasan', 'ptsbi-premium' ) ], $out );
         }
+        unset( $out['struktur'] );
         return $out;
     }
 
@@ -335,6 +336,9 @@ class PTPRM_Admin_Portal {
         }
 
         $tab = sanitize_key( (string) ( $_GET['tab'] ?? 'ringkasan' ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+        if ( $tab === 'struktur' ) {
+            $tab = 'pengurus';
+        }
         $allowed = array_keys( $tabs );
         if ( ! in_array( $tab, $allowed, true ) ) {
             $tab = 'ringkasan';
@@ -347,9 +351,6 @@ class PTPRM_Admin_Portal {
         echo '<header class="ptprm-portal-head">';
         echo '<h2 class="ptprm-portal-title">' . esc_html( PTPRM_Access::is_org_admin() ? __( 'Panel Admin Organisasi', 'ptsbi-premium' ) : __( 'Panel Pengurus', 'ptsbi-premium' ) ) . '</h2>';
         echo '<p class="ptprm-portal-greet">' . esc_html( sprintf( __( 'Halo, %s', 'ptsbi-premium' ), $user->display_name ?: $user->user_login ) ) . '</p>';
-        echo '<div class="ptprm-portal-head-actions">';
-        PTPRM_Access::render_logout_link( 'ptprm-cta-outline' );
-        echo '</div>';
         echo '</header>';
 
         echo '<nav class="ptprm-portal-tabs" aria-label="' . esc_attr__( 'Menu panel pengurus', 'ptsbi-premium' ) . '">';
@@ -366,21 +367,14 @@ class PTPRM_Admin_Portal {
         $this->render_portal_flash_notices( $tab );
         switch ( $tab ) {
             case 'anggota':
-            case 'struktur':
-                if ( ! $this->can_access_members_tab() && $tab === 'anggota' ) {
+                if ( ! $this->can_access_members_tab() ) {
                     $this->render_tab_dashboard();
                     break;
                 }
-                if ( $tab === 'struktur' && ! PTPRM_Access::can_manage_org_settings() ) {
-                    $this->render_tab_dashboard();
-                    break;
-                }
-                if ( has_action( 'ptprm_admin_portal_tab_' . $tab ) ) {
-                    do_action( 'ptprm_admin_portal_tab_' . $tab );
-                } elseif ( $tab === 'anggota' && $this->can_access_members_tab() ) {
-                    $this->render_tab_members();
+                if ( has_action( 'ptprm_admin_portal_tab_anggota' ) ) {
+                    do_action( 'ptprm_admin_portal_tab_anggota' );
                 } else {
-                    $this->render_tab_dashboard();
+                    $this->render_tab_members();
                 }
                 break;
             case 'berita':

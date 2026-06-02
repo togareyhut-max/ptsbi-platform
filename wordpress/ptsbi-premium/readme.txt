@@ -48,6 +48,11 @@ Tidak hardcode untuk PTSBI — nama organisasi, warna, font, teks, ikon, tautan 
 
 == Changelog ==
 
+= 3.1.13 =
+* Panel admin: gabung foto + nama pengurus pusat di tab Pengurus Wilayah (hapus tab Foto terpisah).
+* Form pengurus dirender di server (save kembali jalan); logout + Purge All cache di footer panel.
+* URL ?tab=struktur dialihkan ke Pengurus Wilayah → Pusat.
+
 = 3.1.12 =
 * Panel admin: perbaiki halaman putih setelah login (toolbar cache dipindah), tombol Keluar di header panel + header situs saat sudah login.
 

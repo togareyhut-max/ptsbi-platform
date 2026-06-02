@@ -157,33 +157,19 @@ class PTPRM_Header {
      * @param array<string, mixed> $o Options.
      */
     private function render_header_cta( array $o ): void {
-        if ( is_user_logged_in() && class_exists( 'PTPRM_Access' ) ) {
-            $user = wp_get_current_user();
-            if ( PTPRM_Access::can_manage() || PTPRM_Access::can_manage_org_settings() ) {
-                $panel_url = class_exists( 'PTPRM_Admin_Portal' )
-                    ? PTPRM_Admin_Portal::portal_url()
-                    : home_url( '/panel-pengurus/' );
-                echo '<a class="ptprm-site-header__cta ptprm-site-header__cta--accent" href="' . esc_url( $panel_url ) . '">';
-                echo esc_html__( 'Panel', 'ptsbi-premium' ) . '</a>';
-                echo '<a class="ptprm-site-header__cta ptprm-site-header__cta--outline" href="' . esc_url( PTPRM_Access::logout_url() ) . '">';
-                echo esc_html__( 'Keluar', 'ptsbi-premium' ) . '</a>';
-                return;
-            }
-            if ( class_exists( 'PTPRM_Member_Portal' ) && PTPRM_Member_Portal::is_anggota( $user ) ) {
-                echo '<a class="ptprm-site-header__cta ptprm-site-header__cta--accent" href="' . esc_url( PTPRM_Member_Portal::portal_url() ) . '">';
-                echo esc_html__( 'Area Anggota', 'ptsbi-premium' ) . '</a>';
-                echo '<a class="ptprm-site-header__cta ptprm-site-header__cta--outline" href="' . esc_url( PTPRM_Access::logout_url() ) . '">';
-                echo esc_html__( 'Keluar', 'ptsbi-premium' ) . '</a>';
-                return;
-            }
-        }
-
         if ( empty( $o['header_show_cta'] ) || empty( $o['header_cta_label'] ) ) {
             return;
         }
         $cta_url = ptprm_resolve_url( $o['header_cta_url'] ?? '/rumah-anggota/' );
+        if ( is_user_logged_in() && class_exists( 'PTPRM_Access' ) && ( PTPRM_Access::can_manage() || PTPRM_Access::can_manage_org_settings() ) ) {
+            $cta_url = class_exists( 'PTPRM_Admin_Portal' )
+                ? PTPRM_Admin_Portal::portal_url()
+                : home_url( '/panel-pengurus/' );
+        }
         $cta_cls = 'ptprm-site-header__cta ptprm-site-header__cta--' . sanitize_html_class( $o['header_cta_style'] ?? 'accent' );
-        echo '<a class="' . esc_attr( $cta_cls ) . '" href="' . esc_url( $cta_url ) . '">' . esc_html( $o['header_cta_label'] ) . '</a>';
+        echo '<a class="' . esc_attr( $cta_cls ) . '" href="' . esc_url( $cta_url ) . '">';
+        echo esc_html( is_user_logged_in() ? __( 'Panel', 'ptsbi-premium' ) : (string) $o['header_cta_label'] );
+        echo '</a>';
     }
 
     /**

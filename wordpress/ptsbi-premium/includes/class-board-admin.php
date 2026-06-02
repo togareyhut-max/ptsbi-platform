@@ -28,25 +28,21 @@ class PTPRM_Board_Admin {
         if ( ! class_exists( 'PTPRM_Admin_Portal' ) || ! PTPRM_Admin_Portal::is_admin_page() ) {
             return;
         }
-        if ( ! PTPRM_Access::can_manage_org_settings() && ! PTPRM_Access::can_manage() ) {
+        if ( ! PTPRM_Access::can_manage_org_settings() ) {
             return;
         }
-        $tab = isset( $_GET['tab'] ) ? sanitize_key( (string) $_GET['tab'] ) : 'ringkasan'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-        if ( ! in_array( $tab, [ 'pengurus', 'ringkasan', 'struktur' ], true ) ) {
+        $tab = isset( $_GET['tab'] ) ? sanitize_key( (string) $_GET['tab'] ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+        if ( $tab !== 'pengurus' ) {
             return;
         }
-        if ( $tab === 'pengurus' || $tab === 'struktur' ) {
-            wp_enqueue_media();
-        }
-        if ( $tab === 'pengurus' ) {
-            wp_enqueue_script(
-                'ptprm-board-admin',
-                PTPRM_URL . 'assets/js/board-admin.js',
-                [ 'jquery' ],
-                PTPRM_VERSION,
-                true
-            );
-        }
+        wp_enqueue_media();
+        wp_enqueue_script(
+            'ptprm-board-admin',
+            PTPRM_URL . 'assets/js/board-admin.js',
+            [ 'jquery' ],
+            PTPRM_VERSION,
+            true
+        );
     }
 
     /**
@@ -113,6 +109,11 @@ class PTPRM_Board_Admin {
         }
 
         PTPRM_Board_Registry::save_items( $region, $items );
+
+        if ( 'pusat' === $region ) {
+            self::sync_homepage_team_from_board( $items );
+        }
+
         wp_safe_redirect(
             add_query_arg(
                 [
@@ -123,6 +124,83 @@ class PTPRM_Board_Admin {
             )
         );
         exit;
+    }
+
+    /**
+     * Section Pengurus beranda: pakai foto dari pengurus inti pusat.
+     *
+     * @param list<array<string,mixed>> $items
+     */
+    private static function sync_homepage_team_from_board( array $items ): void {
+        $team = [];
+        foreach ( $items as $item ) {
+            if ( ! PTPRM_Board_Registry::is_featured_item( 'pusat', $item ) ) {
+                continue;
+            }
+            $team[] = [
+                'name'  => (string) ( $item['name'] ?? '' ),
+                'role'  => (string) ( $item['role'] ?? '' ),
+                'group' => (string) ( $item['group'] ?? '' ),
+                'image' => (string) ( $item['image'] ?? '' ),
+            ];
+            if ( count( $team ) >= 5 ) {
+                break;
+            }
+        }
+        if ( ! $team ) {
+            return;
+        }
+        $opts               = (array) get_option( PTPRM_OPTION, [] );
+        $opts['team_items'] = wp_json_encode( ptprm_sanitize_team_items( $team ), JSON_UNESCAPED_UNICODE );
+        $opts['team_show']  = 1;
+        update_option( PTPRM_OPTION, ptprm_normalize_option_for_storage( array_merge( ptprm_options(), $opts ) ), true );
+    }
+
+    /**
+     * @param array<string,mixed> $item
+     */
+    private static function image_field_value( array $item ): string {
+        $img = (string) ( $item['image'] ?? '' );
+        if ( is_numeric( $img ) ) {
+            $url = wp_get_attachment_url( (int) $img );
+            if ( $url ) {
+                return $url;
+            }
+        }
+        return $img;
+    }
+
+    /**
+     * @param array<string,mixed> $item
+     */
+    private static function render_board_row( string $region, array $item, bool $show_photos ): void {
+        $featured    = PTPRM_Board_Registry::is_featured_item( $region, $item );
+        $show_photo  = $show_photos && $featured;
+        $img_val     = self::image_field_value( $item );
+        $auto_attr   = $show_photos && $featured && empty( $item['featured'] ) ? ' data-auto-featured="1"' : '';
+
+        echo '<li class="ptprm-board-admin-row"' . $auto_attr . '>';
+        echo '<label><span>' . esc_html__( 'Jabatan', 'ptsbi-premium' ) . '</span>';
+        echo '<input type="text" data-field="role" value="' . esc_attr( (string) ( $item['role'] ?? '' ) ) . '"></label>';
+        echo '<label><span>' . esc_html__( 'Nama', 'ptsbi-premium' ) . '</span>';
+        echo '<input type="text" data-field="name" value="' . esc_attr( (string) ( $item['name'] ?? '' ) ) . '" required></label>';
+        echo '<label><span>' . esc_html__( 'Kelompok (opsional)', 'ptsbi-premium' ) . '</span>';
+        echo '<input type="text" data-field="group" value="' . esc_attr( (string) ( $item['group'] ?? '' ) ) . '" placeholder="' . esc_attr__( 'Dewan Penasehat', 'ptsbi-premium' ) . '"></label>';
+
+        $photo_hidden = $show_photo ? '' : ' hidden';
+        echo '<div class="ptprm-board-photo-field"' . $photo_hidden . '>';
+        echo '<label><span>' . esc_html__( 'URL foto', 'ptsbi-premium' ) . '</span>';
+        echo '<input type="text" data-field="image" value="' . esc_attr( $img_val ) . '" placeholder="https://..."></label>';
+        echo '<p class="ptprm-board-photo-actions"><button type="button" class="button ptprm-board-pick-image">' . esc_html__( 'Pilih dari media', 'ptsbi-premium' ) . '</button></p>';
+        echo '</div>';
+
+        if ( $show_photos ) {
+            echo '<label><input type="checkbox" data-field="featured"' . checked( $featured, true, false ) . '> ';
+            echo esc_html__( 'Tampilkan dengan foto (pusat)', 'ptsbi-premium' ) . '</label>';
+        }
+
+        echo '<button type="button" class="button-link-delete ptprm-board-remove">&times;</button>';
+        echo '</li>';
     }
 
     public function render_tab(): void {
@@ -147,18 +225,17 @@ class PTPRM_Board_Admin {
         }
 
         $items = PTPRM_Board_Registry::get_items( $region );
-        $json  = wp_json_encode( $items, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE );
-        if ( ! is_string( $json ) ) {
-            $json = '[]';
+        if ( ! $items ) {
+            $items = [ [ 'name' => '', 'role' => '', 'group' => '', 'image' => '', 'featured' => 0 ] ];
         }
-        $json_b64 = base64_encode( $json );
-        $meta     = PTPRM_Board_Registry::regions()[ $region ];
+        $meta         = PTPRM_Board_Registry::regions()[ $region ];
+        $show_photos  = ! empty( $meta['has_featured_photos'] );
 
         echo '<div class="ptprm-member-card ptprm-portal-card">';
         echo '<p class="ptprm-portal-help">';
         echo esc_html__( 'Kelola daftar pengurus per wilayah.', 'ptsbi-premium' );
-        if ( ! empty( $meta['has_featured_photos'] ) ) {
-            echo ' ' . esc_html__( 'Pengurus Pusat: isi URL foto (atau pilih dari media) untuk Ketua Umum, Sekretaris Umum, dan Bendahara Umum, lalu centang Tampilkan dengan foto.', 'ptsbi-premium' );
+        if ( $show_photos ) {
+            echo ' ' . esc_html__( 'Untuk pengurus pusat: isi nama, jabatan, dan URL foto (Ketua/Sekretaris/Bendahara Umum otomatis tampil dengan foto di halaman depan).', 'ptsbi-premium' );
         }
         echo '</p>';
 
@@ -171,7 +248,7 @@ class PTPRM_Board_Admin {
         echo '</nav>';
 
         $form_class = 'ptprm-board-admin-form';
-        if ( ! empty( $meta['has_featured_photos'] ) ) {
+        if ( $show_photos ) {
             $form_class .= ' ptprm-board-admin-form--photos';
         }
         echo '<form method="post" id="ptprm-board-admin-form" class="' . esc_attr( $form_class ) . '" action="' . esc_url( PTPRM_Admin_Portal::portal_url( 'pengurus', [ 'board_region' => $region ] ) ) . '">';
@@ -179,12 +256,23 @@ class PTPRM_Board_Admin {
         echo '<input type="hidden" name="ptprm_board_save" value="1">';
         echo '<input type="hidden" name="board_region" value="' . esc_attr( $region ) . '">';
         echo '<input type="hidden" name="ptprm_board_json" id="ptprm-board-json" value="">';
-        echo '<input type="hidden" id="ptprm-board-region" value="' . esc_attr( $region ) . '">';
-        echo '<input type="hidden" id="ptprm-board-has-featured" value="' . ( ! empty( $meta['has_featured_photos'] ) ? '1' : '0' ) . '">';
+        echo '<input type="hidden" id="ptprm-board-has-featured" value="' . ( $show_photos ? '1' : '0' ) . '">';
 
-        echo '<ul class="ptprm-board-admin-list" id="ptprm-board-admin-list" data-json-b64="' . esc_attr( $json_b64 ) . '"></ul>';
+        echo '<ul class="ptprm-board-admin-list" id="ptprm-board-admin-list">';
+        foreach ( $items as $item ) {
+            if ( ! is_array( $item ) ) {
+                continue;
+            }
+            self::render_board_row( $region, $item, $show_photos );
+        }
+        echo '</ul>';
+
         echo '<p><button type="button" class="button button-secondary" id="ptprm-board-add">+ ' . esc_html__( 'Tambah baris', 'ptsbi-premium' ) . '</button></p>';
         echo '<button type="submit" class="ptprm-cta ptprm-cta-1 ptprm-cta-size-medium"><span class="ptprm-cta-label">' . esc_html__( 'Simpan Pengurus', 'ptsbi-premium' ) . '</span></button>';
         echo '</form></div>';
+
+        echo '<template id="ptprm-board-row-tpl"><ul>';
+        self::render_board_row( $region, [ 'name' => '', 'role' => '', 'group' => '', 'image' => '', 'featured' => 0 ], $show_photos );
+        echo '</ul></template>';
     }
 }

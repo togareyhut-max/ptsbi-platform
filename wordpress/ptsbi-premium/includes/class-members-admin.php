@@ -11,15 +11,12 @@ class PTPRM_Members_Admin {
 
     private const NONCE_APPROVE  = 'ptprm_admin_member_approve';
     private const NONCE_REJECT   = 'ptprm_admin_member_reject';
-    private const NONCE_TEAM     = 'ptprm_admin_team_photos';
 
     public function __construct() {
         add_action( 'init', [ $this, 'handle_approve' ], 20 );
         add_action( 'init', [ $this, 'handle_reject' ], 20 );
-        add_action( 'init', [ $this, 'handle_team_photos' ], 20 );
         add_filter( 'ptprm_admin_portal_tabs', [ $this, 'register_tabs' ] );
         add_action( 'ptprm_admin_portal_tab_anggota', [ $this, 'render_members_tab' ] );
-        add_action( 'ptprm_admin_portal_tab_struktur', [ $this, 'render_struktur_tab' ] );
     }
 
     public static function needs_directory_assets(): bool {
@@ -33,9 +30,6 @@ class PTPRM_Members_Admin {
     public function register_tabs( array $tabs ): array {
         if ( $this->can_members() ) {
             $tabs['anggota'] = __( 'Data Anggota', 'ptsbi-premium' );
-        }
-        if ( class_exists( 'PTPRM_Access' ) && PTPRM_Access::can_manage_org_settings() ) {
-            $tabs['struktur'] = __( 'Foto Pengurus Pusat', 'ptsbi-premium' );
         }
         return $tabs;
     }
@@ -76,38 +70,6 @@ class PTPRM_Members_Admin {
         $ok      = PTPRM_Members::reject_and_delete_pending_registration( $user_id );
         $msg     = $ok ? __( 'Pendaftaran ditolak.', 'ptsbi-premium' ) : __( 'Gagal menolak.', 'ptsbi-premium' );
         wp_safe_redirect( add_query_arg( 'ptprm_members_notice', rawurlencode( $msg ), $this->portal_url( 'anggota' ) ) );
-        exit;
-    }
-
-    public function handle_team_photos(): void {
-        if ( empty( $_POST['ptprm_admin_team_photos'] ) || ! class_exists( 'PTPRM_Access' ) || ! PTPRM_Access::can_manage_org_settings() ) {
-            return;
-        }
-        if ( ! function_exists( 'ptprm_verify_portal_form_nonce' ) || ! ptprm_verify_portal_form_nonce( 'ptprm_admin_team_photos' ) ) {
-            return;
-        }
-        $names  = isset( $_POST['team_name'] ) && is_array( $_POST['team_name'] ) ? wp_unslash( $_POST['team_name'] ) : [];
-        $roles  = isset( $_POST['team_role'] ) && is_array( $_POST['team_role'] ) ? wp_unslash( $_POST['team_role'] ) : [];
-        $groups = isset( $_POST['team_group'] ) && is_array( $_POST['team_group'] ) ? wp_unslash( $_POST['team_group'] ) : [];
-        $images = isset( $_POST['team_image'] ) && is_array( $_POST['team_image'] ) ? wp_unslash( $_POST['team_image'] ) : [];
-        $rows   = [];
-        foreach ( $names as $i => $name ) {
-            $rows[] = [
-                'name'  => $name,
-                'role'  => $roles[ $i ] ?? '',
-                'group' => $groups[ $i ] ?? '',
-                'image' => $images[ $i ] ?? '',
-            ];
-        }
-        $clean = function_exists( 'ptprm_sanitize_team_items' ) ? ptprm_sanitize_team_items( $rows ) : [];
-        $opts  = (array) get_option( PTPRM_OPTION, [] );
-        $opts['team_items'] = wp_json_encode( $clean, JSON_UNESCAPED_UNICODE );
-        $opts['team_show']  = 1;
-        update_option( PTPRM_OPTION, ptprm_normalize_option_for_storage( array_merge( ptprm_options(), $opts ) ), true );
-        if ( class_exists( 'PTPRM_Membership_Sync' ) ) {
-            PTPRM_Membership_Sync::push_options_patch( [ 'team_items' => $opts['team_items'] ] );
-        }
-        wp_safe_redirect( add_query_arg( 'ptprm_saved', '1', $this->portal_url( 'struktur' ) ) );
         exit;
     }
 
@@ -178,38 +140,5 @@ class PTPRM_Members_Admin {
         echo '<h3 class="ptprm-admin-h3">' . esc_html__( 'Pencarian Anggota', 'ptsbi-premium' ) . '</h3>';
         echo do_shortcode( '[ptprm_member_directory]' );
         echo '</div>';
-    }
-
-    public function render_struktur_tab(): void {
-        if ( ! class_exists( 'PTPRM_Access' ) || ! PTPRM_Access::can_manage_org_settings() ) {
-            echo '<p>' . esc_html__( 'Akses ditolak.', 'ptsbi-premium' ) . '</p>';
-            return;
-        }
-        if ( isset( $_GET['ptprm_saved'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-            echo '<p class="ptprm-member-alert ptprm-member-alert-ok">' . esc_html__( 'Foto pengurus pusat disimpan.', 'ptsbi-premium' ) . '</p>';
-        }
-        $items = function_exists( 'ptprm_get_team_items' ) ? ptprm_get_team_items() : [];
-        if ( ! $items ) {
-            $items = [ [ 'name' => '', 'role' => '', 'group' => '', 'image' => '' ] ];
-        }
-        echo '<div class="ptprm-member-card ptprm-portal-card">';
-        echo '<p class="ptprm-portal-help">' . esc_html__( 'Unggah foto pengurus pusat (maks. 5) untuk beranda / struktur organisasi. Daftar teks pengurus wilayah di tab Pengurus Wilayah pada Premium Plugin.', 'ptsbi-premium' ) . '</p>';
-        echo '<form method="post" class="ptprm-member-form">';
-        wp_nonce_field( 'ptprm_admin_team_photos' );
-        echo '<input type="hidden" name="ptprm_admin_team_photos" value="1">';
-        foreach ( $items as $i => $item ) {
-            $img = (string) ( $item['image'] ?? '' );
-            if ( is_numeric( $img ) ) {
-                $img = (string) wp_get_attachment_url( (int) $img );
-            }
-            echo '<fieldset style="margin-bottom:1rem;padding:1rem;border:1px solid #ddd">';
-            echo '<label><span>' . esc_html__( 'Nama', 'ptsbi-premium' ) . '</span><input type="text" name="team_name[]" value="' . esc_attr( (string) ( $item['name'] ?? '' ) ) . '"></label>';
-            echo '<label><span>' . esc_html__( 'Jabatan', 'ptsbi-premium' ) . '</span><input type="text" name="team_role[]" value="' . esc_attr( (string) ( $item['role'] ?? '' ) ) . '"></label>';
-            echo '<label><span>' . esc_html__( 'Grup', 'ptsbi-premium' ) . '</span><input type="text" name="team_group[]" value="' . esc_attr( (string) ( $item['group'] ?? '' ) ) . '"></label>';
-            echo '<label><span>' . esc_html__( 'URL foto', 'ptsbi-premium' ) . '</span><input type="url" name="team_image[]" value="' . esc_attr( $img ) . '" placeholder="https://..."></label>';
-            echo '</fieldset>';
-        }
-        echo '<button type="submit" class="ptprm-cta ptprm-cta-1 ptprm-cta-size-medium"><span class="ptprm-cta-label">' . esc_html__( 'Simpan Foto Pengurus', 'ptsbi-premium' ) . '</span></button>';
-        echo '</form></div>';
     }
 }
