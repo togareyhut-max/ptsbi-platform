@@ -11,7 +11,31 @@ require_once PTPRM_DIR . 'includes/board-default-data.php';
 
 class PTPRM_Board_Registry {
 
-    public const OPTION_SEEDED = 'ptprm_boards_seeded_v1';
+    public const OPTION_SEEDED          = 'ptprm_boards_seeded_v1';
+    public const OPTION_CATALOG_VERSION = 'ptprm_board_catalog_version';
+    public const CATALOG_VERSION        = '3.1.6';
+
+    /**
+     * Halaman WP tambahan yang menampilkan pengurus pusat.
+     *
+     * @return array<string, string> page_slug => region
+     */
+    public static function extra_page_slugs(): array {
+        return [
+            'struktur-organisasi' => 'pusat',
+        ];
+    }
+
+    public static function region_for_page_slug( string $page_slug ): ?string {
+        $page_slug = sanitize_title( $page_slug );
+        foreach ( self::regions() as $slug => $meta ) {
+            if ( (string) $meta['page_slug'] === $page_slug ) {
+                return $slug;
+            }
+        }
+        $extra = self::extra_page_slugs();
+        return isset( $extra[ $page_slug ] ) ? (string) $extra[ $page_slug ] : null;
+    }
 
     /**
      * @return array<string, array{slug:string,title:string,page_slug:string,has_featured_photos:bool,subtitle:string}>
@@ -56,6 +80,7 @@ class PTPRM_Board_Registry {
     public static function init(): void {
         add_action( 'init', [ __CLASS__, 'maybe_seed_defaults' ], 12 );
         add_action( 'init', [ __CLASS__, 'ensure_region_pages' ], 13 );
+        add_action( 'init', [ __CLASS__, 'maybe_apply_catalog_version' ], 14 );
     }
 
     public static function maybe_seed_defaults(): void {
@@ -65,9 +90,10 @@ class PTPRM_Board_Registry {
         $catalog = ptprm_board_default_catalog();
         $opts    = (array) get_option( PTPRM_OPTION, [] );
         foreach ( self::regions() as $slug => $meta ) {
+            unset( $meta );
             $key = self::option_key( $slug );
             if ( empty( $opts[ $key ] ) ) {
-                $items = $catalog[ $slug ] ?? [];
+                $items        = $catalog[ $slug ] ?? [];
                 $opts[ $key ] = wp_json_encode( ptprm_sanitize_board_items( $items ), JSON_UNESCAPED_UNICODE );
             }
         }
@@ -90,7 +116,7 @@ class PTPRM_Board_Registry {
             $items    = function_exists( 'ptprm_merge_board_catalog' )
                 ? ptprm_merge_board_catalog( $existing, $catalog[ $slug ] ?? [] )
                 : ptprm_sanitize_board_items( $catalog[ $slug ] ?? [] );
-            self::save_items( $slug, $items );
+            self::save_items( $slug, $items, false );
         }
 
         self::sync_region_page_titles();
@@ -129,7 +155,7 @@ class PTPRM_Board_Registry {
             return;
         }
         foreach ( self::regions() as $meta ) {
-            $slug = (string) $meta['page_slug'];
+            $slug     = (string) $meta['page_slug'];
             $existing = get_page_by_path( $slug, OBJECT, 'page' );
             if ( $existing instanceof WP_Post ) {
                 if ( strpos( (string) $existing->post_content, '[ptprm_board' ) === false ) {
@@ -175,13 +201,22 @@ class PTPRM_Board_Registry {
             return ptprm_sanitize_board_items( $catalog[ $region ] ?? [] );
         }
         $decoded = json_decode( $raw, true );
-        return is_array( $decoded ) ? ptprm_sanitize_board_items( $decoded ) : [];
+        if ( ! is_array( $decoded ) ) {
+            $catalog = ptprm_board_default_catalog();
+            return ptprm_sanitize_board_items( $catalog[ $region ] ?? [] );
+        }
+        $items = ptprm_sanitize_board_items( $decoded );
+        if ( $items !== [] ) {
+            return $items;
+        }
+        $catalog = ptprm_board_default_catalog();
+        return ptprm_sanitize_board_items( $catalog[ $region ] ?? [] );
     }
 
     /**
      * @param list<array<string,mixed>> $items
      */
-    public static function save_items( string $region, array $items ): void {
+    public static function save_items( string $region, array $items, bool $purge_cache = true ): void {
         $region = sanitize_key( $region );
         if ( ! isset( self::regions()[ $region ] ) ) {
             return;
@@ -202,6 +237,10 @@ class PTPRM_Board_Registry {
         update_option( PTPRM_OPTION, ptprm_normalize_option_for_storage( $opts ), true );
         wp_cache_delete( PTPRM_OPTION, 'options' );
         wp_cache_delete( 'alloptions', 'options' );
+
+        if ( $purge_cache && class_exists( 'PTPRM_Cache_Purge' ) ) {
+            PTPRM_Cache_Purge::purge_all();
+        }
     }
 
     public static function featured_roles_for_region( string $region ): array {

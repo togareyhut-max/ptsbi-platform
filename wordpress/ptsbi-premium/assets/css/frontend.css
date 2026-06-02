@@ -3610,10 +3610,10 @@ body.ptprm-mobile-nav-open {
     gap: 1.25rem;
     margin-bottom: 2rem;
 }
-/* Pengurus pusat: foto inti ukuran sedang */
+/* Pengurus pusat: foto inti sedikit lebih besar */
 .ptprm-board--pusat .ptprm-board-featured {
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 1.35rem;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: 1.5rem;
 }
 .ptprm-board-card {
     text-align: center;
@@ -3643,14 +3643,16 @@ body.ptprm-mobile-nav-open {
     height: 100%;
     object-fit: cover;
 }
-.ptprm-board-card-name {
-    margin: 0 0 0.25rem;
-    font-size: 1rem;
-}
 .ptprm-board-card-role {
-    margin: 0;
+    margin: 0 0 0.35rem;
     font-size: 0.875rem;
-    color: var(--ptprm-text-soft);
+    font-weight: 600;
+    color: var(--ptprm-primary);
+}
+.ptprm-board-card-name {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 500;
 }
 .ptprm-board-group {
     margin: 1.25rem 0 0.5rem;
