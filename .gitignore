@@ -28,6 +28,7 @@ agent-tools/
 # ---- Draft / duplikat plugin (simpan lokal, jangan Git) ----
 Proyek Draft Lama (bugs)/
 Premium Plugins/ARSIP/
+Premium Plugins/ptsbi-premium/
 Premium Plugins/ptsbi-members/
 Premium Plugins/*.zip
 Premium Plugins.zip
@@ -44,6 +45,10 @@ deploy/wordpress/
 _gen_ulos_temp.mjs
 _run_diag.cmd
 test_hasil_result.txt
+scripts/diag-ptsbi*.php
+scripts/verify-fix*.php
+scripts/run_migrate.py
+scripts/migrate-tarombo-wp-bridge.sql
 collect-inventory.sh
 extract-inventory.py
 

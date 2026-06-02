@@ -176,8 +176,14 @@ class PTPRM_Member_Portal {
             $subdistrict = (string) $norm['subdistrict'];
         }
 
+        $kepala = PTPRM_Members::sanitize_person_name( wp_unslash( (string) ( $_POST['kepala_keluarga'] ?? '' ) ) );
+        if ( $kepala === '' && empty( $_POST['ptprm_password_only'] ) ) {
+            wp_safe_redirect( add_query_arg( 'ptprm_profile_error', rawurlencode( __( 'Nama kepala keluarga wajib diisi (nama lengkap, bukan email).', 'ptsbi-premium' ) ), self::navigation_url( [ 'tab' => 'profil' ] ) ) );
+            exit;
+        }
+
         $data = [
-            'kepala_keluarga' => sanitize_text_field( wp_unslash( (string) ( $_POST['kepala_keluarga'] ?? '' ) ) ),
+            'kepala_keluarga' => $kepala,
             'nama_istri'      => sanitize_text_field( wp_unslash( (string) ( $_POST['nama_istri'] ?? '' ) ) ),
             'tarombo'         => sanitize_text_field( wp_unslash( (string) ( $_POST['tarombo'] ?? '' ) ) ),
             'oppu'            => sanitize_text_field( wp_unslash( (string) ( $_POST['oppu'] ?? '' ) ) ),
@@ -337,6 +343,9 @@ class PTPRM_Member_Portal {
         $r = is_array( $record ) ? $record : [];
 
         echo '<div class="ptprm-member-card ptprm-portal-card">';
+        if ( ! empty( $r['__ptprm_error'] ) ) {
+            echo '<p class="ptprm-member-alert ptprm-member-alert-error">' . esc_html( (string) $r['__ptprm_error'] ) . '</p>';
+        }
         if ( isset( $_GET['ptprm_profile_ok'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
             echo '<p class="ptprm-member-alert ptprm-member-alert-ok">' . esc_html__( 'Profil berhasil disimpan.', 'ptsbi-premium' ) . '</p>';
         }

@@ -29,7 +29,7 @@ if errorlevel 1 goto :fail
 
 echo.
 echo [3/4] Unzip + rebuild Docker Tarombo...
-ssh %HOST% "unzip -o -q /home/togaa/tarombo-app.zip -d /home/togaa && cd /home/togaa/tarombo-app && docker compose -f docker-compose.server.yml up -d --build && docker compose -f docker-compose.server.yml ps"
+ssh %HOST% "unzip -o -q /home/togaa/tarombo-app.zip -d /home/togaa && cd /home/togaa/tarombo-app && chmod +x scripts/*.sh 2>nul || true && docker compose -f docker-compose.server.yml up -d --build && bash scripts/post-deploy-tarombo.sh && docker compose -f docker-compose.server.yml ps"
 if errorlevel 1 goto :fail
 
 echo.

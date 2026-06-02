@@ -1,0 +1,13 @@
+releases-local/
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+.idea/
+.vscode/
+
+*.log
+*.tmp
+

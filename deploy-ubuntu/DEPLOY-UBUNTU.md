@@ -121,6 +121,26 @@ Admin → **Sinkron Tarombo** / **Gabung & Bersihkan Pohon**
 | logo tidak berubah | Hard refresh browser (Ctrl+F5); cek `data/uploads/site-logo.png` |
 | port 5000 tertutup | `ss -lntp \| grep 5000` |
 
+## Opsional: Watchdog auto-heal (Mode A)
+
+Jika ingin server otomatis “menghidupkan kembali” Tarombo saat API/DB terindikasi down, aktifkan systemd timer berikut (disertakan di paket deploy):
+
+```bash
+cd /home/togaa/tarombo-app
+sudo cp deploy/systemd/tarombo-watchdog.service /etc/systemd/system/
+sudo cp deploy/systemd/tarombo-watchdog.timer /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now tarombo-watchdog.timer
+sudo systemctl status tarombo-watchdog.timer --no-pager
+```
+
+Tes manual:
+
+```bash
+sudo systemctl start tarombo-watchdog.service
+sudo journalctl -u tarombo-watchdog.service -n 50 --no-pager
+```
+
 ## Bangun ulang paket (dari Windows dev)
 
 Jalankan `PACK-UBUNTU.bat` di folder pengembangan — menghasilkan folder siap upload.
