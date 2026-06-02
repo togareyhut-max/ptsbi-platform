@@ -32,40 +32,11 @@ jobs:
         run: bash wordpress/pull-plugin-ptsbi-from-production.sh
 
       - name: Commit ke branch production-live
-        run: |
-          set -euo pipefail
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          VERSION="$(grep 'PTPRM_VERSION' wordpress/ptsbi-premium/ptsbi-premium.php | head -1 || echo unknown)"
-          STAMP="$(date -u +%Y-%m-%dT%H%MZ)"
-          git checkout -B production-live
-          git add wordpress/ptsbi-premium
-          if git diff --staged --quiet; then
-            echo "Tidak ada perubahan dibanding commit sebelumnya."
-          else
-            git commit -m "chore(production-live): snapshot plugin dari server ${STAMP}
-
-${VERSION}"
-          fi
-          git tag -f production-live
-          git push origin production-live --force
-          git push origin refs/tags/production-live --force
-        id: commit_live
+        run: bash .github/scripts/sync-production-baseline-commit.sh
 
       - name: Samakan main dengan baseline (opsional)
-        if: inputs.update_main == true
-        run: |
-          set -euo pipefail
-          git checkout main
-          git pull origin main
-          git checkout production-live -- wordpress/ptsbi-premium
-          git add wordpress/ptsbi-premium
-          if git diff --staged --quiet; then
-            echo "main sudah sama dengan production-live untuk folder plugin."
-          else
-            git commit -m "chore(main): samakan plugin dengan production-live (website live)"
-            git push origin main
-          fi
+        if: ${{ inputs.update_main }}
+        run: bash .github/scripts/sync-production-baseline-main.sh
 
       - name: Ringkasan
         run: |
