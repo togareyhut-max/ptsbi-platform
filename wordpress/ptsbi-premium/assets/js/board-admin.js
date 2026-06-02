@@ -1,6 +1,22 @@
 (function ($) {
     'use strict';
 
+    var labels = {
+        role: 'Jabatan',
+        name: 'Nama',
+        group: 'Kelompok (opsional)',
+        image: 'URL foto',
+        featured: 'Tampilkan dengan foto (pusat)',
+        pickImage: 'Pilih dari media',
+        imageHint: 'Kosongkan URL lalu pilih media untuk mengisi otomatis, atau tempel tautan gambar langsung.',
+        groupPlaceholder: 'Dewan Penasehat',
+        imagePlaceholder: 'https://... atau ID media',
+    };
+
+    if (typeof window.ptprmBoardAdminL10n === 'object' && window.ptprmBoardAdminL10n) {
+        labels = $.extend(labels, window.ptprmBoardAdminL10n);
+    }
+
     function decodeJsonB64(b64) {
         try {
             return JSON.parse(atob(b64 || '') || '[]');
@@ -9,12 +25,44 @@
         }
     }
 
-    function rowFromTemplate(tpl) {
-        var $parsed = $($.trim(tpl));
-        if ($parsed.length && $parsed.first().prop('tagName') === 'LI') {
-            return $parsed.first();
+    function regionHasPhotos() {
+        return $('#ptprm-board-has-featured').val() === '1';
+    }
+
+    function setPhotoFieldVisible($row, visible) {
+        var $field = $row.find('.ptprm-board-photo-field');
+        if (visible) {
+            $field.removeAttr('hidden').show();
+        } else {
+            $field.attr('hidden', 'hidden').hide();
         }
-        return $parsed.filter('.ptprm-board-admin-row').first();
+    }
+
+    function syncPhotoVisibility($row) {
+        if (!regionHasPhotos()) {
+            setPhotoFieldVisible($row, false);
+            return;
+        }
+        setPhotoFieldVisible($row, $row.find('[data-field="featured"]').is(':checked'));
+    }
+
+    function buildRowHtml() {
+        return (
+            '<li class="ptprm-board-admin-row">' +
+            '<label><span>' + labels.role + '</span><input type="text" data-field="role"></label>' +
+            '<label><span>' + labels.name + '</span><input type="text" data-field="name" required></label>' +
+            '<label><span>' + labels.group + '</span><input type="text" data-field="group" placeholder="' + labels.groupPlaceholder + '"></label>' +
+            '<div class="ptprm-board-photo-field" hidden>' +
+            '<label><span>' + labels.image + '</span>' +
+            '<input type="text" data-field="image" placeholder="' + labels.imagePlaceholder + '" inputmode="url" autocomplete="off">' +
+            '</label>' +
+            '<p class="ptprm-board-photo-actions"><button type="button" class="button ptprm-board-pick-image">' + labels.pickImage + '</button></p>' +
+            '<p class="ptprm-board-photo-hint">' + labels.imageHint + '</p>' +
+            '</div>' +
+            '<label><input type="checkbox" data-field="featured"> ' + labels.featured + '</label>' +
+            '<button type="button" class="button-link-delete ptprm-board-remove">&times;</button>' +
+            '</li>'
+        );
     }
 
     function collectRows($list) {
@@ -36,31 +84,7 @@
         return items;
     }
 
-    function regionHasPhotos() {
-        return $('#ptprm-board-has-featured').val() === '1';
-    }
-
-    function setPhotoFieldVisible($row, visible) {
-        var $field = $row.find('.ptprm-board-photo-field');
-        if (visible) {
-            $field.removeAttr('hidden').show();
-        } else {
-            $field.attr('hidden', 'hidden').hide();
-        }
-    }
-
-    function syncPhotoVisibility($row) {
-        if (!regionHasPhotos()) {
-            setPhotoFieldVisible($row, false);
-            return;
-        }
-        var featured = $row.find('[data-field="featured"]').is(':checked');
-        setPhotoFieldVisible($row, featured);
-    }
-
     function bindRow($row) {
-        var hasPhotos = regionHasPhotos();
-
         syncPhotoVisibility($row);
 
         $row.find('[data-field="featured"]').on('change', function () {
@@ -85,14 +109,10 @@
             });
             frame.open();
         });
-
-        if (hasPhotos && $row.find('[data-field="featured"]').is(':checked')) {
-            setPhotoFieldVisible($row, true);
-        }
     }
 
-    function addRow($list, tpl, data) {
-        var $row = rowFromTemplate(tpl);
+    function addRow($list, data) {
+        var $row = $(buildRowHtml());
         if (!$row.length) {
             return;
         }
@@ -121,16 +141,15 @@
         if (!$list.length || !$form.length) {
             return;
         }
-        var tpl = $('#ptprm-board-row-tpl').html();
         var items = decodeJsonB64($list.attr('data-json-b64'));
         if (!items.length) {
             items = [{ role: '', name: '', group: '', image: '', featured: 0 }];
         }
         items.forEach(function (item) {
-            addRow($list, tpl, item);
+            addRow($list, item);
         });
         $('#ptprm-board-add').on('click', function () {
-            addRow($list, tpl, null);
+            addRow($list, null);
         });
         $form.on('submit', function (e) {
             if (!syncJson($form, $list)) {

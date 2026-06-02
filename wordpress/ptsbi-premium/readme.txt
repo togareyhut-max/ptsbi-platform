@@ -48,6 +48,9 @@ Tidak hardcode untuk PTSBI — nama organisasi, warna, font, teks, ikon, tautan 
 
 == Changelog ==
 
+= 3.1.11 =
+* Panel admin: perbaiki halaman putih (hapus blok script dari shortcode, akses admin organisasi, JSON aman).
+
 = 3.1.10 =
 * Panel Pengurus Wilayah (pusat): kolom **URL foto** tampil saat centang foto; tombol pilih media mengisi URL.
 * Tab **Foto Pengurus Pusat** (`struktur`) kembali terdaftar di panel admin.

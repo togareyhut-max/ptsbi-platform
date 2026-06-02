@@ -181,6 +181,10 @@ class PTPRM_Members_Admin {
     }
 
     public function render_struktur_tab(): void {
+        if ( ! class_exists( 'PTPRM_Access' ) || ! PTPRM_Access::can_manage_org_settings() ) {
+            echo '<p>' . esc_html__( 'Akses ditolak.', 'ptsbi-premium' ) . '</p>';
+            return;
+        }
         if ( isset( $_GET['ptprm_saved'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
             echo '<p class="ptprm-member-alert ptprm-member-alert-ok">' . esc_html__( 'Foto pengurus pusat disimpan.', 'ptsbi-premium' ) . '</p>';
         }

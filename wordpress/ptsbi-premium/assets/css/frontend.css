@@ -3688,7 +3688,7 @@ body.ptprm-mobile-nav-open {
 .ptprm-board-photo-field label {
     display: block;
 }
-.ptprm-board-photo-field input[type="url"] {
+.ptprm-board-photo-field input[data-field="image"] {
     width: 100%;
     max-width: 100%;
     box-sizing: border-box;

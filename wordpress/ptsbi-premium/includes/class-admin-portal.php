@@ -18,7 +18,7 @@ class PTPRM_Admin_Portal {
     private const NONCE_APPROVE = 'ptprm_admin_member_approve';
 
     private function can_access_panel(): bool {
-        return PTPRM_Access::can_manage();
+        return PTPRM_Access::can_manage() || PTPRM_Access::can_manage_org_settings();
     }
 
     private function can_access_members_tab(): bool {
@@ -145,7 +145,13 @@ class PTPRM_Admin_Portal {
     }
 
     public function skip_subpage_hero( bool $skip ): bool {
-        return $skip || self::is_admin_page() || PTPRM_Member_Portal::is_member_page();
+        if ( $skip || self::is_admin_page() ) {
+            return true;
+        }
+        if ( class_exists( 'PTPRM_Member_Portal' ) && PTPRM_Member_Portal::is_member_page() ) {
+            return true;
+        }
+        return false;
     }
 
     public function handle_save_settings(): void {
