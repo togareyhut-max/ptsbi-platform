@@ -4,7 +4,7 @@ Tags:              homepage, hero, premium, organization, sections, responsive
 Requires at least: 5.8
 Tested up to:      6.7
 Requires PHP:      7.4
-Stable tag:        3.0.1
+Stable tag:        3.1.1
 License:           GPLv2 or later
 
 Satu plugin lengkap: beranda organisasi + modul anggota (pendaftaran, profil, import CSV DAMI, export XLSX, panel pengurus). Plugin ptsbi-members terpisah tidak dipakai lagi sejak v3.0.1.
@@ -47,6 +47,9 @@ Tidak hardcode untuk PTSBI — nama organisasi, warna, font, teks, ikon, tautan 
 9. Simpan.
 
 == Changelog ==
+
+= 3.1.1 =
+* Baseline production — rollback dari versi eksperimen.
 
 = 1.4.3 =
 * Footer: judul brand = Judul situs (Pengaturan → Umum). Deskripsi custom atau otomatis dari Slogan situs jika field kosong.

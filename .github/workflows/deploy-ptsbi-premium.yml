@@ -1,6 +1,11 @@
 name: Deploy ptsbi-premium
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - 'wordpress/ptsbi-premium/**'
+      - 'wordpress/deploy-plugin-ptsbi.sh'
   workflow_dispatch:
     inputs:
       confirm:
