@@ -49,7 +49,7 @@ Tidak hardcode untuk PTSBI — nama organisasi, warna, font, teks, ikon, tautan 
 == Changelog ==
 
 = 3.1.1 =
-* Baseline production — rollback dari versi eksperimen.
+* Baseline production — rollback dari versi eksperimen (redeploy).
 
 = 1.4.3 =
 * Footer: judul brand = Judul situs (Pengaturan → Umum). Deskripsi custom atau otomatis dari Slogan situs jika field kosong.
@@ -160,3 +160,4 @@ Tidak hardcode untuk PTSBI — nama organisasi, warna, font, teks, ikon, tautan 
 
 = 1.0.0 =
 * Rilis pertama. Beranda diambil alih plugin (tanpa Elementor), Hero responsif penuh, sub-halaman seragam dengan ornamen Gorga.
+
