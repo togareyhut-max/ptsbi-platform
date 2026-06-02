@@ -100,6 +100,40 @@ class PTPRM_Bootstrap {
         );
     }
 
+    /**
+     * Pulihkan akun, shortcode panel bidang, dan halaman organisasi (setelah gangguan / upgrade).
+     */
+    public static function repair_site(): void {
+        if ( class_exists( 'PTPRM_Default_Accounts' ) ) {
+            PTPRM_Default_Accounts::repair_missing_accounts();
+        }
+        if ( class_exists( 'PTPRM_Bidang_Registry' ) ) {
+            PTPRM_Bidang_Registry::repair_panel_pages();
+        }
+        if ( class_exists( 'PTPRM_Board_Registry' ) ) {
+            PTPRM_Board_Registry::ensure_region_pages();
+        }
+        if ( class_exists( 'PTPRM_Login_Portal' ) ) {
+            PTPRM_Login_Portal::ensure_pages();
+        }
+        if ( class_exists( 'PTPRM_Member_Portal' ) ) {
+            PTPRM_Member_Portal::ensure_pages();
+        }
+        if ( class_exists( 'PTPRM_Admin_Portal' ) ) {
+            PTPRM_Admin_Portal::ensure_pages();
+        }
+        flush_rewrite_rules( false );
+    }
+
+    public static function maybe_repair_after_upgrade(): void {
+        $last = (string) get_option( 'ptprm_site_repair_version', '' );
+        if ( $last === PTPRM_VERSION ) {
+            return;
+        }
+        self::repair_site();
+        update_option( 'ptprm_site_repair_version', PTPRM_VERSION, false );
+    }
+
     public static function activate(): void {
         $saved = get_option( PTPRM_OPTION );
         if ( false === $saved ) {
@@ -180,6 +214,19 @@ class PTPRM_Bootstrap {
             }
             set_transient( 'ptprm_admin_notice', __( 'Akun demo dibuat/diperbarui. Password admin & pengurus: 12345678.', 'ptsbi-premium' ), 30 );
             wp_safe_redirect( self::settings_admin_url( [ 'ptprm-default-accounts' => '1' ] ) );
+            exit;
+        }
+
+        if ( isset( $_GET['ptprm_repair_site'] ) && '1' === $_GET['ptprm_repair_site'] ) {
+            check_admin_referer( 'ptprm_repair_site' );
+            self::repair_site();
+            update_option( 'ptprm_site_repair_version', PTPRM_VERSION, false );
+            set_transient(
+                'ptprm_admin_notice',
+                __( 'Perbaikan selesai: akun ptprm-local/bidang, shortcode panel bidang, dan halaman portal diperbarui.', 'ptsbi-premium' ),
+                30
+            );
+            wp_safe_redirect( self::settings_admin_url( [ 'ptprm-repair-site' => '1' ] ) );
             exit;
         }
 
