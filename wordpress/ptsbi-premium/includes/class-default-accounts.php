@@ -13,19 +13,15 @@ class PTPRM_Default_Accounts {
     public const LOGIN_ANGGOTA     = 'anggota@ptsbi.org';
     public const LOGIN_ADMIN       = 'admin@ptsbi.org';
     public const LOGIN_PENGURUS    = 'pengurus@ptsbi.org';
-    /** Akun pemilik situs / wp-admin — jangan dihapus. */
-    public const LOGIN_LOCAL       = 'ptprm-local';
-    public const EMAIL_LOCAL       = 'local@ptsbi.org';
     public const META_TYPE         = 'ptprm_default_account';
     public const META_TEMP_PASS    = 'ptprm_default_temp_password';
     public const OPTION_LOCK       = 'ptprm_demo_anggota_locked';
     public const OPTION_VERSION    = 'ptprm_default_accounts_version';
     public const OPTION_LOGINS     = 'ptprm_default_account_logins';
-    public const ACCOUNTS_VERSION  = 8;
+    public const ACCOUNTS_VERSION  = 6;
 
     public static function init(): void {
         add_action( 'init', [ __CLASS__, 'maybe_ensure' ], 6 );
-        add_action( 'init', [ __CLASS__, 'repair_missing_accounts' ], 7 );
         add_filter( 'authenticate', [ __CLASS__, 'block_locked_demo_login' ], 30, 3 );
         add_action( 'ptprm_member_registered', [ __CLASS__, 'maybe_lock_demo_anggota' ] );
         add_action( 'profile_update', [ __CLASS__, 'clear_temp_password_flag_on_change' ], 10, 2 );
@@ -140,84 +136,19 @@ class PTPRM_Default_Accounts {
         );
         self::seed_demo_member_row();
         self::ensure_bidang_accounts();
-        self::ensure_local_admin_account();
-    }
-
-    /**
-     * Pulihkan akun yang terhapus (ptprm-local, bidang, admin organisasi).
-     */
-    public static function repair_missing_accounts(): void {
-        self::restore_all_accounts( false );
-    }
-
-    /**
-     * Buat ulang semua akun standar (lokal, organisasi, lima bidang).
-     *
-     * @param bool $reset_demo_passwords Set true saat perbaikan penuh dari wp-admin.
-     */
-    public static function restore_all_accounts( bool $reset_demo_passwords = false ): void {
-        PTPRM_Members::ensure_roles();
-        if ( class_exists( 'PTPRM_Access' ) ) {
-            PTPRM_Access::ensure_capabilities();
-        }
-        self::ensure_local_admin_account();
-        self::ensure_user(
-            self::resolve_login( self::LOGIN_ADMIN, 'admin' ),
-            'admin_organisasi',
-            'admin',
-            $reset_demo_passwords
-        );
-        self::ensure_user(
-            self::resolve_login( self::LOGIN_PENGURUS, 'pengurus' ),
-            'pengurus',
-            'pengurus',
-            $reset_demo_passwords
-        );
-        self::ensure_bidang_accounts();
-    }
-
-    /**
-     * Administrator WordPress untuk kelola plugin & wp-admin (bukan hanya panel depan).
-     */
-    public static function ensure_local_admin_account(): int {
-        $login = self::LOGIN_LOCAL;
-        $email = self::EMAIL_LOCAL;
-
-        $by_login = get_user_by( 'login', $login );
-        if ( $by_login instanceof WP_User ) {
-            $by_login->set_role( 'administrator' );
-            update_user_meta( $by_login->ID, self::META_TYPE, 'local_admin' );
-            self::store_login( 'local_admin', $login );
-            return (int) $by_login->ID;
-        }
-
-        $by_email = get_user_by( 'email', $email );
-        if ( $by_email instanceof WP_User ) {
-            $by_email->set_role( 'administrator' );
-            update_user_meta( $by_email->ID, self::META_TYPE, 'local_admin' );
-            self::store_login( 'local_admin', $by_email->user_login );
-            return (int) $by_email->ID;
-        }
-
-        $uid = wp_create_user( $login, self::TEMP_PASSWORD, $email );
-        if ( is_wp_error( $uid ) ) {
-            return 0;
-        }
-        $user = get_user_by( 'id', (int) $uid );
-        if ( $user instanceof WP_User ) {
-            $user->set_role( 'administrator' );
-        }
-        update_user_meta( (int) $uid, self::META_TYPE, 'local_admin' );
-        update_user_meta( (int) $uid, self::META_TEMP_PASS, '1' );
-        self::store_login( 'local_admin', $login );
-        return (int) $uid;
     }
 
     private static function ensure_bidang_accounts(): void {
         if ( ! class_exists( 'PTPRM_Bidang_Registry' ) ) {
             return;
         }
-        $map = PTPRM_Bidang_Registry::bidang_account_emails();
+        $map = [
+            'sekretariat' => 'sekretariat@ptsbi.org',
+            'adat-budaya' => 'adat@ptsbi.org',
+            'usaha-dana'  => 'usaha@ptsbi.org',
+            'sos-dik-mud' => 'sos@ptsbi.org',
+            'hukum'       => 'hukum@ptsbi.org',
+        ];
         foreach ( $map as $slug => $email ) {
             $login = self::resolve_login( $email, 'bidang_' . str_replace( '-', '_', $slug ) );
             $uid   = self::ensure_user( $login, 'pengurus', 'bidang_' . $slug, true );
@@ -233,18 +164,12 @@ class PTPRM_Default_Accounts {
     private static function ensure_user( string $login, string $role, string $type, bool $keep_temp_password ): int {
         $email = sanitize_email( $login );
 
-        $bidang_slug = class_exists( 'PTPRM_Bidang_Registry' ) ? PTPRM_Bidang_Registry::slug_for_email( $email ) : '';
-        if ( $bidang_slug !== '' ) {
-            $type = 'bidang_' . str_replace( '-', '_', $bidang_slug );
-            $role = 'pengurus';
-        }
-
         // Prioritaskan lookup by email untuk pola login berbasis email.
         if ( is_email( $email ) ) {
             $by_email = get_user_by( 'email', $email );
             if ( $by_email instanceof WP_User ) {
                 $marked = get_user_meta( $by_email->ID, self::META_TYPE, true );
-                if ( $marked === '' || $marked === $type || ( $bidang_slug !== '' && strpos( (string) $marked, 'bidang_' ) === 0 ) ) {
+                if ( $marked === '' || $marked === $type ) {
                     update_user_meta( $by_email->ID, self::META_TYPE, $type );
                     wp_update_user( [ 'ID' => $by_email->ID, 'role' => $role ] );
                     if ( $keep_temp_password || get_user_meta( $by_email->ID, self::META_TEMP_PASS, true ) ) {
@@ -252,9 +177,6 @@ class PTPRM_Default_Accounts {
                         update_user_meta( $by_email->ID, self::META_TEMP_PASS, '1' );
                     }
                     self::store_login( $type, $login );
-                    if ( $bidang_slug !== '' && class_exists( 'PTPRM_Bidang_Registry' ) ) {
-                        PTPRM_Bidang_Registry::set_user_bidang_slug( (int) $by_email->ID, $bidang_slug );
-                    }
                     return (int) $by_email->ID;
                 }
             }
@@ -263,7 +185,7 @@ class PTPRM_Default_Accounts {
         $existing = get_user_by( 'login', $login );
         if ( $existing instanceof WP_User ) {
             $marked = get_user_meta( $existing->ID, self::META_TYPE, true );
-            if ( $marked !== $type && $marked !== '' && ! ( $bidang_slug !== '' && strpos( (string) $marked, 'bidang_' ) === 0 ) ) {
+            if ( $marked !== $type && $marked !== '' ) {
                 return 0;
             }
             if ( $marked === '' ) {
@@ -281,9 +203,6 @@ class PTPRM_Default_Accounts {
                         'user_email' => $email,
                     ]
                 );
-            }
-            if ( $bidang_slug !== '' && class_exists( 'PTPRM_Bidang_Registry' ) ) {
-                PTPRM_Bidang_Registry::set_user_bidang_slug( (int) $existing->ID, $bidang_slug );
             }
             return (int) $existing->ID;
         }
@@ -481,39 +400,7 @@ class PTPRM_Default_Accounts {
             ? __( 'Terkunci — sudah ada anggota terdaftar.', 'ptsbi-premium' )
             : __( 'Hanya untuk uji coba. Ganti password setelah ada anggota nyata.', 'ptsbi-premium' );
 
-        $rows = [
-            [
-                'label'    => __( 'Administrator situs (wp-admin)', 'ptsbi-premium' ),
-                'login'    => self::LOGIN_LOCAL,
-                'password' => self::TEMP_PASSWORD,
-                'url'      => admin_url(),
-                'note'     => __( 'Akun teknis pemilik situs — jangan dihapus. Untuk wp-admin & pengaturan plugin.', 'ptsbi-premium' ),
-            ],
-        ];
-
-        if ( class_exists( 'PTPRM_Bidang_Registry' ) ) {
-            $bidang_emails = [
-                'sekretariat' => 'sekretariat@ptsbi.org',
-                'adat-budaya' => 'adat@ptsbi.org',
-                'usaha-dana'  => 'usaha@ptsbi.org',
-                'sos-dik-mud' => 'sos@ptsbi.org',
-                'hukum'       => 'hukum@ptsbi.org',
-            ];
-            foreach ( PTPRM_Bidang_Registry::bidangs() as $slug => $meta ) {
-                $email = $bidang_emails[ $slug ] ?? ( $slug . '@ptsbi.org' );
-                $rows[] = [
-                    'label'    => (string) $meta['title'],
-                    'login'    => $email,
-                    'password' => self::TEMP_PASSWORD,
-                    'url'      => PTPRM_Bidang_Registry::panel_url( $slug ),
-                    'note'     => __( 'Panel bidang — login lewat Rumah Anggota.', 'ptsbi-premium' ),
-                ];
-            }
-        }
-
-        return array_merge(
-            $rows,
-            [
+        return [
             [
                 'label'    => __( 'Anggota (demo)', 'ptsbi-premium' ),
                 'login'    => self::login_for( 'anggota' ),
@@ -535,7 +422,6 @@ class PTPRM_Default_Accounts {
                 'url'      => $panel_login,
                 'note'     => __( 'Password sementara — ganti setelah produksi.', 'ptsbi-premium' ),
             ],
-            ]
-        );
+        ];
     }
 }

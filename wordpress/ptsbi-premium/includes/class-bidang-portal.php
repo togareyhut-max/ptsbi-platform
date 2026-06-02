@@ -11,36 +11,9 @@ class PTPRM_Bidang_Portal {
 
     public function __construct() {
         add_shortcode( 'ptprm_bidang_panel', [ $this, 'shortcode' ] );
-        // Alias salah ketik / konten halaman lama.
-        add_shortcode( 'ptprm_bidang_portal', [ $this, 'shortcode' ] );
         add_action( 'init', [ $this, 'handle_save_content' ], 20 );
         add_action( 'init', [ $this, 'handle_save_post' ], 20 );
         add_filter( 'ptprm_subpage_hero_skip', [ $this, 'skip_hero' ] );
-        add_filter( 'the_content', [ $this, 'render_panel_in_content' ], 24 );
-    }
-
-    /**
-     * Perbaiki halaman panel yang hanya berisi shortcode salah atau kosong.
-     */
-    public function render_panel_in_content( string $content ): string {
-        if ( ! is_page() || ! in_the_loop() || ! is_main_query() ) {
-            return $content;
-        }
-        $slug = PTPRM_Bidang_Registry::bidang_slug_from_panel_page();
-        if ( $slug === '' ) {
-            return $content;
-        }
-        if ( strpos( $content, 'ptprm-bidang-portal' ) !== false ) {
-            return $content;
-        }
-        if ( strpos( $content, '[ptprm_bidang_panel' ) !== false || strpos( $content, '[ptprm_bidang_portal' ) !== false ) {
-            return do_shortcode( $content );
-        }
-        $panel = $this->render_panel( $slug );
-        if ( $panel === '' ) {
-            return $content;
-        }
-        return $content . $panel;
     }
 
     public function skip_hero( bool $skip ): bool {

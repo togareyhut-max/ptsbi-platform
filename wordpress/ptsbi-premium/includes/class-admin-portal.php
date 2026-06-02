@@ -18,10 +18,7 @@ class PTPRM_Admin_Portal {
     private const NONCE_APPROVE = 'ptprm_admin_member_approve';
 
     private function can_access_panel(): bool {
-        if ( class_exists( 'PTPRM_Bidang_Registry' ) && PTPRM_Bidang_Registry::is_bidang_user() ) {
-            return false;
-        }
-        return PTPRM_Access::can_manage() && ! PTPRM_Access::is_bidang_only_manager();
+        return PTPRM_Access::can_manage();
     }
 
     private function can_access_members_tab(): bool {

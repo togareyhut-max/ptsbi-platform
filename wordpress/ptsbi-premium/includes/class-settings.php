@@ -1483,9 +1483,6 @@ JS;
                     <a class="button button-secondary" href="<?php echo esc_url( wp_nonce_url( admin_url( 'admin.php?page=ptprm-settings&ptprm_default_accounts=1' ), 'ptprm_default_accounts' ) ); ?>">
                         <?php esc_html_e( 'Buat / reset akun demo', 'ptsbi-premium' ); ?>
                     </a>
-                    <a class="button button-primary" href="<?php echo esc_url( wp_nonce_url( admin_url( 'admin.php?page=ptprm-settings&ptprm_repair_site=1' ), 'ptprm_repair_site' ) ); ?>">
-                        <?php esc_html_e( 'Perbaiki akun & panel (setelah gangguan)', 'ptsbi-premium' ); ?>
-                    </a>
                     <?php endif; ?>
                 </p>
                 <?php if ( class_exists( 'PTPRM_Default_Accounts' ) ) : ?>

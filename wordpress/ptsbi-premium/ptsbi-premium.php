@@ -3,7 +3,7 @@
  * Plugin Name:       Premium Organization
  * Plugin URI:        https://ptsbi.org/
  * Description:       Plugin organisasi PTSBI: beranda, portal anggota (pendaftaran, profil, import DAMI), panel pengurus, dan pengaturan situs — satu plugin lengkap.
- * Version:           3.1.7
+ * Version:           3.1.3-rollback
  * Requires at least: 5.8
  * Requires PHP:      7.4
  * Author:            Premium Plugins
@@ -15,7 +15,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'PTPRM_VERSION', '3.1.7' );
+define( 'PTPRM_VERSION', '3.1.3-rollback' );
 define( 'PTPRM_FILE',    __FILE__ );
 define( 'PTPRM_DIR',     plugin_dir_path( __FILE__ ) );
 define( 'PTPRM_URL',     plugin_dir_url( __FILE__ ) );
@@ -59,7 +59,6 @@ add_action(
     'plugins_loaded',
     static function (): void {
         PTPRM_Bootstrap::init();
-        PTPRM_Bootstrap::maybe_repair_after_upgrade();
         PTPRM_Access::init();
         PTPRM_Board_Registry::init();
         PTPRM_Bidang_Registry::init();

@@ -100,45 +100,6 @@ class PTPRM_Bootstrap {
         );
     }
 
-    /**
-     * Pulihkan akun, shortcode panel bidang, dan halaman organisasi (setelah gangguan / upgrade).
-     */
-    public static function repair_site(): void {
-        if ( class_exists( 'PTPRM_Access' ) ) {
-            PTPRM_Access::ensure_capabilities();
-        }
-        if ( class_exists( 'PTPRM_Default_Accounts' ) ) {
-            PTPRM_Default_Accounts::restore_all_accounts( true );
-            update_option( PTPRM_Default_Accounts::OPTION_VERSION, PTPRM_Default_Accounts::ACCOUNTS_VERSION, false );
-        }
-        if ( class_exists( 'PTPRM_Bidang_Registry' ) ) {
-            PTPRM_Bidang_Registry::restore_all_pages();
-            PTPRM_Bidang_Registry::sync_bidang_user_meta();
-        }
-        if ( class_exists( 'PTPRM_Board_Registry' ) ) {
-            PTPRM_Board_Registry::restore_region_pages();
-        }
-        if ( class_exists( 'PTPRM_Login_Portal' ) ) {
-            PTPRM_Login_Portal::ensure_pages();
-        }
-        if ( class_exists( 'PTPRM_Member_Portal' ) ) {
-            PTPRM_Member_Portal::ensure_pages();
-        }
-        if ( class_exists( 'PTPRM_Admin_Portal' ) ) {
-            PTPRM_Admin_Portal::ensure_pages();
-        }
-        flush_rewrite_rules( false );
-    }
-
-    public static function maybe_repair_after_upgrade(): void {
-        $last = (string) get_option( 'ptprm_site_repair_version', '' );
-        if ( $last === PTPRM_VERSION ) {
-            return;
-        }
-        self::repair_site();
-        update_option( 'ptprm_site_repair_version', PTPRM_VERSION, false );
-    }
-
     public static function activate(): void {
         $saved = get_option( PTPRM_OPTION );
         if ( false === $saved ) {
@@ -213,25 +174,12 @@ class PTPRM_Bootstrap {
         if ( isset( $_GET['ptprm_default_accounts'] ) && '1' === $_GET['ptprm_default_accounts'] ) {
             check_admin_referer( 'ptprm_default_accounts' );
             if ( class_exists( 'PTPRM_Default_Accounts' ) ) {
-                PTPRM_Default_Accounts::restore_all_accounts( true );
+                PTPRM_Default_Accounts::ensure_all();
                 update_option( PTPRM_Default_Accounts::OPTION_VERSION, PTPRM_Default_Accounts::ACCOUNTS_VERSION, false );
                 PTPRM_Default_Accounts::maybe_lock_demo_anggota();
             }
-            set_transient( 'ptprm_admin_notice', __( 'Akun demo dibuat/diperbarui (ptprm-local, bidang, admin). Password sementara: 12345678.', 'ptsbi-premium' ), 30 );
+            set_transient( 'ptprm_admin_notice', __( 'Akun demo dibuat/diperbarui. Password admin & pengurus: 12345678.', 'ptsbi-premium' ), 30 );
             wp_safe_redirect( self::settings_admin_url( [ 'ptprm-default-accounts' => '1' ] ) );
-            exit;
-        }
-
-        if ( isset( $_GET['ptprm_repair_site'] ) && '1' === $_GET['ptprm_repair_site'] ) {
-            check_admin_referer( 'ptprm_repair_site' );
-            self::repair_site();
-            update_option( 'ptprm_site_repair_version', PTPRM_VERSION, false );
-            set_transient(
-                'ptprm_admin_notice',
-                __( 'Perbaikan selesai: akun ptprm-local & bidang, halaman panel bidang, tombol Purge All, dan portal diperbarui. Password demo bidang: 12345678.', 'ptsbi-premium' ),
-                45
-            );
-            wp_safe_redirect( self::settings_admin_url( [ 'ptprm-repair-site' => '1' ] ) );
             exit;
         }
 

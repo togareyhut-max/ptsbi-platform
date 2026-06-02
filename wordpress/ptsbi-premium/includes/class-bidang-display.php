@@ -12,6 +12,20 @@ class PTPRM_Bidang_Display {
     public function __construct() {
         add_shortcode( 'ptprm_bidang', [ $this, 'shortcode_public' ] );
         add_filter( 'the_content', [ $this, 'inject_shortcode' ], 7 );
+        add_filter( 'the_content', [ $this, 'process_shortcodes_in_content' ], 25 );
+    }
+
+    /**
+     * Pastikan shortcode bidang diproses (tema/Elementor kadang tidak menjalankan do_shortcode).
+     */
+    public function process_shortcodes_in_content( string $content ): string {
+        if ( ! is_singular( 'page' ) || strpos( $content, '[ptprm_bidang' ) === false ) {
+            return $content;
+        }
+        if ( strpos( $content, 'ptprm-bidang-public' ) !== false ) {
+            return $content;
+        }
+        return do_shortcode( $content );
     }
 
     /**

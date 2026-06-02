@@ -198,16 +198,6 @@ class PTPRM_Login_Portal {
         if ( class_exists( 'PTPRM_Member_Portal' ) && PTPRM_Member_Portal::is_anggota( $user ) ) {
             return __( 'Buka Area Anggota', 'ptsbi-premium' );
         }
-        if ( class_exists( 'PTPRM_Bidang_Registry' ) ) {
-            $bidang = PTPRM_Bidang_Registry::resolve_bidang_slug_for_user( $user );
-            if ( $bidang !== '' && isset( PTPRM_Bidang_Registry::bidangs()[ $bidang ] ) ) {
-                return sprintf(
-                    /* translators: %s: bidang name */
-                    __( 'Buka Panel %s', 'ptsbi-premium' ),
-                    PTPRM_Bidang_Registry::bidangs()[ $bidang ]['title']
-                );
-            }
-        }
         if ( PTPRM_Access::is_site_admin( $user ) ) {
             return __( 'Buka Dashboard WordPress', 'ptsbi-premium' );
         }

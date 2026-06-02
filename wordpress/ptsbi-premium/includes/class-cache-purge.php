@@ -23,9 +23,6 @@ class PTPRM_Cache_Purge {
         if ( class_exists( 'PTPRM_Access' ) && PTPRM_Access::is_site_admin() ) {
             return true;
         }
-        if ( class_exists( 'PTPRM_Bidang_Registry' ) && PTPRM_Bidang_Registry::is_bidang_user() ) {
-            return true;
-        }
         return current_user_can( PTPRM_Access::CAP_PURGE_CACHE );
     }
 
