@@ -217,13 +217,7 @@ class PTPRM_Default_Accounts {
         if ( ! class_exists( 'PTPRM_Bidang_Registry' ) ) {
             return;
         }
-        $map = [
-            'sekretariat' => 'sekretariat@ptsbi.org',
-            'adat-budaya' => 'adat@ptsbi.org',
-            'usaha-dana'  => 'usaha@ptsbi.org',
-            'sos-dik-mud' => 'sos@ptsbi.org',
-            'hukum'       => 'hukum@ptsbi.org',
-        ];
+        $map = PTPRM_Bidang_Registry::bidang_account_emails();
         foreach ( $map as $slug => $email ) {
             $login = self::resolve_login( $email, 'bidang_' . str_replace( '-', '_', $slug ) );
             $uid   = self::ensure_user( $login, 'pengurus', 'bidang_' . $slug, true );
@@ -239,12 +233,18 @@ class PTPRM_Default_Accounts {
     private static function ensure_user( string $login, string $role, string $type, bool $keep_temp_password ): int {
         $email = sanitize_email( $login );
 
+        $bidang_slug = class_exists( 'PTPRM_Bidang_Registry' ) ? PTPRM_Bidang_Registry::slug_for_email( $email ) : '';
+        if ( $bidang_slug !== '' ) {
+            $type = 'bidang_' . str_replace( '-', '_', $bidang_slug );
+            $role = 'pengurus';
+        }
+
         // Prioritaskan lookup by email untuk pola login berbasis email.
         if ( is_email( $email ) ) {
             $by_email = get_user_by( 'email', $email );
             if ( $by_email instanceof WP_User ) {
                 $marked = get_user_meta( $by_email->ID, self::META_TYPE, true );
-                if ( $marked === '' || $marked === $type ) {
+                if ( $marked === '' || $marked === $type || ( $bidang_slug !== '' && strpos( (string) $marked, 'bidang_' ) === 0 ) ) {
                     update_user_meta( $by_email->ID, self::META_TYPE, $type );
                     wp_update_user( [ 'ID' => $by_email->ID, 'role' => $role ] );
                     if ( $keep_temp_password || get_user_meta( $by_email->ID, self::META_TEMP_PASS, true ) ) {
@@ -252,6 +252,9 @@ class PTPRM_Default_Accounts {
                         update_user_meta( $by_email->ID, self::META_TEMP_PASS, '1' );
                     }
                     self::store_login( $type, $login );
+                    if ( $bidang_slug !== '' && class_exists( 'PTPRM_Bidang_Registry' ) ) {
+                        PTPRM_Bidang_Registry::set_user_bidang_slug( (int) $by_email->ID, $bidang_slug );
+                    }
                     return (int) $by_email->ID;
                 }
             }
@@ -260,7 +263,7 @@ class PTPRM_Default_Accounts {
         $existing = get_user_by( 'login', $login );
         if ( $existing instanceof WP_User ) {
             $marked = get_user_meta( $existing->ID, self::META_TYPE, true );
-            if ( $marked !== $type && $marked !== '' ) {
+            if ( $marked !== $type && $marked !== '' && ! ( $bidang_slug !== '' && strpos( (string) $marked, 'bidang_' ) === 0 ) ) {
                 return 0;
             }
             if ( $marked === '' ) {
@@ -278,6 +281,9 @@ class PTPRM_Default_Accounts {
                         'user_email' => $email,
                     ]
                 );
+            }
+            if ( $bidang_slug !== '' && class_exists( 'PTPRM_Bidang_Registry' ) ) {
+                PTPRM_Bidang_Registry::set_user_bidang_slug( (int) $existing->ID, $bidang_slug );
             }
             return (int) $existing->ID;
         }

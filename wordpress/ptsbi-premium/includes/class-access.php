@@ -292,6 +292,11 @@ class PTPRM_Access {
         return self::is_manager( $user ) && ! self::is_site_admin( $user ) && ! self::is_org_admin( $user );
     }
 
+    /** Pengurus yang hanya mengelola satu bidang (bukan panel admin organisasi). */
+    public static function is_bidang_only_manager( $user = null ): bool {
+        return class_exists( 'PTPRM_Bidang_Registry' ) && PTPRM_Bidang_Registry::is_bidang_user( $user );
+    }
+
     public static function portal_url_for_user( $user = null ): string {
         $user = $user ?: wp_get_current_user();
         if ( class_exists( 'PTPRM_Member_Portal' ) && PTPRM_Member_Portal::is_anggota( $user ) ) {
@@ -300,13 +305,16 @@ class PTPRM_Access {
         if ( class_exists( 'PTPRM_Members' ) && PTPRM_Members::is_pending_registration_user( $user ) ) {
             return class_exists( 'PTPRM_Login_Portal' ) ? PTPRM_Login_Portal::login_url() : home_url( '/rumah-anggota/' );
         }
-        if ( class_exists( 'PTPRM_Bidang_Registry' ) && PTPRM_Bidang_Registry::is_bidang_user( $user ) ) {
-            return PTPRM_Bidang_Registry::panel_url( PTPRM_Bidang_Registry::get_user_bidang_slug( $user ) );
+        if ( class_exists( 'PTPRM_Bidang_Registry' ) ) {
+            $bidang_slug = PTPRM_Bidang_Registry::resolve_bidang_slug_for_user( $user );
+            if ( $bidang_slug !== '' ) {
+                return PTPRM_Bidang_Registry::panel_url( $bidang_slug );
+            }
         }
         if ( self::is_site_admin( $user ) ) {
             return admin_url();
         }
-        if ( class_exists( 'PTPRM_Admin_Portal' ) && self::is_manager( $user ) ) {
+        if ( class_exists( 'PTPRM_Admin_Portal' ) && self::is_manager( $user ) && ! self::is_bidang_only_manager( $user ) ) {
             return PTPRM_Admin_Portal::portal_url();
         }
         return home_url( '/' );

@@ -113,6 +113,7 @@ class PTPRM_Bootstrap {
         }
         if ( class_exists( 'PTPRM_Bidang_Registry' ) ) {
             PTPRM_Bidang_Registry::restore_all_pages();
+            PTPRM_Bidang_Registry::sync_bidang_user_meta();
         }
         if ( class_exists( 'PTPRM_Board_Registry' ) ) {
             PTPRM_Board_Registry::restore_region_pages();
