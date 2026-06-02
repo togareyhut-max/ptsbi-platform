@@ -364,6 +364,10 @@ class PTPRM_Login_Portal {
             echo '<div class="ptprm-member-card ptprm-portal-card">';
             echo '<h2 class="ptprm-portal-login-title">' . esc_html__( 'Rumah Anggota', 'ptsbi-premium' ) . '</h2>';
             echo '<p>' . esc_html__( 'Anda sudah masuk.', 'ptsbi-premium' ) . '</p>';
+            if ( class_exists( 'PTPRM_Cache_Purge' ) ) {
+                PTPRM_Cache_Purge::render_notice();
+                PTPRM_Cache_Purge::render_purge_toolbar( self::login_url() );
+            }
             echo '<a class="ptprm-cta ptprm-cta-1 ptprm-cta-size-medium" href="' . esc_url( PTPRM_Access::portal_url_for_user( $user ) ) . '">';
             echo '<span class="ptprm-cta-label">' . esc_html( self::panel_label_for_user( $user ) ) . '</span></a>';
             echo '<div class="ptprm-portal-logout-form" style="margin-top:1rem;">';

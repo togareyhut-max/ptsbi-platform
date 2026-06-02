@@ -291,6 +291,10 @@ class PTPRM_Member_Portal {
         ) ) . '</p>';
         echo '</header>';
 
+        if ( class_exists( 'PTPRM_Cache_Purge' ) ) {
+            PTPRM_Cache_Purge::render_purge_toolbar( self::navigation_url( [ 'tab' => $tab ] ) );
+        }
+
         echo '<nav class="ptprm-portal-tabs" aria-label="' . esc_attr__( 'Menu area anggota', 'ptsbi-premium' ) . '">';
         foreach (
             [

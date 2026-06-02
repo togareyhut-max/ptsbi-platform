@@ -61,6 +61,9 @@ class PTPRM_Bidang_Portal {
         echo '<div class="ptprm-portal-wrap ptprm-bidang-portal">';
         echo '<header class="ptprm-portal-head"><h2 class="ptprm-portal-title">' . esc_html( (string) $meta['title'] ) . '</h2>';
         echo '<p class="ptprm-portal-greet">' . esc_html__( 'Panel pengelolaan bidang', 'ptsbi-premium' ) . '</p></header>';
+        if ( class_exists( 'PTPRM_Cache_Purge' ) ) {
+            PTPRM_Cache_Purge::render_purge_toolbar( PTPRM_Bidang_Registry::panel_url( $slug, $tab ) );
+        }
         echo '<nav class="ptprm-portal-tabs">';
         foreach ( $tabs as $key => $label ) {
             $active = $tab === $key ? ' is-active' : '';

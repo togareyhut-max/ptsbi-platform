@@ -302,6 +302,10 @@ class PTPRM_Admin_Portal {
         echo '<p class="ptprm-portal-greet">' . esc_html( sprintf( __( 'Halo, %s', 'ptsbi-premium' ), $user->display_name ?: $user->user_login ) ) . '</p>';
         echo '</header>';
 
+        if ( class_exists( 'PTPRM_Cache_Purge' ) ) {
+            PTPRM_Cache_Purge::render_purge_toolbar( self::portal_url( $tab ) );
+        }
+
         echo '<nav class="ptprm-portal-tabs">';
         foreach ( $tabs as $key => $label ) {
             $active = $tab === $key ? ' is-active' : '';
