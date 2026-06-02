@@ -14,23 +14,13 @@ class PTPRM_Cache_Purge {
 
     public function __construct() {
         add_action( 'init', [ $this, 'handle_purge_request' ], 19 );
-        add_action( 'wp_footer', [ __CLASS__, 'maybe_render_floating_purge' ], 99 );
     }
 
-    /**
-     * Semua pengguna panel frontend (bukan tamu) boleh purge cache tanpa wp-admin.
-     */
     public static function can_purge(): bool {
         if ( ! is_user_logged_in() ) {
             return false;
         }
-        if ( user_can( 'manage_options' ) ) {
-            return true;
-        }
-        if ( ! class_exists( 'PTPRM_Access' ) ) {
-            return false;
-        }
-        if ( PTPRM_Access::can_manage() || PTPRM_Access::can_manage_org_settings() ) {
+        if ( class_exists( 'PTPRM_Access' ) && PTPRM_Access::is_site_admin() ) {
             return true;
         }
         return current_user_can( PTPRM_Access::CAP_PURGE_CACHE );
@@ -46,16 +36,8 @@ class PTPRM_Cache_Purge {
             define( 'LITESPEED_PURGE_SILENT', true );
         }
 
-        if ( class_exists( '\LiteSpeed\Purge', false ) ) {
-            try {
-                \LiteSpeed\Purge::purge_all( 'PTPRM portal' );
-                $litespeed = true;
-            } catch ( \Throwable $e ) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedCatch
-                unset( $e );
-            }
-        }
-        if ( ! $litespeed && class_exists( 'LiteSpeed_Cache_API', false ) && is_callable( [ 'LiteSpeed_Cache_API', 'purge_all' ] ) ) {
-            LiteSpeed_Cache_API::purge_all();
+        if ( class_exists( '\LiteSpeed\Purge' ) ) {
+            \LiteSpeed\Purge::purge_all( 'PTPRM portal' );
             $litespeed = true;
         } elseif ( has_action( 'litespeed_purge_all' ) ) {
             do_action( 'litespeed_purge_all' );
@@ -126,10 +108,6 @@ class PTPRM_Cache_Purge {
             exit;
         }
 
-        if ( function_exists( 'ptprm_portal_nocache_headers' ) ) {
-            ptprm_portal_nocache_headers();
-        }
-
         wp_safe_redirect(
             add_query_arg(
                 [
@@ -140,44 +118,6 @@ class PTPRM_Cache_Purge {
             )
         );
         exit;
-    }
-
-    /**
-     * Tombol mengambang di halaman portal (selalu terlihat tanpa scroll ke footer).
-     */
-    public static function maybe_render_floating_purge(): void {
-        if ( ! self::can_purge() || ! function_exists( 'ptprm_is_portal_page_request' ) || ! ptprm_is_portal_page_request() ) {
-            return;
-        }
-        $return_url = esc_url( self::current_page_url() );
-        echo '<div class="ptprm-cache-purge-float" aria-label="' . esc_attr__( 'Hapus cache', 'ptsbi-premium' ) . '">';
-        self::render_purge_button( $return_url );
-        echo '</div>';
-    }
-
-    public static function current_page_url(): string {
-        if ( is_singular() ) {
-            return get_permalink();
-        }
-        $uri = isset( $_SERVER['REQUEST_URI'] ) ? wp_unslash( (string) $_SERVER['REQUEST_URI'] ) : '/'; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
-        return home_url( $uri );
-    }
-
-    /**
-     * Bilah di atas panel — untuk masalah "sesi kedaluwarsa" karena cache halaman.
-     *
-     * @param string $return_url URL setelah purge.
-     */
-    public static function render_purge_toolbar( string $return_url ): void {
-        if ( ! self::can_purge() ) {
-            return;
-        }
-        echo '<div class="ptprm-cache-purge-toolbar">';
-        echo '<p class="ptprm-cache-purge-toolbar__text">';
-        echo esc_html__( 'Jika simpan gagal (sesi kedaluwarsa), klik tombol di bawah untuk menghapus semua cache situs (sama seperti Purge All di LiteSpeed), lalu muat ulang halaman dan coba simpan lagi.', 'ptsbi-premium' );
-        echo '</p>';
-        self::render_purge_button( $return_url );
-        echo '</div>';
     }
 
     /**
@@ -225,7 +165,7 @@ class PTPRM_Cache_Purge {
         echo '<input type="hidden" name="ptprm_purge_cache" value="1">';
         echo '<input type="hidden" name="ptprm_purge_return" value="' . $return_url . '">';
         echo '<button type="submit" class="button button-secondary ptprm-cache-purge-btn">';
-        echo esc_html__( 'Hapus semua cache situs (Purge All)', 'ptsbi-premium' );
+        echo esc_html__( 'Hapus semua cache (Purge All)', 'ptsbi-premium' );
         echo '</button>';
         echo '</form>';
     }

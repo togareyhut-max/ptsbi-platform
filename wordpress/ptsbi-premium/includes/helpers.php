@@ -1024,72 +1024,6 @@ function ptprm_import_option_from_array( array $imported ): array {
     return ptprm_normalize_option_for_storage( array_merge( ptprm_defaults(), $imported ) );
 }
 
-/**
- * Pertahankan data pengurus saat normalisasi / simpan pengaturan tanpa field board_*.
- *
- * @param array<string, mixed> $o
- * @return array<string, mixed>
- */
-function ptprm_preserve_board_keys_for_storage( array $o ): array {
-    $o = ptprm_normalize_option_for_storage( $o );
-    if ( ! class_exists( 'PTPRM_Board_Registry' ) ) {
-        return $o;
-    }
-    $stored = get_option( PTPRM_OPTION, [] );
-    if ( ! is_array( $stored ) ) {
-        return $o;
-    }
-    foreach ( PTPRM_Board_Registry::regions() as $slug => $meta ) {
-        unset( $meta );
-        $key = PTPRM_Board_Registry::option_key( $slug );
-        if ( ! empty( $stored[ $key ] ) && empty( $o[ $key ] ) ) {
-            $o[ $key ] = $stored[ $key ];
-        }
-    }
-    return $o;
-}
-
-/**
- * Gabungkan katalog pengurus baru dengan data tersimpan; foto yang sudah diunggah dipertahankan.
- *
- * @param list<array<string,mixed>> $existing
- * @param list<array<string,mixed>> $catalog
- * @return list<array{name:string,role:string,group:string,image:string,featured:int}>
- */
-function ptprm_merge_board_catalog( array $existing, array $catalog ): array {
-    $find = static function ( array $rows, string $role, string $group ) {
-        $role_lc  = strtolower( trim( $role ) );
-        $group_lc = strtolower( trim( $group ) );
-        foreach ( $rows as $row ) {
-            if ( ! is_array( $row ) ) {
-                continue;
-            }
-            $r = strtolower( trim( (string) ( $row['role'] ?? '' ) ) );
-            $g = strtolower( trim( (string) ( $row['group'] ?? '' ) ) );
-            if ( $r === $role_lc && $g === $group_lc ) {
-                return $row;
-            }
-        }
-        return null;
-    };
-
-    $merged = [];
-    foreach ( $catalog as $row ) {
-        if ( ! is_array( $row ) ) {
-            continue;
-        }
-        $role  = (string) ( $row['role'] ?? '' );
-        $group = (string) ( $row['group'] ?? '' );
-        $prev  = $find( $existing, $role, $group );
-        if ( is_array( $prev ) && ! empty( $prev['image'] ) ) {
-            $row['image'] = (string) $prev['image'];
-        }
-        $merged[] = $row;
-    }
-
-    return ptprm_sanitize_board_items( $merged );
-}
-
 function ptprm_normalize_option_for_storage( array $o ): array {
     $o = array_merge( ptprm_defaults(), $o );
 
@@ -1141,26 +1075,6 @@ function ptprm_normalize_option_for_storage( array $o ): array {
 
     if ( empty( $o['_site_fingerprint'] ) && class_exists( 'PTPRM_Bootstrap' ) ) {
         $o['_site_fingerprint'] = PTPRM_Bootstrap::site_fingerprint();
-    }
-
-    if ( class_exists( 'PTPRM_Board_Registry' ) ) {
-        foreach ( PTPRM_Board_Registry::regions() as $slug => $meta ) {
-            unset( $meta );
-            $key = PTPRM_Board_Registry::option_key( $slug );
-            if ( empty( $o[ $key ] ) ) {
-                continue;
-            }
-            $board_raw = $o[ $key ];
-            if ( is_string( $board_raw ) ) {
-                $board_decoded = json_decode( $board_raw, true );
-            } else {
-                $board_decoded = is_array( $board_raw ) ? $board_raw : [];
-            }
-            $o[ $key ] = wp_json_encode(
-                ptprm_sanitize_board_items( is_array( $board_decoded ) ? $board_decoded : [] ),
-                JSON_UNESCAPED_UNICODE
-            );
-        }
     }
 
     return $o;

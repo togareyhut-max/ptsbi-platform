@@ -54,99 +54,6 @@ class PTPRM_Pdf_Portal {
         );
     }
 
-    /**
-     * @return list<array{id:string,title:string,file:string,link_label:string,file_name?:string}>
-     */
-    private static function items_for_admin_form(): array {
-        $o   = ptprm_options();
-        $raw = isset( $o['pdf_items'] ) ? (string) $o['pdf_items'] : '';
-        $items = [];
-        if ( $raw !== '' && $raw !== '[]' ) {
-            $decoded = json_decode( $raw, true );
-            if ( is_array( $decoded ) ) {
-                foreach ( $decoded as $row ) {
-                    if ( ! is_array( $row ) ) {
-                        continue;
-                    }
-                    $title = sanitize_text_field( (string) ( $row['title'] ?? '' ) );
-                    $id    = sanitize_key( (string) ( $row['id'] ?? '' ) );
-                    if ( $id === '' && $title !== '' ) {
-                        $id = sanitize_title( $title );
-                    }
-                    $file_id = is_numeric( $row['file'] ?? '' ) ? (int) $row['file'] : 0;
-                    $file_name = '';
-                    if ( $file_id > 0 ) {
-                        $path = get_attached_file( $file_id );
-                        $file_name = $path ? basename( $path ) : get_the_title( $file_id );
-                    }
-                    $items[] = [
-                        'id'         => $id,
-                        'title'      => $title,
-                        'file'       => $file_id > 0 ? (string) $file_id : '',
-                        'link_label' => sanitize_text_field( (string) ( $row['link_label'] ?? __( 'Lihat dokumen', 'ptsbi-premium' ) ) ),
-                        'file_name'  => $file_name,
-                    ];
-                }
-            }
-        }
-        if ( ! $items ) {
-            $items[] = [
-                'id'         => '',
-                'title'      => '',
-                'file'       => '',
-                'link_label' => __( 'Lihat dokumen', 'ptsbi-premium' ),
-                'file_name'  => '',
-            ];
-        }
-        return $items;
-    }
-
-    /**
-     * @param array<string,mixed> $item
-     */
-    private static function shortcodes_for_item( array $item ): array {
-        $id = sanitize_key( (string) ( $item['id'] ?? '' ) );
-        if ( $id === '' ) {
-            $title = sanitize_text_field( (string) ( $item['title'] ?? '' ) );
-            $id    = $title !== '' ? sanitize_title( $title ) : '';
-        }
-        if ( $id === '' ) {
-            return [ 'button' => '', 'hover' => '' ];
-        }
-        return [
-            'button' => '[ptprm_pdf id="' . $id . '" style="button"]',
-            'hover'  => '[ptprm_pdf id="' . $id . '" style="hover" label="Lihat dokumen"]Teks di sini…[/ptprm_pdf]',
-        ];
-    }
-
-    /**
-     * @param array<string,mixed> $item
-     */
-    private static function render_pdf_row( array $item, int $index ): void {
-        $sc = self::shortcodes_for_item( $item );
-        echo '<li class="ptprm-pdf-name-row" data-index="' . esc_attr( (string) $index ) . '">';
-        echo '<label class="ptprm-pdf-name-label"><span>' . esc_html__( 'Nama dokumen', 'ptsbi-premium' ) . '</span>';
-        echo '<input type="text" class="regular-text" data-field="title" value="' . esc_attr( (string) ( $item['title'] ?? '' ) ) . '"></label>';
-        echo '<input type="hidden" data-field="id" value="' . esc_attr( (string) ( $item['id'] ?? '' ) ) . '">';
-        echo '<input type="hidden" data-field="file" value="' . esc_attr( (string) ( $item['file'] ?? '' ) ) . '">';
-        echo '<input type="hidden" data-field="link_label" value="' . esc_attr( (string) ( $item['link_label'] ?? __( 'Lihat dokumen', 'ptsbi-premium' ) ) ) . '">';
-        echo '<div class="ptprm-pdf-name-file">';
-        echo '<button type="button" class="button ptprm-pdf-pick">' . esc_html__( 'Pilih file', 'ptsbi-premium' ) . '</button>';
-        echo '<button type="button" class="button-link ptprm-pdf-clear">' . esc_html__( 'Hapus file', 'ptsbi-premium' ) . '</button>';
-        echo '<span class="ptprm-pdf-file-name">' . esc_html( (string) ( $item['file_name'] ?? '' ) ) . '</span>';
-        echo '</div>';
-        echo '<div class="ptprm-pdf-shortcodes">';
-        echo '<div class="ptprm-pdf-sc-block"><span class="ptprm-label">' . esc_html__( 'Tombol', 'ptsbi-premium' ) . '</span>';
-        echo '<code class="ptprm-pdf-sc-button">' . esc_html( $sc['button'] ) . '</code> ';
-        echo '<button type="button" class="button button-small ptprm-pdf-copy" data-which="button">' . esc_html__( 'Salin', 'ptsbi-premium' ) . '</button></div>';
-        echo '<div class="ptprm-pdf-sc-block"><span class="ptprm-label">' . esc_html__( 'Hover', 'ptsbi-premium' ) . '</span>';
-        echo '<code class="ptprm-pdf-sc-hover">' . esc_html( $sc['hover'] ) . '</code> ';
-        echo '<button type="button" class="button button-small ptprm-pdf-copy" data-which="hover">' . esc_html__( 'Salin', 'ptsbi-premium' ) . '</button></div>';
-        echo '</div>';
-        echo '<button type="button" class="button-link-delete ptprm-pdf-row-remove" aria-label="' . esc_attr__( 'Hapus baris', 'ptsbi-premium' ) . '">' . esc_html__( 'Hapus', 'ptsbi-premium' ) . '</button>';
-        echo '</li>';
-    }
-
     public function handle_save(): void {
         if ( empty( $_POST['ptprm_portal_pdf_save'] ) || ! self::can_manage_pdf() ) {
             return;
@@ -168,22 +75,11 @@ class PTPRM_Pdf_Portal {
             exit;
         }
 
-        $raw     = isset( $_POST['ptprm_pdf_items_json'] ) ? wp_unslash( (string) $_POST['ptprm_pdf_items_json'] ) : '';
-        $decoded = $raw !== '' ? json_decode( $raw, true ) : null;
-        if ( ! is_array( $decoded ) ) {
-            wp_safe_redirect(
-                add_query_arg(
-                    'ptprm_settings_error',
-                    rawurlencode( __( 'Data PDF tidak terkirim. Muat ulang halaman lalu coba lagi.', 'ptsbi-premium' ) ),
-                    PTPRM_Admin_Portal::portal_url( 'dokumen' )
-                )
-            );
-            exit;
-        }
+        $raw = isset( $_POST['ptprm_pdf_items_json'] ) ? wp_unslash( (string) $_POST['ptprm_pdf_items_json'] ) : '[]';
+        $decoded = json_decode( $raw, true );
+        $items = is_array( $decoded ) ? ptprm_sanitize_pdf_items( $decoded ) : [];
 
-        $items = ptprm_sanitize_pdf_items( $decoded );
-
-        $opts              = (array) get_option( PTPRM_OPTION, [] );
+        $opts = (array) get_option( PTPRM_OPTION, [] );
         $opts['pdf_items'] = wp_json_encode( $items, JSON_UNESCAPED_UNICODE );
         update_option( PTPRM_OPTION, ptprm_normalize_option_for_storage( array_merge( ptprm_options(), $opts ) ), true );
         wp_cache_delete( PTPRM_OPTION, 'options' );
@@ -209,7 +105,15 @@ class PTPRM_Pdf_Portal {
             echo '<p class="ptprm-member-alert ptprm-member-alert-ok">' . esc_html__( 'Daftar dokumen PDF tersimpan.', 'ptsbi-premium' ) . '</p>';
         }
 
-        $items = self::items_for_admin_form();
+        $items = ptprm_get_pdf_items();
+        foreach ( $items as $i => $item ) {
+            $fid = (int) ( $item['file'] ?? 0 );
+            if ( $fid > 0 ) {
+                $path = get_attached_file( $fid );
+                $items[ $i ]['file_name'] = $path ? basename( $path ) : get_the_title( $fid );
+            }
+        }
+        $json_b64 = base64_encode( wp_json_encode( $items, JSON_UNESCAPED_UNICODE ) );
 
         echo '<div class="ptprm-member-card ptprm-portal-card ptprm-pdf-portal">';
         echo '<p class="ptprm-portal-help">' . esc_html__( 'Kelola daftar PDF berdasarkan nama dokumen. ID shortcode dibuat otomatis dari judul. Salin shortcode tombol atau hover untuk dipakai di halaman.', 'ptsbi-premium' ) . '</p>';
@@ -220,28 +124,28 @@ class PTPRM_Pdf_Portal {
         echo '<input type="hidden" name="ptprm_portal_pdf_save" value="1">';
         echo '<input type="hidden" name="ptprm_pdf_items_json" id="ptprm-portal-pdf-json" value="">';
 
-        echo '<ul class="ptprm-pdf-name-list" id="ptprm-portal-pdf-list">';
-        foreach ( $items as $i => $item ) {
-            self::render_pdf_row( $item, (int) $i );
-        }
-        echo '</ul>';
+        echo '<ul class="ptprm-pdf-name-list" id="ptprm-portal-pdf-list" data-json-b64="' . esc_attr( $json_b64 ) . '"></ul>';
 
         echo '<p><button type="button" class="button button-secondary" id="ptprm-portal-pdf-add">+ ' . esc_html__( 'Tambah PDF', 'ptsbi-premium' ) . '</button></p>';
         echo '<button type="submit" class="ptprm-cta ptprm-cta-1 ptprm-cta-size-medium"><span class="ptprm-cta-label">' . esc_html__( 'Simpan daftar PDF', 'ptsbi-premium' ) . '</span></button>';
         echo '</form>';
         echo '</div>';
 
-        echo '<template id="ptprm-portal-pdf-row-tpl"><ul>';
-        self::render_pdf_row(
-            [
-                'id'         => '',
-                'title'      => '',
-                'file'       => '',
-                'link_label' => __( 'Lihat dokumen', 'ptsbi-premium' ),
-                'file_name'  => '',
-            ],
-            0
-        );
-        echo '</ul></template>';
+        echo '<script type="text/template" id="ptprm-portal-pdf-row-tpl">';
+        echo '<li class="ptprm-pdf-name-row" data-index="{{index}}">';
+        echo '<label class="ptprm-pdf-name-label"><span>' . esc_html__( 'Nama dokumen', 'ptsbi-premium' ) . '</span>';
+        echo '<input type="text" class="regular-text" data-field="title" value=""></label>';
+        echo '<input type="hidden" data-field="id" value=""><input type="hidden" data-field="file" value="">';
+        echo '<input type="hidden" data-field="link_label" value="' . esc_attr__( 'Lihat dokumen', 'ptsbi-premium' ) . '">';
+        echo '<div class="ptprm-pdf-name-file"><button type="button" class="button ptprm-pdf-pick">' . esc_html__( 'Pilih file', 'ptsbi-premium' ) . '</button>';
+        echo '<button type="button" class="button-link ptprm-pdf-clear">' . esc_html__( 'Hapus file', 'ptsbi-premium' ) . '</button>';
+        echo '<span class="ptprm-pdf-file-name"></span></div>';
+        echo '<div class="ptprm-pdf-shortcodes"><div class="ptprm-pdf-sc-block"><span class="ptprm-label">' . esc_html__( 'Tombol', 'ptsbi-premium' ) . '</span>';
+        echo '<code class="ptprm-pdf-sc-button"></code> <button type="button" class="button button-small ptprm-pdf-copy" data-which="button">' . esc_html__( 'Salin', 'ptsbi-premium' ) . '</button></div>';
+        echo '<div class="ptprm-pdf-sc-block"><span class="ptprm-label">' . esc_html__( 'Hover', 'ptsbi-premium' ) . '</span>';
+        echo '<code class="ptprm-pdf-sc-hover"></code> <button type="button" class="button button-small ptprm-pdf-copy" data-which="hover">' . esc_html__( 'Salin', 'ptsbi-premium' ) . '</button></div></div>';
+        echo '<button type="button" class="button-link-delete ptprm-pdf-row-remove" aria-label="' . esc_attr__( 'Hapus baris', 'ptsbi-premium' ) . '">' . esc_html__( 'Hapus', 'ptsbi-premium' ) . '</button>';
+        echo '</li>';
+        echo '</script>';
     }
 }

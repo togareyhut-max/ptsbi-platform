@@ -160,16 +160,9 @@ class PTPRM_Header {
         if ( empty( $o['header_show_cta'] ) || empty( $o['header_cta_label'] ) ) {
             return;
         }
-        $cta_url = ptprm_resolve_url( $o['header_cta_url'] ?? '/rumah-anggota/' );
-        if ( is_user_logged_in() && class_exists( 'PTPRM_Access' ) && ( PTPRM_Access::can_manage() || PTPRM_Access::can_manage_org_settings() ) ) {
-            $cta_url = class_exists( 'PTPRM_Admin_Portal' )
-                ? PTPRM_Admin_Portal::portal_url()
-                : home_url( '/panel-pengurus/' );
-        }
+        $cta_url = ptprm_resolve_url( $o['header_cta_url'] ?? '/kontak/' );
         $cta_cls = 'ptprm-site-header__cta ptprm-site-header__cta--' . sanitize_html_class( $o['header_cta_style'] ?? 'accent' );
-        echo '<a class="' . esc_attr( $cta_cls ) . '" href="' . esc_url( $cta_url ) . '">';
-        echo esc_html( is_user_logged_in() ? __( 'Panel', 'ptsbi-premium' ) : (string) $o['header_cta_label'] );
-        echo '</a>';
+        echo '<a class="' . esc_attr( $cta_cls ) . '" href="' . esc_url( $cta_url ) . '">' . esc_html( $o['header_cta_label'] ) . '</a>';
     }
 
     /**

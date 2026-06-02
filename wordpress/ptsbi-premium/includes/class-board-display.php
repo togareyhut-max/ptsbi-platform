@@ -9,12 +9,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 class PTPRM_Board_Display {
 
-    /** @var array<string, bool> */
-    private static $rendered = [];
-
     public function __construct() {
         add_shortcode( 'ptprm_board', [ $this, 'shortcode' ] );
-        add_filter( 'the_content', [ $this, 'append_board_on_region_pages' ], 99 );
+        add_filter( 'the_content', [ $this, 'inject_board_shortcode' ], 8 );
     }
 
     /**
@@ -26,105 +23,21 @@ class PTPRM_Board_Display {
         return self::render( $region );
     }
 
-    public function append_board_on_region_pages( string $content ): string {
-        if ( ! is_page() || ! class_exists( 'PTPRM_Board_Registry' ) ) {
+    public function inject_board_shortcode( string $content ): string {
+        if ( ! is_page() || ! in_the_loop() || ! is_main_query() ) {
             return $content;
         }
-
-        $page_id = get_queried_object_id();
-        if ( ! $page_id ) {
+        if ( trim( wp_strip_all_tags( $content ) ) !== '' ) {
             return $content;
         }
-
-        $region = PTPRM_Board_Registry::region_for_page_slug( (string) get_post_field( 'post_name', $page_id ) );
-        if ( $region === null ) {
+        if ( ! class_exists( 'PTPRM_Board_Registry' ) ) {
             return $content;
         }
-
-        if ( self::content_has_board_entries( $content ) ) {
-            return $content;
-        }
-
-        $content = self::strip_board_markup( $content );
-        $html    = self::render( $region );
-        if ( $html === '' ) {
-            return $content;
-        }
-
-        return $content . $html;
-    }
-
-    /**
-     * Dipanggil dari template sub-halaman — selalu coba tampilkan jika belum ada entri.
-     */
-    public static function render_for_current_page(): string {
-        if ( ! is_page() || ! class_exists( 'PTPRM_Board_Registry' ) ) {
-            return '';
-        }
-        $page_id = get_queried_object_id();
-        if ( ! $page_id ) {
-            return '';
-        }
-        $region = PTPRM_Board_Registry::region_for_page_slug( (string) get_post_field( 'post_name', $page_id ) );
-        if ( $region === null ) {
-            return '';
-        }
-        if ( ! empty( self::$rendered[ $region ] ) ) {
-            return '';
-        }
-        return self::render( $region );
-    }
-
-    private static function content_has_board_entries( string $content ): bool {
-        if ( strpos( $content, 'ptprm-board-line' ) !== false ) {
-            return true;
-        }
-        if ( strpos( $content, 'ptprm-board-card-role' ) !== false ) {
-            $name_pos = strpos( $content, 'ptprm-board-card-name' );
-            if ( $name_pos !== false ) {
-                $snippet = substr( $content, $name_pos, 400 );
-                if ( is_string( $snippet ) && preg_match( '/ptprm-board-card-name">\s*[^<\s]/', $snippet ) ) {
-                    return true;
-                }
+        $slug = (string) get_post_field( 'post_name', get_queried_object_id() );
+        foreach ( PTPRM_Board_Registry::regions() as $meta ) {
+            if ( (string) $meta['page_slug'] === $slug ) {
+                return '[ptprm_board region="' . esc_attr( (string) $meta['slug'] ) . '"]';
             }
-        }
-        // Shortcode lama: cangkang judul + daftar kosong dianggap belum ada entri.
-        if ( strpos( $content, 'ptprm-board' ) !== false
-            && preg_match( '/<div class="ptprm-board-list">\s*<\/div>/', $content ) ) {
-            return false;
-        }
-        return false;
-    }
-
-    private static function strip_board_markup( string $content ): string {
-        $needle = 'ptprm-board';
-        while ( ( $pos = strpos( $content, $needle ) ) !== false ) {
-            $start = strrpos( substr( $content, 0, $pos ), '<div' );
-            if ( $start === false ) {
-                break;
-            }
-            $depth = 0;
-            $len   = strlen( $content );
-            $end   = null;
-            for ( $i = $start; $i < $len; $i++ ) {
-                if ( substr( $content, $i, 4 ) === '<div' ) {
-                    $depth++;
-                    $i += 3;
-                    continue;
-                }
-                if ( substr( $content, $i, 6 ) === '</div>' ) {
-                    $depth--;
-                    if ( $depth === 0 ) {
-                        $end = $i + 6;
-                        break;
-                    }
-                    $i += 5;
-                }
-            }
-            if ( $end === null ) {
-                break;
-            }
-            $content = substr( $content, 0, $start ) . substr( $content, $end );
         }
         return $content;
     }
@@ -138,20 +51,12 @@ class PTPRM_Board_Display {
         if ( ! isset( $regions[ $region ] ) ) {
             return '';
         }
-
         $meta  = $regions[ $region ];
         $items = PTPRM_Board_Registry::get_items( $region );
-        if ( $items === [] || ! PTPRM_Board_Registry::items_have_displayable_names( $items ) ) {
-            return '';
-        }
 
         ob_start();
         echo '<div class="ptprm-board ptprm-board--' . esc_attr( $region ) . '">';
-
-        $board_title = trim( (string) ( $meta['title'] ?? '' ) );
-        if ( $board_title !== '' ) {
-            echo '<h2 class="ptprm-board-title">' . esc_html( $board_title ) . '</h2>';
-        }
+        echo '<h2 class="ptprm-board-title">' . esc_html( (string) $meta['title'] ) . '</h2>';
 
         if ( ! empty( $meta['has_featured_photos'] ) ) {
             self::render_featured_row( $region, $items );
@@ -159,13 +64,7 @@ class PTPRM_Board_Display {
 
         self::render_list( $region, $items, ! empty( $meta['has_featured_photos'] ) );
         echo '</div>';
-
-        $html = (string) ob_get_clean();
-        if ( self::content_has_board_entries( $html ) ) {
-            self::$rendered[ $region ] = true;
-        }
-
-        return $html;
+        return (string) ob_get_clean();
     }
 
     /**
@@ -183,21 +82,15 @@ class PTPRM_Board_Display {
         }
         echo '<div class="ptprm-board-featured">';
         foreach ( $featured as $item ) {
-            $role = trim( (string) ( $item['role'] ?? '' ) );
-            $name = trim( (string) ( $item['name'] ?? '' ) );
-            $img  = self::image_url( (string) ( $item['image'] ?? '' ) );
+            $img = self::image_url( (string) ( $item['image'] ?? '' ) );
             echo '<article class="ptprm-board-card">';
             if ( $img !== '' ) {
                 echo '<div class="ptprm-board-card-photo"><img src="' . esc_url( $img ) . '" alt="" loading="lazy"></div>';
             } else {
                 echo '<div class="ptprm-board-card-photo ptprm-board-card-photo--placeholder" aria-hidden="true"></div>';
             }
-            if ( $role !== '' ) {
-                echo '<p class="ptprm-board-card-role">' . esc_html( $role ) . '</p>';
-            }
-            if ( $name !== '' ) {
-                echo '<h3 class="ptprm-board-card-name">' . esc_html( $name ) . '</h3>';
-            }
+            echo '<h3 class="ptprm-board-card-name">' . esc_html( (string) ( $item['name'] ?? '' ) ) . '</h3>';
+            echo '<p class="ptprm-board-card-role">' . esc_html( (string) ( $item['role'] ?? '' ) ) . '</p>';
             echo '</article>';
         }
         echo '</div>';

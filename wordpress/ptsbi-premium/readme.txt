@@ -48,41 +48,6 @@ Tidak hardcode untuk PTSBI — nama organisasi, warna, font, teks, ikon, tautan 
 
 == Changelog ==
 
-= 3.1.14 =
-* Pengurus pusat: kolom URL foto selalu tampil untuk Ketua/Sekretaris/Bendahara Umum.
-* PDF panel: baris dirender di server (Tambah PDF kembali jalan); hapus script template yang merusak halaman.
-* Purge All cache: toolbar di atas tab + tombol di footer (sebelah Keluar) dikembalikan.
-
-= 3.1.13 =
-* Panel admin: gabung foto + nama pengurus pusat di tab Pengurus Wilayah (hapus tab Foto terpisah).
-* Form pengurus dirender di server (save kembali jalan); logout + Purge All cache di footer panel.
-* URL ?tab=struktur dialihkan ke Pengurus Wilayah → Pusat.
-
-= 3.1.12 =
-* Panel admin: perbaiki halaman putih setelah login (toolbar cache dipindah), tombol Keluar di header panel + header situs saat sudah login.
-
-= 3.1.11 =
-* Panel admin: perbaiki halaman putih (hapus blok script dari shortcode, akses admin organisasi, JSON aman).
-
-= 3.1.10 =
-* Panel Pengurus Wilayah (pusat): kolom **URL foto** tampil saat centang foto; tombol pilih media mengisi URL.
-* Tab **Foto Pengurus Pusat** (`struktur`) kembali terdaftar di panel admin.
-
-= 3.1.9 =
-* **[SELESAI — terverifikasi live Jun 2026]** Halaman pengurus pusat: `/ptsbi-pusat/`, `/pengurus-pusat/`, `/struktur-organisasi/` menampilkan daftar + kartu foto inti.
-* Shortcode `[ptprm_board]`: sumber data `ptprm_board_data_{region}` / `board_{region}` di wp_options, fallback katalog `board-default-data.php`.
-* Perbaiki data tersimpan tanpa nama + deteksi cangkang HTML kosong agar filter `the_content` mengisi ulang daftar.
-* Deploy otomatis saat push ke `main` (folder plugin) + verifikasi versi di ptsbi.org.
-
-= 3.1.8 =
-* Deploy: salin plugin ke volume Docker (bukan hanya docker cp) + verifikasi versi + rollback otomatis jika gagal.
-* Pengurus pusat: perbaiki opsi kosong [], buat halaman /pengurus-pusat/, judul section di halaman wilayah.
-
-= 3.1.6 =
-* Pengurus Pusat: perbaikan tampilan di halaman depan setelah simpan panel (shortcode kosong tidak lagi menghalangi daftar).
-* Halaman Struktur Organisasi ikut menampilkan pengurus pusat.
-* Kartu foto: jabatan lalu nama; ukuran foto sedang.
-
 = 1.4.3 =
 * Footer: judul brand = Judul situs (Pengaturan → Umum). Deskripsi custom atau otomatis dari Slogan situs jika field kosong.
 

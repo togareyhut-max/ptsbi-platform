@@ -19,10 +19,6 @@ get_header(); ?>
             while ( have_posts() ) {
                 the_post();
                 the_content();
-                if ( class_exists( 'PTPRM_Board_Display' ) && ! ( class_exists( 'PTPRM_Admin_Portal' ) && PTPRM_Admin_Portal::is_admin_page() ) ) {
-                    // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
-                    echo PTPRM_Board_Display::render_for_current_page();
-                }
             }
             ?>
         </div>

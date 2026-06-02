@@ -18,7 +18,7 @@ class PTPRM_Admin_Portal {
     private const NONCE_APPROVE = 'ptprm_admin_member_approve';
 
     private function can_access_panel(): bool {
-        return PTPRM_Access::can_manage() || PTPRM_Access::can_manage_org_settings();
+        return PTPRM_Access::can_manage();
     }
 
     private function can_access_members_tab(): bool {
@@ -79,44 +79,8 @@ class PTPRM_Admin_Portal {
         if ( ! is_page() ) {
             return false;
         }
-        $page_id = (int) get_queried_object_id();
-        $stored  = (int) get_option( 'ptprm_admin_portal_page_id', 0 );
-        if ( $stored > 0 && $page_id === $stored ) {
-            return true;
-        }
-        $slug = (string) get_post_field( 'post_name', $page_id );
-        $known = array_unique(
-            [
-                self::portal_slug(),
-                self::SLUG_PORTAL,
-                'panel-pengurus',
-                'masuk-pengurus',
-            ]
-        );
-        return in_array( $slug, $known, true );
-    }
-
-    /**
-     * @param array<string, mixed> $tabs
-     * @return array<string, string>
-     */
-    private static function normalize_portal_tabs( $tabs ): array {
-        if ( ! is_array( $tabs ) ) {
-            $tabs = [];
-        }
-        $out = [];
-        foreach ( $tabs as $key => $label ) {
-            $key = sanitize_key( (string) $key );
-            if ( $key === '' ) {
-                continue;
-            }
-            $out[ $key ] = is_string( $label ) ? $label : (string) $label;
-        }
-        if ( ! isset( $out['ringkasan'] ) ) {
-            $out = array_merge( [ 'ringkasan' => __( 'Ringkasan', 'ptsbi-premium' ) ], $out );
-        }
-        unset( $out['struktur'] );
-        return $out;
+        $slug = (string) get_post_field( 'post_name', get_queried_object_id() );
+        return $slug === self::portal_slug();
     }
 
     public static function maybe_ensure_pages(): void {
@@ -137,7 +101,6 @@ class PTPRM_Admin_Portal {
         if ( ! $page instanceof WP_Post ) {
             return;
         }
-        update_option( 'ptprm_admin_portal_page_id', (int) $page->ID, false );
         if ( strpos( (string) $page->post_content, 'ptprm_admin_portal' ) !== false ) {
             return;
         }
@@ -178,20 +141,11 @@ class PTPRM_Admin_Portal {
                 $ids[ $key ] = (int) $id;
             }
         }
-        if ( ! empty( $ids['portal'] ) ) {
-            update_option( 'ptprm_admin_portal_page_id', (int) $ids['portal'], false );
-        }
         return $ids;
     }
 
     public function skip_subpage_hero( bool $skip ): bool {
-        if ( $skip || self::is_admin_page() ) {
-            return true;
-        }
-        if ( class_exists( 'PTPRM_Member_Portal' ) && PTPRM_Member_Portal::is_member_page() ) {
-            return true;
-        }
-        return false;
+        return $skip || self::is_admin_page() || PTPRM_Member_Portal::is_member_page();
     }
 
     public function handle_save_settings(): void {
@@ -322,9 +276,7 @@ class PTPRM_Admin_Portal {
             return (string) ob_get_clean();
         }
 
-        $tabs = self::normalize_portal_tabs(
-            apply_filters( 'ptprm_admin_portal_tabs', [ 'ringkasan' => __( 'Ringkasan', 'ptsbi-premium' ) ] )
-        );
+        $tabs = apply_filters( 'ptprm_admin_portal_tabs', [ 'ringkasan' => __( 'Ringkasan', 'ptsbi-premium' ) ] );
         if ( $this->can_access_posts_tab() && ! isset( $tabs['berita'] ) ) {
             $tabs['berita'] = __( 'Berita / Kegiatan', 'ptsbi-premium' );
         }
@@ -336,9 +288,6 @@ class PTPRM_Admin_Portal {
         }
 
         $tab = sanitize_key( (string) ( $_GET['tab'] ?? 'ringkasan' ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-        if ( $tab === 'struktur' ) {
-            $tab = 'pengurus';
-        }
         $allowed = array_keys( $tabs );
         if ( ! in_array( $tab, $allowed, true ) ) {
             $tab = 'ringkasan';
@@ -353,11 +302,7 @@ class PTPRM_Admin_Portal {
         echo '<p class="ptprm-portal-greet">' . esc_html( sprintf( __( 'Halo, %s', 'ptsbi-premium' ), $user->display_name ?: $user->user_login ) ) . '</p>';
         echo '</header>';
 
-        if ( class_exists( 'PTPRM_Cache_Purge' ) ) {
-            PTPRM_Cache_Purge::render_purge_toolbar( self::portal_url( $tab ) );
-        }
-
-        echo '<nav class="ptprm-portal-tabs" aria-label="' . esc_attr__( 'Menu panel pengurus', 'ptsbi-premium' ) . '">';
+        echo '<nav class="ptprm-portal-tabs">';
         foreach ( $tabs as $key => $label ) {
             $active = $tab === $key ? ' is-active' : '';
             echo '<a class="ptprm-portal-tab' . esc_attr( $active ) . '" href="' . esc_url( self::portal_url( $key ) ) . '">' . esc_html( $label ) . '</a>';
@@ -371,14 +316,21 @@ class PTPRM_Admin_Portal {
         $this->render_portal_flash_notices( $tab );
         switch ( $tab ) {
             case 'anggota':
-                if ( ! $this->can_access_members_tab() ) {
+            case 'struktur':
+                if ( ! $this->can_access_members_tab() && $tab === 'anggota' ) {
                     $this->render_tab_dashboard();
                     break;
                 }
-                if ( has_action( 'ptprm_admin_portal_tab_anggota' ) ) {
-                    do_action( 'ptprm_admin_portal_tab_anggota' );
-                } else {
+                if ( $tab === 'struktur' && ! PTPRM_Access::can_manage_org_settings() ) {
+                    $this->render_tab_dashboard();
+                    break;
+                }
+                if ( has_action( 'ptprm_admin_portal_tab_' . $tab ) ) {
+                    do_action( 'ptprm_admin_portal_tab_' . $tab );
+                } elseif ( $tab === 'anggota' && $this->can_access_members_tab() ) {
                     $this->render_tab_members();
+                } else {
+                    $this->render_tab_dashboard();
                 }
                 break;
             case 'berita':

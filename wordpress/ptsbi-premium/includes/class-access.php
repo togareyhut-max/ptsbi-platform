@@ -239,7 +239,6 @@ class PTPRM_Access {
             $admin->add_cap( self::CAP_MANAGE );
             $admin->add_cap( self::CAP_APPROVE_MEMBERS );
             $admin->add_cap( self::CAP_ORG_SETTINGS );
-            $admin->add_cap( self::CAP_PURGE_CACHE );
         }
     }
 
