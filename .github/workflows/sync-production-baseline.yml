@@ -5,12 +5,8 @@ on:
     inputs:
       update_main:
         description: 'Perbarui juga branch main agar sama dengan live'
-        required: true
-        default: 'true'
-        type: choice
-        options:
-          - 'true'
-          - 'false'
+        type: boolean
+        default: true
 
 permissions:
   contents: write
@@ -57,7 +53,7 @@ ${VERSION}"
         id: commit_live
 
       - name: Samakan main dengan baseline (opsional)
-        if: inputs.update_main == 'true'
+        if: inputs.update_main == true
         run: |
           set -euo pipefail
           git checkout main
