@@ -21,13 +21,20 @@ Ini akan:
 - Memperbarui tag **`production-live`**
 - (Opsional) Memperbarui **`main`** agar sama dengan live
 
-### 2. Deploy perubahan ke server (hanya jika sengaja)
+### 2. Deploy perubahan ke server
 
-**GitHub → Actions → Deploy ptsbi-premium → Run workflow**
+- **Otomatis:** push ke `main` yang mengubah `wordpress/ptsbi-premium/**` atau skrip deploy → workflow **Deploy ptsbi-premium** jalan sendiri.
+- **Manual:** GitHub → Actions → Deploy ptsbi-premium → ketik `DEPLOY` jika deploy dari branch lain.
 
-Ketik `DEPLOY` pada konfirmasi.
+### Terverifikasi live (Jun 2026) — pengurus pusat
 
-Deploy **tidak** jalan otomatis saat push ke `main`.
+| Item | Status |
+|------|--------|
+| Plugin production | **3.1.9** (volume `wordpress_wordpress_ptsbi`) |
+| `/ptsbi-pusat/` | Daftar pengurus + kartu Ketua/Sekretaris/Bendahara |
+| `/pengurus-pusat/` | Halaman aktif |
+| `/struktur-organisasi/` | Menampilkan pengurus pusat |
+| Shortcode | `[ptprm_board region="pusat"]` + fallback katalog |
 
 ### 3. Rollback repo ke kondisi live
 

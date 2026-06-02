@@ -25,14 +25,12 @@ git checkout production-live
 # atau tetap di main setelah sync (main sudah disamakan)
 ```
 
-## 4. Deploy hanya jika sengaja
+## 4. Deploy
 
-https://github.com/togareyhut-max/ptsbi-platform/actions/workflows/deploy-ptsbi-premium.yml
+- **Otomatis:** setiap push ke `main` yang mengubah folder plugin → workflow deploy jalan.
+- **Manual:** https://github.com/togareyhut-max/ptsbi-platform/actions/workflows/deploy-ptsbi-premium.yml → ketik **`DEPLOY`**.
 
-- **Run workflow**
-- Field konfirmasi: ketik **`DEPLOY`**
-
-Push ke `main` **tidak** lagi mengubah website otomatis.
+**[SELESAI Jun 2026]** Pengurus pusat live di ptsbi.org (plugin 3.1.9): `/ptsbi-pusat/`, `/pengurus-pusat/`, shortcode `[ptprm_board region="pusat"]`.
 
 ## 5. Rollback jika percobaan gagal
 
