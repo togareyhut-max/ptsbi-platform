@@ -52,7 +52,7 @@ jobs:
           echo "Menunggu cache/CDN (15s)..."
           sleep 15
           CSS_VER="$(curl -fsSL 'https://ptsbi.org/ptsbi-pusat/' | grep -oP 'ptsbi-premium/assets/css/frontend\.css\?ver=\K[0-9.]+' | head -1 || true)"
-          BOARD_LINES="$(curl -fsSL 'https://ptsbi.org/ptsbi-pusat/' | grep -c 'ptprm-board-line' || true)"
+          BOARD_LINES="$(curl -fsSL 'https://ptsbi.org/ptsbi-pusat/' | grep -o 'ptprm-board-line' | wc -l | tr -d ' ')"
           echo "Plugin CSS ver=${CSS_VER:-?} (harapan ${EXPECTED})"
           echo "Baris pengurus di /ptsbi-pusat/: ${BOARD_LINES}"
           if [[ "${CSS_VER}" != "${EXPECTED}" ]]; then
