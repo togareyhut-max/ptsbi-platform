@@ -17,7 +17,8 @@ else
 fi
 
 git tag -f production-live
-git push origin production-live --force
+# Branch dan tag sama nama — push harus pakai ref penuh agar tidak ambigu.
+git push origin refs/heads/production-live --force
 git push origin refs/tags/production-live --force
 
 echo "Versi live: ${VERSION}"
