@@ -46,10 +46,15 @@ class PTPRM_Cache_Purge {
             define( 'LITESPEED_PURGE_SILENT', true );
         }
 
-        if ( class_exists( '\LiteSpeed\Purge' ) ) {
-            \LiteSpeed\Purge::purge_all( 'PTPRM portal' );
-            $litespeed = true;
-        } elseif ( class_exists( 'LiteSpeed_Cache_API' ) && is_callable( [ 'LiteSpeed_Cache_API', 'purge_all' ] ) ) {
+        if ( class_exists( '\LiteSpeed\Purge', false ) ) {
+            try {
+                \LiteSpeed\Purge::purge_all( 'PTPRM portal' );
+                $litespeed = true;
+            } catch ( \Throwable $e ) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedCatch
+                unset( $e );
+            }
+        }
+        if ( ! $litespeed && class_exists( 'LiteSpeed_Cache_API', false ) && is_callable( [ 'LiteSpeed_Cache_API', 'purge_all' ] ) ) {
             LiteSpeed_Cache_API::purge_all();
             $litespeed = true;
         } elseif ( has_action( 'litespeed_purge_all' ) ) {

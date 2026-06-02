@@ -562,6 +562,22 @@ body.ptprm-is-home .ptprm-cta-row {
     margin: 0;
     color: var(--ptprm-text-soft);
 }
+.ptprm-portal-head-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center;
+    margin-top: 14px;
+}
+.ptprm-portal-head-actions .ptprm-cta {
+    min-width: 8rem;
+}
+.ptprm-site-header__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+}
 .ptprm-portal-tabs {
     display: flex;
     flex-wrap: wrap;

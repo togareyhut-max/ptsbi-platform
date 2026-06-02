@@ -48,6 +48,9 @@ Tidak hardcode untuk PTSBI — nama organisasi, warna, font, teks, ikon, tautan 
 
 == Changelog ==
 
+= 3.1.12 =
+* Panel admin: perbaiki halaman putih setelah login (toolbar cache dipindah), tombol Keluar di header panel + header situs saat sudah login.
+
 = 3.1.11 =
 * Panel admin: perbaiki halaman putih (hapus blok script dari shortcode, akses admin organisasi, JSON aman).
 
