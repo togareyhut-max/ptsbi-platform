@@ -112,6 +112,7 @@ class PTPRM_Board_Display {
         $items = PTPRM_Board_Registry::get_items( $region );
 
         ob_start();
+        echo '<!-- ptprm-board-render -->';
         echo '<div class="ptprm-board ptprm-board--' . esc_attr( $region ) . '">';
 
         if ( ! empty( $meta['has_featured_photos'] ) ) {
