@@ -102,6 +102,14 @@ for path in ("/", "/v1/auth/login"):
     except Exception as e:
         print(path, "ERROR:", repr(e))
 PYEOF
+echo "== printenv integration di container (nama saja) =="
+docker exec ${WEB_CONTAINER} sh -lc 'env | grep -i integration | sed "s/=.*/=set/"' 2>/dev/null || echo "(tak ada)"
+echo "== python lihat key di dalam app =="
+docker exec ${WEB_CONTAINER} python -c "import os;ks=[k for k in('MEMBERSHIP_API_INTEGRATION_KEY','WP_INTEGRATION_KEY','INTEGRATION_KEY') if os.environ.get(k)];print('KEY_ENV_SET=',ks)" 2>/dev/null || docker exec ${WEB_CONTAINER} python3 -c "import os;ks=[k for k in('MEMBERSHIP_API_INTEGRATION_KEY','WP_INTEGRATION_KEY','INTEGRATION_KEY') if os.environ.get(k)];print('KEY_ENV_SET=',ks)" 2>/dev/null || echo "(python probe gagal)"
+echo "== _integration_key terbaca kode app =="
+docker exec ${WEB_CONTAINER} sh -lc 'cd /app && python -c "from services.membership_api import _integration_key as k;print(\"KEY_LEN=\",len(k()))"' 2>/dev/null || echo "(probe kode gagal)"
+echo "== grep WP_INTEGRATION_KEY di kode image =="
+docker exec ${WEB_CONTAINER} sh -lc 'grep -n WP_INTEGRATION_KEY /app/services/membership_api.py || echo "(tidak ada di kode image)"' 2>/dev/null || true
 echo "== git rev server =="
 git -C "${REMOTE_DIR}" rev-parse --short HEAD 2>/dev/null || echo "(bukan git repo)"
 REMOTE
