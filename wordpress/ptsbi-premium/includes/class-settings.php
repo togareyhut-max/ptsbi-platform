@@ -1481,7 +1481,7 @@ JS;
                     echo '<br><strong>' . esc_html__( 'Anggota', 'ptsbi-premium' ) . ':</strong> ';
                     echo '<code>/' . esc_html( $o['members_portal_slug'] ?? 'area-anggota' ) . '/</code>';
                     echo '<br><strong>' . esc_html__( 'Pengurus', 'ptsbi-premium' ) . ':</strong> ';
-                    echo '<code>/' . esc_html( $o['admin_portal_slug'] ?? 'panel-pengurus' ) . '/</code>';
+                    echo '<code>/' . esc_html( $o['admin_portal_slug'] ?? 'panel-admin' ) . '/</code>';
                     echo '<br><em>' . esc_html__( 'Halaman /masuk/ dan /masuk-pengurus/ lama otomatis dialihkan.', 'ptsbi-premium' ) . '</em>';
                     ?>
                 </p>
@@ -1522,7 +1522,7 @@ JS;
                 </div>
                 <?php endif; ?>
                 <?php
-                $this->t( __( 'Slug panel pengurus', 'ptsbi-premium' ), 'admin_portal_slug', $o, $opt );
+                $this->t( __( 'Slug panel admin organisasi', 'ptsbi-premium' ), 'admin_portal_slug', $o, $opt );
                 ?>
             </div>
 

@@ -10,7 +10,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 class PTPRM_Admin_Portal {
 
     public const SLUG_LOGIN  = 'masuk-pengurus';
-    public const SLUG_PORTAL = 'panel-pengurus';
+    public const SLUG_PORTAL = 'panel-admin';
 
     private const NONCE_LOGOUT  = 'ptprm_admin_logout';
     private const NONCE_SETTINGS = 'ptprm_admin_settings';
@@ -39,83 +39,6 @@ class PTPRM_Admin_Portal {
         add_action( 'init', [ $this, 'handle_save_post' ], 20 );
         add_shortcode( 'ptprm_admin_portal', [ $this, 'shortcode_portal' ] );
         add_filter( 'ptprm_subpage_hero_skip', [ $this, 'skip_subpage_hero' ] );
-        add_filter( 'the_content', [ $this, 'inject_portal_on_page' ], 8 );
-        add_action( 'wp_ajax_ptprm_test_membership_api', [ $this, 'ajax_test_membership_api' ] );
-    }
-
-    /**
-     * Pastikan panel admin ter-render (shortcode belum diproses / kutip melengkung).
-     *
-     * @param string $content
-     */
-    public function inject_portal_on_page( $content ): string {
-        if ( ! is_page() || ! self::is_admin_page() ) {
-            return (string) $content;
-        }
-        $content = (string) $content;
-        if ( strpos( $content, 'ptprm-admin-portal-wrap' ) !== false ) {
-            return $content;
-        }
-        $normalized = str_replace( [ '“', '”', '„', '‟' ], '"', $content );
-        if ( strpos( $normalized, 'ptprm_admin_portal' ) !== false && strpos( $content, 'ptprm-portal-wrap' ) === false ) {
-            return do_shortcode( $normalized );
-        }
-        if ( trim( wp_strip_all_tags( $content ) ) === '' ) {
-            return do_shortcode( '[ptprm_admin_portal]' );
-        }
-        return $content;
-    }
-
-    public function ajax_test_membership_api(): void {
-        if ( ! is_user_logged_in() || ! $this->can_access_settings_tab() ) {
-            wp_send_json_error(
-                [ 'message' => __( 'Tidak diizinkan.', 'ptsbi-premium' ) ],
-                403
-            );
-        }
-        if ( ! check_ajax_referer( 'ptprm_test_membership_api', '_wpnonce', false ) ) {
-            wp_send_json_error(
-                [ 'message' => __( 'Sesi tidak valid. Muat ulang halaman lalu coba lagi.', 'ptsbi-premium' ) ],
-                403
-            );
-        }
-
-        global $wpdb;
-        $db_ok = (bool) $wpdb->get_var( 'SELECT 1' ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-        if ( ! $db_ok ) {
-            wp_send_json_error(
-                [
-                    'message' => __( 'Belum tersambung: database WordPress tidak dapat diakses.', 'ptsbi-premium' ),
-                    'detail'  => 'wpdb',
-                ]
-            );
-        }
-
-        if ( ! class_exists( 'PTPRM_Membership_Api_Client' ) || ! method_exists( 'PTPRM_Membership_Api_Client', 'test_connection' ) ) {
-            wp_send_json_error(
-                [
-                    'message' => __( 'Belum tersambung: modul API belum dimuat di server.', 'ptsbi-premium' ),
-                    'detail'  => '',
-                ]
-            );
-        }
-
-        $api = PTPRM_Membership_Api_Client::test_connection();
-        if ( ! empty( $api['ok'] ) ) {
-            wp_send_json_success(
-                [
-                    'message' => __( 'Test berhasil: database WordPress & API Tarombo tersambung.', 'ptsbi-premium' ),
-                    'detail'  => (string) ( $api['detail'] ?? '' ),
-                ]
-            );
-        }
-
-        wp_send_json_error(
-            [
-                'message' => (string) ( $api['message'] ?? __( 'Belum tersambung ke API Tarombo.', 'ptsbi-premium' ) ),
-                'detail'  => (string) ( $api['detail'] ?? '' ),
-            ]
-        );
     }
 
     public static function login_slug(): string {
@@ -167,9 +90,34 @@ class PTPRM_Admin_Portal {
             update_option( 'ptprm_admin_pages_v1', 1, false );
             $needs_flush = true;
         }
+        self::migrate_portal_page_slug();
         self::repair_portal_page_content();
         if ( $needs_flush ) {
             flush_rewrite_rules( false );
+        }
+    }
+
+    /**
+     * Pindahkan halaman panel-pengurus → panel-admin (slug resmi admin organisasi).
+     */
+    public static function migrate_portal_page_slug(): void {
+        $target = self::portal_slug();
+        if ( $target === '' ) {
+            return;
+        }
+        $legacy = get_page_by_path( 'panel-pengurus', OBJECT, 'page' );
+        if ( $legacy instanceof WP_Post && $target !== 'panel-pengurus' ) {
+            wp_update_post(
+                [
+                    'ID'         => (int) $legacy->ID,
+                    'post_name'  => $target,
+                    'post_title' => __( 'Panel Admin Organisasi', 'ptsbi-premium' ),
+                ]
+            );
+            return;
+        }
+        if ( ! get_page_by_path( $target, OBJECT, 'page' ) ) {
+            self::ensure_pages();
         }
     }
 
@@ -194,7 +142,7 @@ class PTPRM_Admin_Portal {
         $pages = [
             'portal' => [
                 'slug'    => self::portal_slug(),
-                'title'   => __( 'Panel Pengurus', 'ptsbi-premium' ),
+                'title'   => __( 'Panel Admin Organisasi', 'ptsbi-premium' ),
                 'content' => '[ptprm_admin_portal]',
             ],
         ];
@@ -343,22 +291,11 @@ class PTPRM_Admin_Portal {
     }
 
     public function shortcode_portal(): string {
-        if ( is_user_logged_in() && class_exists( 'PTPRM_Access' ) && PTPRM_Access::is_bidang_only_user() ) {
-            ob_start();
-            $slug = PTPRM_Bidang_Registry::get_user_bidang_slug();
-            $url  = PTPRM_Bidang_Registry::panel_url( $slug );
-            echo '<div class="ptprm-member-card ptprm-portal-card">';
-            echo '<p>' . esc_html__( 'Akun bidang Anda menggunakan panel bidang sendiri, bukan panel pusat.', 'ptsbi-premium' ) . '</p>';
-            echo '<a class="ptprm-cta ptprm-cta-1 ptprm-cta-size-medium" href="' . esc_url( $url ) . '">';
-            echo '<span class="ptprm-cta-label">' . esc_html__( 'Buka Panel Bidang Saya', 'ptsbi-premium' ) . '</span></a>';
-            echo '</div>';
-            return (string) ob_get_clean();
-        }
         if ( ! is_user_logged_in() || ! $this->can_access_panel() ) {
             ob_start();
             echo '<div class="ptprm-member-card ptprm-portal-card">';
             echo '<p>' . esc_html__( 'Silakan masuk melalui Rumah Anggota.', 'ptsbi-premium' ) . '</p>';
-            echo '<a class="ptprm-cta ptprm-cta-1 ptprm-cta-size-medium" href="' . esc_url( self::login_url() ) . '">';
+            echo '<a class="ptprm-cta ptprm-cta-1 ptprm-cta-size-medium" href="' . esc_url( self::login_url( self::portal_url() ) ) . '">';
             echo '<span class="ptprm-cta-label">' . esc_html__( 'Rumah Anggota', 'ptsbi-premium' ) . '</span></a>';
             echo '</div>';
             return (string) ob_get_clean();
@@ -386,12 +323,12 @@ class PTPRM_Admin_Portal {
 
         echo '<div class="ptprm-portal-wrap ptprm-admin-portal-wrap">';
         echo '<header class="ptprm-portal-head">';
-        echo '<h2 class="ptprm-portal-title">' . esc_html( PTPRM_Access::is_org_admin() ? __( 'Panel Admin Organisasi', 'ptsbi-premium' ) : __( 'Panel Pengurus', 'ptsbi-premium' ) ) . '</h2>';
+        echo '<h2 class="ptprm-portal-title">' . esc_html( PTPRM_Access::is_org_admin() ? __( 'Panel Admin Organisasi', 'ptsbi-premium' ) : __( 'Panel Admin Organisasi', 'ptsbi-premium' ) ) . '</h2>';
         echo '<p class="ptprm-portal-greet">' . esc_html( sprintf( __( 'Halo, %s', 'ptsbi-premium' ), $user->display_name ?: $user->user_login ) ) . '</p>';
         echo '</header>';
 
-        if ( function_exists( 'ptprm_safe_cache_purge_toolbar' ) ) {
-            ptprm_safe_cache_purge_toolbar( self::portal_url( $tab ) );
+        if ( class_exists( 'PTPRM_Cache_Purge' ) ) {
+            PTPRM_Cache_Purge::render_purge_toolbar( self::portal_url( $tab ) );
         }
 
         echo '<nav class="ptprm-portal-tabs">';
@@ -468,8 +405,8 @@ class PTPRM_Admin_Portal {
         echo '</div>';
 
         echo '<footer class="ptprm-portal-footbar ptprm-portal-footbar--tools">';
-        if ( function_exists( 'ptprm_safe_cache_purge_button' ) ) {
-            ptprm_safe_cache_purge_button( self::portal_url( $tab ) );
+        if ( class_exists( 'PTPRM_Cache_Purge' ) ) {
+            PTPRM_Cache_Purge::render_purge_button( self::portal_url( $tab ) );
         }
         PTPRM_Access::render_logout_link();
         echo '</footer>';
@@ -673,56 +610,6 @@ class PTPRM_Admin_Portal {
         echo '<label><span>' . esc_html__( 'Timeout API (detik)', 'ptsbi-premium' ) . '</span><input type="number" name="membership_api_timeout_sec" min="5" max="60" value="' . esc_attr( (string) ( $o['membership_api_timeout_sec'] ?? 15 ) ) . '"></label>';
         echo '</div>';
         echo '<button type="submit" class="ptprm-cta ptprm-cta-1 ptprm-cta-size-medium"><span class="ptprm-cta-label">' . esc_html__( 'Simpan Informasi', 'ptsbi-premium' ) . '</span></button>';
-        echo '</form>';
-
-        $this->render_test_connection_box();
-
-        echo '</div>';
-    }
-
-    /**
-     * Kotak Tes Koneksi ke database + API Tarombo (AJAX).
-     */
-    private function render_test_connection_box(): void {
-        $nonce    = wp_create_nonce( 'ptprm_test_membership_api' );
-        $ajax_url = admin_url( 'admin-ajax.php' );
-        ?>
-        <div class="ptprm-conn-test" style="margin-top:16px;padding-top:16px;border-top:1px solid rgba(0,0,0,.08);">
-            <p class="ptprm-portal-help"><?php echo esc_html__( 'Uji apakah WordPress tersambung ke database & API Tarombo (simpan dulu jika baru mengubah URL/Key).', 'ptsbi-premium' ); ?></p>
-            <button type="button" class="ptprm-cta ptprm-cta-2 ptprm-cta-size-medium" id="ptprm-test-conn-btn">
-                <span class="ptprm-cta-label"><?php echo esc_html__( 'Tes Koneksi', 'ptsbi-premium' ); ?></span>
-            </button>
-            <span id="ptprm-test-conn-result" class="ptprm-conn-result" role="status" aria-live="polite" style="margin-left:12px;font-weight:600;"></span>
-        </div>
-        <script>
-        (function () {
-            var btn = document.getElementById('ptprm-test-conn-btn');
-            var out = document.getElementById('ptprm-test-conn-result');
-            if (!btn || !out) { return; }
-            btn.addEventListener('click', function () {
-                btn.disabled = true;
-                out.textContent = <?php echo wp_json_encode( __( 'Menguji…', 'ptsbi-premium' ) ); ?>;
-                out.style.color = '#555';
-                var body = new URLSearchParams();
-                body.set('action', 'ptprm_test_membership_api');
-                body.set('_wpnonce', <?php echo wp_json_encode( $nonce ); ?>);
-                fetch(<?php echo wp_json_encode( $ajax_url ); ?>, {
-                    method: 'POST',
-                    credentials: 'same-origin',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
-                    body: body.toString()
-                }).then(function (r) { return r.json(); }).then(function (j) {
-                    var d = (j && j.data) ? j.data : {};
-                    var ok = j && j.success;
-                    out.textContent = (d.message || (ok ? 'Test berhasil' : 'Belum tersambung')) + (d.detail ? ' (' + d.detail + ')' : '');
-                    out.style.color = ok ? '#1a7f37' : '#b3261e';
-                }).catch(function () {
-                    out.textContent = <?php echo wp_json_encode( __( 'Belum tersambung: gagal memanggil server.', 'ptsbi-premium' ) ); ?>;
-                    out.style.color = '#b3261e';
-                }).finally(function () { btn.disabled = false; });
-            });
-        })();
-        </script>
-        <?php
+        echo '</form></div>';
     }
 }
