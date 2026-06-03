@@ -16,13 +16,7 @@ bp = Blueprint("membership_api", __name__, url_prefix="/v1")
 
 
 def _integration_key() -> str:
-    # Terima beberapa nama env agar kompatibel dengan konfigurasi server lama
-    # (.env produksi memakai WP_INTEGRATION_KEY).
-    for name in ("MEMBERSHIP_API_INTEGRATION_KEY", "WP_INTEGRATION_KEY", "INTEGRATION_KEY"):
-        val = os.environ.get(name, "").strip()
-        if val:
-            return val
-    return ""
+    return os.environ.get("MEMBERSHIP_API_INTEGRATION_KEY", "").strip()
 
 
 def _require_integration_key():
@@ -117,6 +111,20 @@ def _migrate_once():
     db.commit()
     bp._schema_ready = True  # type: ignore[attr-defined]
     return None
+
+
+@bp.route("/ping", methods=["GET", "POST"])
+def ping():
+    """Tes koneksi: validasi integration key lalu cek database."""
+    denied = _require_integration_key()
+    if denied:
+        return denied
+    try:
+        db = connect()
+        db.fetchone("SELECT 1 AS ok")
+        return jsonify({"ok": True, "db": "connected", "time": _now_iso()})
+    except Exception as exc:  # noqa: BLE001
+        return jsonify({"ok": False, "db": "error", "error": str(exc)}), 503
 
 
 @bp.route("/auth/login", methods=["POST"])
