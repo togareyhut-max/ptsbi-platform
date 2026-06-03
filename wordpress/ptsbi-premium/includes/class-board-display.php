@@ -24,7 +24,11 @@ class PTPRM_Board_Display {
         if ( $done ) {
             return;
         }
-        $page_slug = (string) get_post_field( 'post_name', get_queried_object_id() );
+        global $post;
+        if ( ! $post instanceof WP_Post ) {
+            return;
+        }
+        $page_slug = (string) $post->post_name;
         foreach ( PTPRM_Board_Registry::regions() as $meta ) {
             if ( (string) $meta['page_slug'] !== $page_slug ) {
                 continue;
