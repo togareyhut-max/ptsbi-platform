@@ -12,6 +12,30 @@ class PTPRM_Board_Display {
     public function __construct() {
         add_shortcode( 'ptprm_board', [ $this, 'shortcode' ] );
         add_filter( 'the_content', [ $this, 'append_board_on_region_pages' ], 25 );
+        add_action( 'wp_footer', [ __CLASS__, 'render_region_board_in_footer' ], 8 );
+    }
+
+    /** Cadangan jika template/konten tidak memproses shortcode (cache / kutip melengkung). */
+    public static function render_region_board_in_footer(): void {
+        if ( ! is_page() || ! class_exists( 'PTPRM_Board_Registry' ) ) {
+            return;
+        }
+        static $done = false;
+        if ( $done ) {
+            return;
+        }
+        $page_slug = (string) get_post_field( 'post_name', get_queried_object_id() );
+        foreach ( PTPRM_Board_Registry::regions() as $meta ) {
+            if ( (string) $meta['page_slug'] !== $page_slug ) {
+                continue;
+            }
+            $html = self::render( (string) $meta['slug'] );
+            if ( $html !== '' ) {
+                echo '<div class="ptprm-board-footer-fallback">' . $html . '</div>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+                $done = true;
+            }
+            break;
+        }
     }
 
     /**
