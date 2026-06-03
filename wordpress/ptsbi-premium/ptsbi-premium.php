@@ -3,7 +3,7 @@
  * Plugin Name:       Premium Organization
  * Plugin URI:        https://ptsbi.org/
  * Description:       Plugin organisasi PTSBI: beranda, portal anggota (pendaftaran, profil, import DAMI), panel pengurus, dan pengaturan situs — satu plugin lengkap.
- * Version:           3.2.20
+ * Version:           3.2.19
  * Requires at least: 5.8
  * Requires PHP:      7.4
  * Author:            Premium Plugins
@@ -15,7 +15,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'PTPRM_VERSION', '3.2.20' );
+define( 'PTPRM_VERSION', '3.2.19' );
 define( 'PTPRM_FILE',    __FILE__ );
 define( 'PTPRM_DIR',     plugin_dir_path( __FILE__ ) );
 define( 'PTPRM_URL',     plugin_dir_url( __FILE__ ) );
@@ -36,7 +36,6 @@ require_once PTPRM_DIR . 'includes/class-membership-api-client.php';
 require_once PTPRM_DIR . 'includes/class-membership-sync.php';
 require_once PTPRM_DIR . 'includes/class-address-regions.php';
 require_once PTPRM_DIR . 'includes/class-access.php';
-require_once PTPRM_DIR . 'includes/class-portal-slugs.php';
 require_once PTPRM_DIR . 'includes/class-portal-session.php';
 require_once PTPRM_DIR . 'includes/class-default-accounts.php';
 require_once PTPRM_DIR . 'includes/class-login-portal.php';
@@ -62,7 +61,6 @@ add_action(
     static function (): void {
         PTPRM_Bootstrap::init();
         PTPRM_Access::init();
-        PTPRM_Portal_Slugs::init();
         PTPRM_Portal_Session::init();
         PTPRM_Board_Registry::init();
         PTPRM_Bidang_Registry::init();

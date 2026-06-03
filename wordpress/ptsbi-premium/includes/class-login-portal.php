@@ -185,10 +185,7 @@ class PTPRM_Login_Portal {
         }
 
         if ( $requested !== '' ) {
-            $valid = wp_validate_redirect( $requested, false );
-            if ( $valid ) {
-                return $valid;
-            }
+            return PTPRM_Access::sanitize_redirect_for_user( $user, $requested );
         }
         return PTPRM_Access::portal_url_for_user( $user );
     }
@@ -395,20 +392,16 @@ class PTPRM_Login_Portal {
             echo '<p class="ptprm-member-alert ptprm-member-alert-ok">' . esc_html__( 'Anda telah keluar.', 'ptsbi-premium' ) . '</p>';
         }
 
-        echo '<form method="post" class="ptprm-member-form ptprm-login-form" action="' . esc_url( self::login_url() ) . '" autocomplete="off">';
+        echo '<form method="post" class="ptprm-member-form ptprm-login-form" action="' . esc_url( self::login_url() ) . '">';
         wp_nonce_field( 'ptprm_portal_login', self::NONCE_LOGIN );
         echo '<input type="hidden" name="' . esc_attr( self::POST_LOGIN ) . '" value="1">';
-        echo '<input type="text" name="ptprm_hp" value="" style="position:absolute;left:-9999px;top:-9999px;" tabindex="-1" aria-hidden="true" autocomplete="off">';
         echo '<label><span>' . esc_html__( 'Email (username)', 'ptsbi-premium' ) . '</span>';
-        echo '<input type="email" name="log" id="ptprm-login-user" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" required></label>';
+        echo '<input type="email" name="log" autocomplete="username" required></label>';
         echo '<label><span>' . esc_html__( 'Password', 'ptsbi-premium' ) . '</span>';
-        echo '<input type="password" name="pwd" id="ptprm-login-pass" autocomplete="new-password" required></label>';
+        echo '<input type="password" name="pwd" autocomplete="current-password" required></label>';
         echo '<label class="ptprm-member-remember"><input type="checkbox" name="rememberme" value="1"> ' . esc_html__( 'Ingat saya', 'ptsbi-premium' ) . '</label>';
         echo '<button type="submit" class="ptprm-cta ptprm-cta-1 ptprm-cta-size-medium"><span class="ptprm-cta-label">' . esc_html__( 'Masuk', 'ptsbi-premium' ) . '</span></button>';
         echo '</form>';
-        if ( function_exists( 'ptprm_form_autofill_guard_script' ) ) {
-            ptprm_form_autofill_guard_script( 'ptprm-login-user', 'ptprm-login-pass' );
-        }
 
         echo '<div style="margin-top:1rem;">';
         if ( class_exists( 'PTPRM_Members' ) && PTPRM_Members::registration_enabled() ) {

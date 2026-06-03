@@ -17,44 +17,39 @@ class PTPRM_Bidang_Registry {
     public static function bidangs(): array {
         return [
             'sekretariat' => [
-                'slug'               => 'sekretariat',
-                'title'              => __( 'Sekretariat Pusat', 'ptsbi-premium' ),
-                'page_slug'          => 'sekretariat',
-                'panel_slug'         => 'sekretariat',
-                'legacy_panel_slug'  => 'panel-sekretariat',
-                'is_sekretariat'     => true,
+                'slug'           => 'sekretariat',
+                'title'          => __( 'Sekretariat Pusat', 'ptsbi-premium' ),
+                'page_slug'      => 'sekretariat-pusat',
+                'panel_slug'     => 'panel-sekretariat',
+                'is_sekretariat' => true,
             ],
             'adat-budaya' => [
-                'slug'               => 'adat-budaya',
-                'title'              => __( 'Bidang Adat dan Budaya', 'ptsbi-premium' ),
-                'page_slug'          => 'adat-budaya',
-                'panel_slug'         => 'adat-budaya',
-                'legacy_panel_slug'  => 'panel-adat-budaya',
-                'is_sekretariat'     => false,
+                'slug'           => 'adat-budaya',
+                'title'          => __( 'Bidang Adat dan Budaya', 'ptsbi-premium' ),
+                'page_slug'      => 'bidang-adat-budaya',
+                'panel_slug'     => 'panel-adat-budaya',
+                'is_sekretariat' => false,
             ],
             'usaha-dana'  => [
-                'slug'               => 'usaha-dana',
-                'title'              => __( 'Bidang Usaha dan Dana', 'ptsbi-premium' ),
-                'page_slug'          => 'usaha-dana',
-                'panel_slug'         => 'usaha-dana',
-                'legacy_panel_slug'  => 'panel-usaha-dana',
-                'is_sekretariat'     => false,
+                'slug'           => 'usaha-dana',
+                'title'          => __( 'Bidang Usaha dan Dana', 'ptsbi-premium' ),
+                'page_slug'      => 'bidang-usaha-dana',
+                'panel_slug'     => 'panel-usaha-dana',
+                'is_sekretariat' => false,
             ],
             'sos-dik-mud' => [
-                'slug'               => 'sos-dik-mud',
-                'title'              => __( 'Bidang Sosial, Pendidikan dan Kepemudaan', 'ptsbi-premium' ),
-                'page_slug'          => 'sos-dik-mud',
-                'panel_slug'         => 'sos-dik-mud',
-                'legacy_panel_slug'  => 'panel-sosial-pendidikan',
-                'is_sekretariat'     => false,
+                'slug'           => 'sos-dik-mud',
+                'title'          => __( 'Bidang Sosial, Pendidikan dan Kepemudaan', 'ptsbi-premium' ),
+                'page_slug'      => 'bidang-sosial-pendidikan',
+                'panel_slug'     => 'panel-sosial-pendidikan',
+                'is_sekretariat' => false,
             ],
             'hukum'       => [
-                'slug'               => 'hukum',
-                'title'              => __( 'Bidang Hukum', 'ptsbi-premium' ),
-                'page_slug'          => 'hukum',
-                'panel_slug'         => 'hukum',
-                'legacy_panel_slug'  => 'panel-hukum',
-                'is_sekretariat'     => false,
+                'slug'           => 'hukum',
+                'title'          => __( 'Bidang Hukum', 'ptsbi-premium' ),
+                'page_slug'      => 'bidang-hukum',
+                'panel_slug'     => 'panel-hukum',
+                'is_sekretariat' => false,
             ],
         ];
     }
@@ -134,29 +129,35 @@ class PTPRM_Bidang_Registry {
     }
 
     public static function ensure_pages(): void {
-        if ( ! get_option( 'ptprm_bidang_pages_v1' ) ) {
-            self::migrate_panel_pages();
-            update_option( 'ptprm_bidang_pages_v1', 1, false );
+        if ( get_option( 'ptprm_bidang_pages_v3' ) ) {
+            return;
         }
-    }
-
-    /**
-     * Satu halaman per bidang (URL program = URL panel), mis. /sekretariat/.
-     */
-    public static function migrate_panel_pages(): void {
         foreach ( self::bidangs() as $meta ) {
-            $slug    = (string) $meta['slug'];
-            $path    = (string) $meta['panel_slug'];
-            $content = '[ptprm_bidang slug="' . esc_attr( $slug ) . '"][ptprm_bidang_panel slug="' . esc_attr( $slug ) . '"]';
-            self::ensure_page( $path, (string) $meta['title'], $content );
+            self::ensure_page(
+                (string) $meta['page_slug'],
+                (string) $meta['title'],
+                '[ptprm_bidang slug="' . $meta['slug'] . '"]'
+            );
+            self::ensure_page(
+                (string) $meta['panel_slug'],
+                sprintf(
+                    /* translators: %s: bidang name */
+                    __( 'Panel %s', 'ptsbi-premium' ),
+                    $meta['title']
+                ),
+                '[ptprm_bidang_panel slug="' . $meta['slug'] . '"]'
+            );
         }
+        update_option( 'ptprm_bidang_pages_v3', 1, false );
+        delete_option( 'ptprm_bidang_pages_v1' );
         flush_rewrite_rules( false );
     }
 
     private static function ensure_page( string $slug, string $title, string $content ): void {
         $existing = get_page_by_path( $slug, OBJECT, 'page' );
         if ( $existing instanceof WP_Post ) {
-            if ( strpos( (string) $existing->post_content, 'ptprm_bidang' ) === false ) {
+            // Perbaiki konten lama: shortcode salah nama (ptprm_bidang_portal) atau kutip melengkung.
+            if ( strpos( (string) $existing->post_content, $content ) === false ) {
                 wp_update_post(
                     [
                         'ID'           => (int) $existing->ID,
@@ -223,7 +224,16 @@ class PTPRM_Bidang_Registry {
     }
 
     public static function is_bidang_panel_page(): bool {
-        return self::bidang_slug_from_panel_page() !== '';
+        if ( ! is_page() ) {
+            return false;
+        }
+        $slug = (string) get_post_field( 'post_name', get_queried_object_id() );
+        foreach ( self::bidangs() as $meta ) {
+            if ( (string) $meta['panel_slug'] === $slug ) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public static function bidang_slug_from_panel_page(): string {
@@ -231,11 +241,9 @@ class PTPRM_Bidang_Registry {
             return '';
         }
         $slug = (string) get_post_field( 'post_name', get_queried_object_id() );
-        foreach ( self::bidangs() as $key => $meta ) {
-            $panel = (string) ( $meta['panel_slug'] ?? '' );
-            $page  = (string) ( $meta['page_slug'] ?? '' );
-            if ( $slug === $panel || $slug === $page ) {
-                return (string) $key;
+        foreach ( self::bidangs() as $meta ) {
+            if ( (string) $meta['panel_slug'] === $slug ) {
+                return (string) $meta['slug'];
             }
         }
         return '';
