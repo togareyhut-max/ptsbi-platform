@@ -80,14 +80,28 @@ echo "== .env keys (nilai disembunyikan) =="
 sed -E 's/=.*/=***/' "${REMOTE_DIR}/.env" 2>/dev/null || echo "(tidak ada .env)"
 echo "== membership_api routes di server =="
 grep -nE '@bp.route' "${REMOTE_DIR}/services/membership_api.py" 2>/dev/null || echo "(membership_api.py tidak ada / tanpa route)"
-echo "== Uji dari DALAM container web (localhost:5000) =="
-docker exec ${WEB_CONTAINER} python3 -c "import urllib.request;\nimport sys\ntry:\n  r=urllib.request.urlopen('http://127.0.0.1:5000/',timeout=8);print('web localhost ->',r.status)\nexcept Exception as e:\n  print('web localhost ERROR:',e)" 2>/dev/null || echo "(uji internal gagal)"
-echo "== Uji /v1/auth/login dari DALAM container (harus 401/400) =="
-docker exec ${WEB_CONTAINER} python3 -c "import urllib.request,json;\nreq=urllib.request.Request('http://127.0.0.1:5000/v1/auth/login',data=b'{}',headers={'Content-Type':'application/json'},method='POST')\nimport sys\ntry:\n  r=urllib.request.urlopen(req,timeout=8);print('login ->',r.status)\nexcept urllib.error.HTTPError as e:\n  print('login ->',e.code)\nexcept Exception as e:\n  print('login ERROR:',e)" 2>/dev/null || echo "(uji login internal gagal)"
-echo "== Uji HTTPS dari HOST server =="
-curl -s -o /dev/null -w "host->https tarombo -> %{http_code}\n" -m 10 https://tarombo.ptsbi.org/ 2>/dev/null || echo "(host curl gagal)"
-echo "== traefik log 8 baris =="
-docker logs traefik --tail 8 2>/dev/null || true
+echo "== Status & restart count web =="
+docker inspect ${WEB_CONTAINER} --format 'State={{.State.Status}} Restarts={{.RestartCount}} Health={{if .State.Health}}{{.State.Health.Status}}{{else}}n/a{{end}}' 2>/dev/null || true
+echo "== docker logs ${WEB_CONTAINER} --tail 60 =="
+docker logs ${WEB_CONTAINER} --tail 60 2>&1 | tail -60 || true
+echo "== Uji internal (python di container) =="
+docker exec ${WEB_CONTAINER} python -c "import urllib.request" 2>/dev/null && PY=python || PY=python3
+docker exec ${WEB_CONTAINER} \$PY - <<'PYEOF' 2>/dev/null || echo "(internal probe gagal)"
+import urllib.request
+for path in ("/", "/v1/auth/login"):
+    try:
+        if path == "/":
+            r = urllib.request.urlopen("http://127.0.0.1:5000/", timeout=10)
+            print("GET", path, "->", r.status)
+        else:
+            req = urllib.request.Request("http://127.0.0.1:5000"+path, data=b"{}", headers={"Content-Type":"application/json"}, method="POST")
+            r = urllib.request.urlopen(req, timeout=10)
+            print("POST", path, "->", r.status)
+    except urllib.error.HTTPError as e:
+        print(path, "->", e.code)
+    except Exception as e:
+        print(path, "ERROR:", repr(e))
+PYEOF
 echo "== git rev server =="
 git -C "${REMOTE_DIR}" rev-parse --short HEAD 2>/dev/null || echo "(bukan git repo)"
 REMOTE
