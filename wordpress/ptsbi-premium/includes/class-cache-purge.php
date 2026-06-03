@@ -158,6 +158,44 @@ class PTPRM_Cache_Purge {
      *
      * @param string $return_url URL halaman setelah purge.
      */
+    /**
+     * Tombol mengambang di halaman portal (selalu terlihat tanpa scroll ke footer).
+     */
+    public static function maybe_render_floating_purge(): void {
+        if ( ! self::can_purge() || ! function_exists( 'ptprm_is_portal_page_request' ) || ! ptprm_is_portal_page_request() ) {
+            return;
+        }
+        $return_url = esc_url( self::current_page_url() );
+        echo '<div class="ptprm-cache-purge-float" aria-label="' . esc_attr__( 'Hapus cache', 'ptsbi-premium' ) . '">';
+        self::render_purge_button( $return_url );
+        echo '</div>';
+    }
+
+    public static function current_page_url(): string {
+        if ( is_singular() ) {
+            return (string) get_permalink();
+        }
+        $uri = isset( $_SERVER['REQUEST_URI'] ) ? wp_unslash( (string) $_SERVER['REQUEST_URI'] ) : '/'; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+        return home_url( $uri );
+    }
+
+    /**
+     * Bilah di atas panel — untuk masalah "sesi kedaluwarsa" karena cache halaman.
+     *
+     * @param string $return_url URL setelah purge.
+     */
+    public static function render_purge_toolbar( string $return_url ): void {
+        if ( ! self::can_purge() ) {
+            return;
+        }
+        echo '<div class="ptprm-cache-purge-toolbar">';
+        echo '<p class="ptprm-cache-purge-toolbar__text">';
+        echo esc_html__( 'Jika simpan gagal (sesi kedaluwarsa), klik tombol di bawah untuk menghapus semua cache situs (sama seperti Purge All di LiteSpeed), lalu muat ulang halaman dan coba simpan lagi.', 'ptsbi-premium' );
+        echo '</p>';
+        self::render_purge_button( $return_url );
+        echo '</div>';
+    }
+
     public static function render_purge_button( string $return_url ): void {
         if ( ! self::can_purge() ) {
             return;

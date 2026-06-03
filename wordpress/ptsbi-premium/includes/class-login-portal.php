@@ -407,16 +407,20 @@ class PTPRM_Login_Portal {
             echo '<p class="ptprm-member-alert ptprm-member-alert-ok">' . esc_html__( 'Anda telah keluar.', 'ptsbi-premium' ) . '</p>';
         }
 
-        echo '<form method="post" class="ptprm-member-form ptprm-login-form" action="' . esc_url( self::login_url() ) . '">';
+        echo '<form method="post" class="ptprm-member-form ptprm-login-form" action="' . esc_url( self::login_url() ) . '" autocomplete="off">';
         wp_nonce_field( 'ptprm_portal_login', self::NONCE_LOGIN );
         echo '<input type="hidden" name="' . esc_attr( self::POST_LOGIN ) . '" value="1">';
+        // Field umpan untuk meredam autofill browser (tidak dikirim bermakna).
+        echo '<input type="text" name="ptprm_hp" value="" style="position:absolute;left:-9999px;top:-9999px;" tabindex="-1" aria-hidden="true" autocomplete="off">';
         echo '<label><span>' . esc_html__( 'Email (username)', 'ptsbi-premium' ) . '</span>';
-        echo '<input type="email" name="log" autocomplete="username" required></label>';
+        echo '<input type="email" name="log" id="ptprm-login-user" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" required></label>';
         echo '<label><span>' . esc_html__( 'Password', 'ptsbi-premium' ) . '</span>';
-        echo '<input type="password" name="pwd" autocomplete="current-password" required></label>';
+        echo '<input type="password" name="pwd" id="ptprm-login-pass" autocomplete="new-password" required></label>';
         echo '<label class="ptprm-member-remember"><input type="checkbox" name="rememberme" value="1"> ' . esc_html__( 'Ingat saya', 'ptsbi-premium' ) . '</label>';
         echo '<button type="submit" class="ptprm-cta ptprm-cta-1 ptprm-cta-size-medium"><span class="ptprm-cta-label">' . esc_html__( 'Masuk', 'ptsbi-premium' ) . '</span></button>';
         echo '</form>';
+        // Bersihkan kolom saat halaman dimuat agar tidak ada jejak user/password setelah logout.
+        echo '<script>(function(){function c(){var u=document.getElementById("ptprm-login-user"),p=document.getElementById("ptprm-login-pass");if(u)u.value="";if(p)p.value="";}c();setTimeout(c,300);window.addEventListener("pageshow",c);})();</script>';
 
         echo '<div style="margin-top:1rem;">';
         if ( class_exists( 'PTPRM_Members' ) && PTPRM_Members::registration_enabled() ) {
