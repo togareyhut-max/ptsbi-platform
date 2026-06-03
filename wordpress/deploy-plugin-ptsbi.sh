@@ -124,7 +124,6 @@ done
 REMOTE
 
 
-echo "VERIFY_BOARD_DISPLAY=$(docker exec ${WP_CONTAINER} grep -c render_region_board_in_footer ${PLUGIN_PATH}/includes/class-board-display.php 2>/dev/null || echo 0)"
 echo "VERIFY_SUBPAGE_BOARD=$(docker exec ${WP_CONTAINER} grep -c board_html ${PLUGIN_PATH}/templates/subpage.php 2>/dev/null || echo 0)"
 docker exec ${WP_CONTAINER} php -r 'require "/var/www/html/wp-load.php"; echo function_exists("ptprm_board_default_catalog") ? "CATALOG_FN=yes\n" : "CATALOG_FN=no\n";' 2>/dev/null || true
 
