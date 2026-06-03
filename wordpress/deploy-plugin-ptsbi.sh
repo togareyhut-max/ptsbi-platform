@@ -97,6 +97,17 @@ require "/var/www/html/wp-load.php";
 echo is_plugin_active("${PLUGIN_FILE}") ? "PLUGIN_ACTIVE=yes\n" : "PLUGIN_ACTIVE=no\n";
 ' 2>/dev/null || true
 
+
+docker exec ${WP_CONTAINER} php -r '
+require "/var/www/html/wp-load.php";
+if (function_exists("wp_cache_flush")) { wp_cache_flush(); }
+if (has_action("litespeed_purge_all")) { do_action("litespeed_purge_all"); }
+if (function_exists("opcache_reset")) { opcache_reset(); }
+echo "CACHE_OPCACHE_PURGED=1
+";
+' 2>/dev/null || true
+docker exec ${WP_CONTAINER} apachectl -k graceful 2>/dev/null || true
+
 for c in ${WP_CONTAINER} traefik tarombo-web mysql; do
   if docker ps --format '{{.Names}}' | grep -qx "\$c"; then
     echo "CONTAINER_UP=\$c"
