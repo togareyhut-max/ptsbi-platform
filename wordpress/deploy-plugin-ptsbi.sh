@@ -109,6 +109,22 @@ require "/var/www/html/wp-load.php";
 echo "RENDER_BOARD_PUSAT_LEN=" . strlen(\$html) . "\n";
 ' 2>&1 || true
 
+# Diagnostik panel admin: render sebagai administrator (cari penyebab panel kosong).
+docker exec ${WP_CONTAINER} php -r '
+require "/var/www/html/wp-load.php";
+\$us = get_users(array("role"=>"administrator","number"=>1));
+if (\$us) { wp_set_current_user(\$us[0]->ID); }
+echo "ADMIN_USER=" . (is_user_logged_in() ? wp_get_current_user()->user_login : "none") . "\n";
+echo "can_manage=" . ((class_exists("PTPRM_Access") && PTPRM_Access::can_manage()) ? "1":"0");
+echo " can_org=" . ((class_exists("PTPRM_Access") && PTPRM_Access::can_manage_org_settings()) ? "1":"0") . "\n";
+echo "SC_admin_portal=" . (shortcode_exists("ptprm_admin_portal") ? "1":"0") . "\n";
+\$h = do_shortcode("[ptprm_admin_portal]");
+echo "ADMIN_PORTAL_LEN=" . strlen(\$h) . "\n";
+echo "SNIPPET=" . substr(preg_replace("/\s+/"," ", wp_strip_all_tags(\$h)),0,180) . "\n";
+' 2>&1 || true
+echo "== PHP error log (tail) =="
+docker exec ${WP_CONTAINER} sh -lc 'tail -n 15 /var/www/html/wp-content/debug.log 2>/dev/null || tail -n 15 /tmp/php_errors.log 2>/dev/null || tail -n 15 /var/log/apache2/error.log 2>/dev/null' 2>&1 | tail -15 || true
+
 for c in ${WP_CONTAINER} traefik tarombo-web mysql; do
   if docker ps --format '{{.Names}}' | grep -qx "\$c"; then
     echo "CONTAINER_UP=\$c"
