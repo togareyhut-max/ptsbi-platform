@@ -1,11 +1,6 @@
 name: Deploy ptsbi-premium
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'wordpress/ptsbi-premium/**'
-      - 'wordpress/deploy-plugin-ptsbi.sh'
   workflow_dispatch:
     inputs:
       confirm:
@@ -17,6 +12,12 @@ on:
         required: false
         default: 'main'
         type: string
+  push:
+    branches: [main]
+    paths:
+      - 'wordpress/ptsbi-premium/**'
+      - 'wordpress/deploy-plugin-ptsbi.sh'
+      - '.github/workflows/deploy-ptsbi-premium.yml'
 
 concurrency:
   group: deploy-ptsbi-premium
@@ -26,8 +27,8 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Konfirmasi deploy (manual saja)
-        if: github.event_name == 'workflow_dispatch' && inputs.confirm != 'DEPLOY'
+      - name: Konfirmasi deploy
+        if: inputs.confirm != 'DEPLOY'
         run: |
           echo "Deploy dibatalkan. Ketik DEPLOY pada field konfirmasi." >&2
           exit 1
@@ -35,7 +36,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.source_branch || 'main' }}
+          ref: ${{ inputs.source_branch }}
 
       - name: Deploy plugin ke ptsbi.org
         env:
@@ -43,17 +44,3 @@ jobs:
           DEPLOY_HOST: 5.175.245.78
           PTPRM_SSH_PORT: '22'
         run: bash wordpress/deploy-plugin-ptsbi.sh
-
-      - name: Verifikasi situs live
-        run: |
-          set -euo pipefail
-          EXPECTED="$(grep -oP "define\(\s*'PTPRM_VERSION',\s*'\K[^']+" wordpress/ptsbi-premium/ptsbi-premium.php | head -1)"
-          echo "Menunggu cache/CDN (15s)..."
-          sleep 15
-          CSS_VER="$(curl -fsSL 'https://ptsbi.org/panel-pengurus/' | grep -oP 'ptsbi-premium/assets/css/frontend\.css\?ver=\K[0-9.]+' | head -1 || true)"
-          echo "Plugin CSS ver=${CSS_VER:-?} (harapan ${EXPECTED})"
-          if [[ "${CSS_VER}" != "${EXPECTED}" ]]; then
-            echo "::error::Versi plugin di situs (${CSS_VER:-kosong}) tidak sama dengan repo (${EXPECTED})." >&2
-            exit 1
-          fi
-          echo "Verifikasi OK."

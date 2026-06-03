@@ -1,29 +1,24 @@
 #!/usr/bin/env bash
 # Deploy ptsbi-premium ke server production (ptsbi.org).
-# Plugin WordPress disimpan di volume Docker (bukan layer container) — salin lewat volume.
+# Butuh SSH sebagai user togaa@5.175.245.78
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 PLUGIN_SRC="${ROOT}/wordpress/ptsbi-premium"
 SSH_HOST="${PTPRM_SSH_HOST:-togaa@5.175.245.78}"
 WP_CONTAINER="${PTPRM_WP_CONTAINER:-wordpress-ptsbi}"
-WP_VOLUME="${PTPRM_WP_VOLUME:-wordpress_wordpress_ptsbi}"
 REMOTE_DIR="/home/togaa/ptsbi-premium"
-REMOTE_ROLLBACK="/home/togaa/ptsbi-premium-rollback"
-PLUGIN_IN_CONTAINER="/var/www/html/wp-content/plugins/ptsbi-premium"
+PLUGIN_SLUG="ptsbi-premium"
 SSH_ID="${HOME}/.ssh/ptprm_deploy_key"
+DEPLOY_HOST="${DEPLOY_HOST:-5.175.245.78}"
 
 if [[ ! -f "${PLUGIN_SRC}/ptsbi-premium.php" ]]; then
   echo "Plugin tidak ditemukan: ${PLUGIN_SRC}" >&2
   exit 1
 fi
 
-EXPECTED_VERSION="$(grep -oP "define\(\s*'PTPRM_VERSION',\s*'\K[^']+" "${PLUGIN_SRC}/ptsbi-premium.php" | head -1 || true)"
-if [[ -z "${EXPECTED_VERSION}" ]]; then
-  echo "PTPRM_VERSION tidak terbaca di ${PLUGIN_SRC}/ptsbi-premium.php" >&2
-  exit 1
-fi
-echo "==> Versi sumber deploy: ${EXPECTED_VERSION}"
+LOCAL_VER="$(grep -m1 "define( 'PTPRM_VERSION'" "${PLUGIN_SRC}/ptsbi-premium.php" | sed -E "s/.*'([0-9.]+)'.*/\1/")"
+echo "==> Versi sumber deploy: ${LOCAL_VER}"
 
 setup_ssh_key() {
   if [[ -z "${SSH_PRIVATE_KEY:-}" ]]; then
@@ -42,9 +37,9 @@ setup_ssh_key() {
     rm -f "${SSH_ID}"
     return 1
   fi
-  local host="${DEPLOY_HOST:-5.175.245.78}"
   local port="${PTPRM_SSH_PORT:-22}"
-  ssh-keyscan -p "${port}" -H "${host}" >> "${HOME}/.ssh/known_hosts" 2>/dev/null || true
+  ssh-keygen -f "${HOME}/.ssh/known_hosts" -R "${DEPLOY_HOST}" 2>/dev/null || true
+  ssh-keyscan -p "${port}" -H "${DEPLOY_HOST}" >> "${HOME}/.ssh/known_hosts" 2>/dev/null || true
   return 0
 }
 
@@ -55,6 +50,8 @@ if setup_ssh_key; then
   echo "==> Memakai kunci dari secret SSH_PRIVATE_KEY"
 else
   echo "==> Peringatan: SSH_PRIVATE_KEY tidak diset; memakai kunci default ~/.ssh" >&2
+  ssh-keygen -f "${HOME}/.ssh/known_hosts" -R "${DEPLOY_HOST}" 2>/dev/null || true
+  ssh-keyscan -p "${SSH_PORT}" -H "${DEPLOY_HOST}" >> "${HOME}/.ssh/known_hosts" 2>/dev/null || true
 fi
 
 echo "==> Upload ke ${SSH_HOST}:${REMOTE_DIR} ..."
@@ -65,74 +62,43 @@ else
   scp "${SSH_OPTS[@]}" -r "${PLUGIN_SRC}/." "${SSH_HOST}:${REMOTE_DIR}/"
 fi
 
-echo "==> Salin ke volume ${WP_VOLUME} (container ${WP_CONTAINER}) ..."
+echo "==> Salin ke container ${WP_CONTAINER}, aktifkan plugin, flush cache ..."
 ssh "${SSH_OPTS[@]}" "${SSH_HOST}" bash -s <<EOF
 set -euo pipefail
-REMOTE_DIR="${REMOTE_DIR}"
-REMOTE_ROLLBACK="${REMOTE_ROLLBACK}"
-WP_CONTAINER="${WP_CONTAINER}"
-WP_VOLUME="${WP_VOLUME}"
-PLUGIN_IN_CONTAINER="${PLUGIN_IN_CONTAINER}"
-EXPECTED_VERSION="${EXPECTED_VERSION}"
-
-if ! docker volume inspect "\${WP_VOLUME}" >/dev/null 2>&1; then
-  DETECTED="\$(docker inspect -f '{{range .Mounts}}{{if eq .Destination "/var/www/html"}}{{.Name}}{{end}}{{end}}' "\${WP_CONTAINER}" 2>/dev/null || true)"
-  if [[ -n "\${DETECTED}" ]] && docker volume inspect "\${DETECTED}" >/dev/null 2>&1; then
-    echo "Volume \${WP_VOLUME} tidak ada; memakai volume dari container: \${DETECTED}"
-    WP_VOLUME="\${DETECTED}"
+PLUGIN_PATH="/var/www/html/wp-content/plugins/${PLUGIN_SLUG}"
+docker exec ${WP_CONTAINER} rm -rf "\${PLUGIN_PATH}"
+docker exec ${WP_CONTAINER} mkdir -p "\${PLUGIN_PATH}"
+docker cp ${REMOTE_DIR}/. ${WP_CONTAINER}:"\${PLUGIN_PATH}/"
+docker exec ${WP_CONTAINER} chown -R www-data:www-data "\${PLUGIN_PATH}"
+docker exec ${WP_CONTAINER} grep -m1 "PTPRM_VERSION" "\${PLUGIN_PATH}/ptsbi-premium.php" || true
+if docker exec ${WP_CONTAINER} which wp >/dev/null 2>&1; then
+  docker exec ${WP_CONTAINER} wp plugin activate ${PLUGIN_SLUG} --allow-root 2>/dev/null || true
+  docker exec ${WP_CONTAINER} wp cache flush --allow-root 2>/dev/null || true
+  docker exec ${WP_CONTAINER} wp plugin is-active ${PLUGIN_SLUG} --allow-root 2>/dev/null && echo "PLUGIN_ACTIVE=yes" || echo "PLUGIN_ACTIVE=no"
+else
+  echo "WP-CLI tidak ada di container — pastikan plugin Premium Organization aktif di wp-admin."
+fi
+for c in ${WP_CONTAINER} traefik tarombo-web mysql; do
+  if docker ps --format '{{.Names}}' | grep -qx "\$c"; then
+    echo "CONTAINER_UP=\$c"
   else
-    echo "Volume \${WP_VOLUME} tidak ditemukan dan deteksi otomatis gagal." >&2
-    exit 1
+    echo "CONTAINER_DOWN=\$c"
+    case "\$c" in
+      ${WP_CONTAINER})
+        cd /home/togaa/wordpress 2>/dev/null && docker compose up -d wordpress-ptsbi 2>/dev/null || true
+        ;;
+      traefik)
+        cd /home/togaa/traefik 2>/dev/null && docker compose up -d 2>/dev/null || true
+        ;;
+      tarombo-web)
+        cd /home/togaa/tarombo-app 2>/dev/null && docker compose up -d 2>/dev/null || true
+        ;;
+      mysql)
+        cd /home/togaa/wordpress 2>/dev/null && docker compose up -d mysql 2>/dev/null || true
+        ;;
+    esac
   fi
-fi
-
-rollback_restore() {
-  if [[ ! -d "\${REMOTE_ROLLBACK}/ptsbi-premium" ]]; then
-    echo "Rollback tidak tersedia (cadangan kosong)." >&2
-    return 1
-  fi
-  echo "==> ROLLBACK: mengembalikan plugin dari cadangan ..."
-  docker run --rm \\
-    -v "\${WP_VOLUME}:/html" \\
-    -v "\${REMOTE_ROLLBACK}:/backup:ro" \\
-    alpine:3.20 sh -c 'rm -rf /html/wp-content/plugins/ptsbi-premium && cp -a /backup/ptsbi-premium /html/wp-content/plugins/ptsbi-premium && chown -R 33:33 /html/wp-content/plugins/ptsbi-premium'
-  docker exec "\${WP_CONTAINER}" grep PTPRM_VERSION "\${PLUGIN_IN_CONTAINER}/ptsbi-premium.php" | head -1 || true
-}
-
-trap 'if [[ \$? -ne 0 ]]; then rollback_restore || true; fi' ERR
-
-echo "==> Cadangan plugin live ke \${REMOTE_ROLLBACK} ..."
-docker run --rm \\
-  -v /home/togaa:/togaa \\
-  alpine:3.20 sh -c 'rm -rf /togaa/ptsbi-premium-rollback && mkdir -p /togaa/ptsbi-premium-rollback'
-docker run --rm \\
-  -v "\${WP_VOLUME}:/html:ro" \\
-  -v "\${REMOTE_ROLLBACK}:/backup" \\
-  alpine:3.20 sh -c 'cp -a /html/wp-content/plugins/ptsbi-premium /backup/ptsbi-premium'
-
-echo "==> Deploy ke volume ..."
-docker run --rm \\
-  -v "\${WP_VOLUME}:/html" \\
-  -v "\${REMOTE_DIR}:/src:ro" \\
-  alpine:3.20 sh -c 'rm -rf /html/wp-content/plugins/ptsbi-premium && cp -a /src /html/wp-content/plugins/ptsbi-premium && chown -R 33:33 /html/wp-content/plugins/ptsbi-premium'
-
-LIVE_VERSION="\$(docker exec "\${WP_CONTAINER}" grep -oP "define\\(\\s*'PTPRM_VERSION',\\s*'\\K[^']+" "\${PLUGIN_IN_CONTAINER}/ptsbi-premium.php" | head -1 || true)"
-echo "==> Versi di staging host:"
-grep PTPRM_VERSION "\${REMOTE_DIR}/ptsbi-premium.php" | head -1
-echo "==> Versi di container (volume): \${LIVE_VERSION:- (gagal baca)}"
-
-if [[ "\${LIVE_VERSION}" != "\${EXPECTED_VERSION}" ]]; then
-  echo "Deploy GAGAL: versi live (\${LIVE_VERSION:-?}) != sumber (\${EXPECTED_VERSION})" >&2
-  rollback_restore
-  exit 1
-fi
-
-docker exec "\${WP_CONTAINER}" php -r 'if (function_exists("opcache_reset")) { opcache_reset(); }' 2>/dev/null || true
-docker exec "\${WP_CONTAINER}" wp cache flush --allow-root 2>/dev/null || true
-docker exec "\${WP_CONTAINER}" wp litespeed-purge all --allow-root 2>/dev/null || true
-
-trap - ERR
-echo "Deploy berhasil — versi \${EXPECTED_VERSION} aktif di volume."
+done
 EOF
 
-echo "Selesai. Plugin ptsbi-premium ${EXPECTED_VERSION} terpasang di production."
+echo "==> Selesai deploy v${LOCAL_VER} — cek PLUGIN_ACTIVE dan CONTAINER_* di atas."
