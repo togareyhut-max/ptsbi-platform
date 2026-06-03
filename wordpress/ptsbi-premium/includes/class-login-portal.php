@@ -185,10 +185,7 @@ class PTPRM_Login_Portal {
         }
 
         if ( $requested !== '' ) {
-            $valid = wp_validate_redirect( $requested, false );
-            if ( $valid ) {
-                return $valid;
-            }
+            return PTPRM_Access::sanitize_redirect_for_user( $user, $requested );
         }
         return PTPRM_Access::portal_url_for_user( $user );
     }
@@ -213,6 +210,10 @@ class PTPRM_Login_Portal {
     public function handle_login(): void {
         if ( empty( $_POST[ self::POST_LOGIN ] ) ) {
             return;
+        }
+        if ( ! function_exists( 'ptprm_public_login_form_enabled' ) || ! ptprm_public_login_form_enabled() ) {
+            status_header( 403 );
+            wp_die( esc_html__( 'Form login publik dinonaktifkan.', 'ptsbi-premium' ), '', [ 'response' => 403 ] );
         }
         if ( ! isset( $_POST[ self::NONCE_LOGIN ] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( (string) $_POST[ self::NONCE_LOGIN ] ) ), 'ptprm_portal_login' ) ) {
             wp_safe_redirect(

@@ -162,7 +162,7 @@ function ptprm_demo_options(): array {
             'header_menu_source'     => 'custom',
             'header_show_cta'        => 1,
             'header_cta_label'       => __( 'Rumah Anggota', 'ptsbi-premium' ),
-            'header_cta_url'         => '/kontak/',
+            'header_cta_url'         => '/rumah-anggota/',
             'header_cta_style'       => 'accent',
             'header_menu_items'      => wp_json_encode(
                 PTPRM_Pages::default_menu_items_for_options(),

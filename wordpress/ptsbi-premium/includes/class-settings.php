@@ -109,10 +109,6 @@ class PTPRM_Settings {
         wp_cache_delete( PTPRM_OPTION, 'options' );
         wp_cache_delete( 'alloptions', 'options' );
 
-        if ( class_exists( 'PTPRM_Membership_Sync' ) ) {
-            PTPRM_Membership_Sync::push_full_options();
-        }
-
         return PTPRM_Bootstrap::settings_admin_url( [ 'settings-updated' => 'true' ] );
     }
 
@@ -307,6 +303,7 @@ class PTPRM_Settings {
         [
             { type: 'values', hidden: '#ptprm-values-items-json', wrap: '#ptprm-values-repeater' },
             { type: 'menu', hidden: '#ptprm-header-menu-json', wrap: '#ptprm-menu-repeater' },
+            { type: 'team', hidden: '#ptprm-team-items-json', wrap: '#ptprm-team-repeater' },
             { type: 'pdf', hidden: '#ptprm-pdf-items-json', wrap: '#ptprm-pdf-repeater' }
         ].forEach(function (cfg) {
             var hidden = form.querySelector(cfg.hidden);
@@ -330,15 +327,25 @@ class PTPRM_Settings {
                         title: t,
                         desc: (row.querySelector('[data-field="desc"]') || {}).value || ''
                     });
-                } else if (cfg.type === 'pdf') {
-                    var pdfTitle = (row.querySelector('[data-field="title"]') || {}).value || '';
-                    pdfTitle = pdfTitle.trim();
-                    if (!pdfTitle) return;
+                } else if (cfg.type === 'team') {
+                    var nm = (row.querySelector('[data-field="name"]') || {}).value || '';
+                    nm = nm.trim();
+                    if (!nm) return;
                     items.push({
-                        id: (row.querySelector('[data-field="id"]') || {}).value || '',
-                        title: pdfTitle,
-                        file: (row.querySelector('[data-field="file"]') || {}).value || '',
-                        link_label: (row.querySelector('[data-field="link_label"]') || {}).value || ''
+                        image: (row.querySelector('[data-field="image"]') || {}).value || '',
+                        name: nm,
+                        role: (row.querySelector('[data-field="role"]') || {}).value || '',
+                        url: (row.querySelector('[data-field="url"]') || {}).value || '',
+                        group: (row.querySelector('[data-field="group"]') || {}).value || ''
+                    });
+                } else if (cfg.type === 'pdf') {
+                    var pdf = (row.querySelector('[data-field="pdf"]') || {}).value || '';
+                    pdf = String(pdf).trim();
+                    if (!pdf) return;
+                    items.push({
+                        title: (row.querySelector('[data-field="title"]') || {}).value || '',
+                        pdf: pdf,
+                        cover: (row.querySelector('[data-field="cover"]') || {}).value || ''
                     });
                 } else {
                     var label = (row.querySelector('[data-field="label"]') || {}).value || '';
@@ -436,7 +443,7 @@ JS;
             'team_show', 'gallery_show', 'gallery_lightbox',
             'gallery_arrows', 'gallery_dots', 'gallery_pause',
             'tarombo_digital_show',
-            'public_login_form_show', 'members_register_show', 'members_directory_show',
+            'members_register_show', 'members_directory_show',
             'banner_show', 'banner_cta2_show',
             'faq_show',
             'popup_enabled', 'popup_show_home', 'popup_show_subpage', 'popup_show_close',
@@ -556,12 +563,15 @@ JS;
         }
         $c['team_items'] = wp_json_encode( $team_clean, JSON_UNESCAPED_UNICODE );
 
-        $pdf_raw   = $input['pdf_items'] ?? ( $existing['pdf_items'] ?? '' );
-        $pdf_clean = ptprm_sanitize_pdf_items( $pdf_raw );
-        if ( ! $pdf_clean ) {
-            $pdf_clean = ptprm_get_pdf_items( $existing );
+        $pdf_raw   = $input['pdf_lightbox_items'] ?? ( $existing['pdf_lightbox_items'] ?? '' );
+        $pdf_clean = ptprm_sanitize_pdf_lightbox_items( $pdf_raw );
+        $c['pdf_lightbox_items'] = wp_json_encode( $pdf_clean, JSON_UNESCAPED_UNICODE );
+        if ( isset( $c['pdf_publications_page_slug'] ) ) {
+            $c['pdf_publications_page_slug'] = sanitize_title( (string) $c['pdf_publications_page_slug'] ) ?: 'publikasi-dan-dokumentasi';
         }
-        $c['pdf_items'] = wp_json_encode( $pdf_clean, JSON_UNESCAPED_UNICODE );
+        if ( isset( $c['pdf_publications_intro'] ) ) {
+            $c['pdf_publications_intro'] = sanitize_textarea_field( (string) $c['pdf_publications_intro'] );
+        }
 
         $sub_max_raw = isset( $input['header_submenu_max'] )
             ? (int) $input['header_submenu_max']
@@ -767,9 +777,9 @@ JS;
             'hero'      => 'Hero',
             'beranda'   => 'Beranda',
             'popup'     => 'Pop-up Iklan',
-            'pdf'       => __( 'Dokumen PDF', 'ptsbi-premium' ),
             'subpage'   => 'Sub-halaman',
             'footer'    => 'Footer',
+            'pdf_lightbox' => 'Panel PDF Lightbox',
         ];
         ?>
         <div class="wrap ptprm-wrap">
@@ -859,9 +869,9 @@ JS;
                         <?php $this->panel_hero( $o, $opt ); ?>
                         <?php $this->panel_beranda( $o, $opt ); ?>
                         <?php $this->panel_popup( $o, $opt ); ?>
-                        <?php $this->panel_pdf( $o, $opt ); ?>
                         <?php $this->panel_subpage( $o, $opt ); ?>
                         <?php $this->panel_footer( $o, $opt ); ?>
+                        <?php $this->panel_pdf_lightbox( $o, $opt ); ?>
                     </main>
                 </div>
             </form>
@@ -1830,73 +1840,6 @@ JS;
         <?php
     }
 
-
-    private function repeater_pdf( $o, $opt ) {
-        $items = ptprm_get_pdf_items( $o );
-        foreach ( $items as $i => $item ) {
-            $fid = (int) ( $item['file'] ?? 0 );
-            if ( $fid > 0 ) {
-                $path = get_attached_file( $fid );
-                $items[ $i ]['file_name'] = $path ? basename( $path ) : get_the_title( $fid );
-            }
-        }
-        $json     = wp_json_encode( $items, JSON_UNESCAPED_UNICODE );
-        $json_b64 = base64_encode( (string) $json );
-        ?>
-        <input type="hidden" id="ptprm-pdf-items-json" value="" data-ptprm="pdf_items" data-ptprm-json-b64="<?php echo esc_attr( $json_b64 ); ?>" />
-        <div class="ptprm-repeater ptprm-pdf-list-repeater" id="ptprm-pdf-repeater" data-type="pdf" data-tpl="#ptprm-tpl-pdf-row">
-            <p class="ptprm-help"><?php esc_html_e( 'Daftar nama dokumen (bukan thumbnail). ID shortcode otomatis dari judul. Maks. 50 dokumen.', 'ptsbi-premium' ); ?></p>
-            <div class="ptprm-repeater-list"></div>
-            <p><button type="button" class="button button-secondary ptprm-repeater-add">+ <?php esc_html_e( 'Tambah PDF', 'ptsbi-premium' ); ?></button></p>
-        </div>
-        <script type="text/template" id="ptprm-tpl-pdf-row">
-            <div class="ptprm-repeater-row ptprm-pdf-row" data-index="{{index}}">
-                <label class="ptprm-field ptprm-pdf-field-title">
-                    <span class="ptprm-label"><?php esc_html_e( 'Nama dokumen', 'ptsbi-premium' ); ?></span>
-                    <input type="text" class="regular-text" data-field="title" value="" />
-                </label>
-                <input type="hidden" data-field="file" value="" />
-                <input type="hidden" data-field="id" value="" />
-                <input type="hidden" data-field="link_label" value="<?php echo esc_attr__( 'Lihat dokumen', 'ptsbi-premium' ); ?>" />
-                <div class="ptprm-pdf-file-actions">
-                    <button type="button" class="button ptprm-pdf-pick"><?php esc_html_e( 'Pilih file PDF', 'ptsbi-premium' ); ?></button>
-                    <button type="button" class="button ptprm-pdf-clear"><?php esc_html_e( 'Hapus file', 'ptsbi-premium' ); ?></button>
-                    <span class="ptprm-pdf-file-name description"></span>
-                </div>
-                <div class="ptprm-pdf-shortcode-cell">
-                    <div class="ptprm-pdf-shortcode-line">
-                        <span class="ptprm-label"><?php esc_html_e( 'Tombol', 'ptsbi-premium' ); ?></span>
-                        <code class="ptprm-pdf-shortcode-preview" data-which="button">[ptprm_pdf id="" style="button"]</code>
-                        <button type="button" class="button button-small ptprm-pdf-copy-shortcode" data-which="button"><?php esc_html_e( 'Salin', 'ptsbi-premium' ); ?></button>
-                    </div>
-                    <div class="ptprm-pdf-shortcode-line">
-                        <span class="ptprm-label"><?php esc_html_e( 'Hover', 'ptsbi-premium' ); ?></span>
-                        <code class="ptprm-pdf-shortcode-preview" data-which="hover">[ptprm_pdf id="" style="hover" label="Lihat dokumen"]…[/ptprm_pdf]</code>
-                        <button type="button" class="button button-small ptprm-pdf-copy-shortcode" data-which="hover"><?php esc_html_e( 'Salin', 'ptsbi-premium' ); ?></button>
-                    </div>
-                </div>
-                <button type="button" class="button-link-delete ptprm-repeater-remove" aria-label="<?php esc_attr_e( 'Hapus', 'ptsbi-premium' ); ?>"><?php esc_html_e( 'Hapus', 'ptsbi-premium' ); ?></button>
-            </div>
-        </script>
-        <?php
-    }
-
-    /* -- PANEL: PDF -- */
-
-    private function panel_pdf( $o, $opt ) {
-        ?>
-        <section class="ptprm-panel" id="tab-pdf" data-panel="pdf" hidden>
-            <h2><?php esc_html_e( 'Dokumen PDF', 'ptsbi-premium' ); ?></h2>
-            <p class="ptprm-help">
-                <?php esc_html_e( 'Unggah PDF, lalu salin shortcode ke halaman WordPress. Pengunjung membuka dokumen dalam lightbox tanpa meninggalkan halaman.', 'ptsbi-premium' ); ?>
-            </p>
-            <div class="ptprm-card">
-                <?php $this->repeater_pdf( $o, $opt ); ?>
-            </div>
-        </section>
-        <?php
-    }
-
     /* -- PANEL: SUBPAGE -- */
 
     private function panel_subpage( $o, $opt ) {
@@ -1991,6 +1934,80 @@ JS;
                 ?>
             </div>
         </section>
+        <?php
+    }
+
+    /* -- PANEL: PDF LIGHTBOX -- */
+
+    private function panel_pdf_lightbox( $o, $opt ) {
+        $cols = max( 2, min( 4, (int) ( $o['pdf_lightbox_columns'] ?? 3 ) ) );
+        $sc_default = class_exists( 'PTPRM_Pdf_Lightbox' ) ? PTPRM_Pdf_Lightbox::format_shortcode( 'default', $cols ) : '[ptprm_pdf_lightbox]';
+        $sc_hover   = class_exists( 'PTPRM_Pdf_Lightbox' ) ? PTPRM_Pdf_Lightbox::format_shortcode( 'hover', $cols ) : '[ptprm_pdf_lightbox variant="hover"]';
+        $sc_pub     = class_exists( 'PTPRM_Pdf_Lightbox' ) ? PTPRM_Pdf_Lightbox::format_publications_shortcode( $cols ) : '[ptprm_pdf_publications]';
+        $html_default = class_exists( 'PTPRM_Pdf_Lightbox' ) ? PTPRM_Pdf_Lightbox::format_html_embed( $o, 'default', $cols ) : '';
+        $html_hover   = class_exists( 'PTPRM_Pdf_Lightbox' ) ? PTPRM_Pdf_Lightbox::format_html_embed( $o, 'hover', $cols ) : '';
+        $pub_url    = ptprm_publications_page_url( $o );
+        $setup_url  = wp_nonce_url(
+            admin_url( 'admin.php?page=ptprm-settings&ptprm_setup_publications=1' ),
+            'ptprm_setup_publications'
+        );
+        ?>
+        <section class="ptprm-panel" id="tab-pdf_lightbox" data-panel="pdf_lightbox" hidden>
+            <h2><?php esc_html_e( 'Panel PDF Lightbox', 'ptsbi-premium' ); ?></h2>
+            <p class="ptprm-help">
+                <?php esc_html_e( 'Kelola PDF organisasi di sini. Daftar otomatis tampil di halaman Publikasi & Dokumentasi (menu header) dengan tombol Baca (lightbox) dan Unduh.', 'ptsbi-premium' ); ?>
+            </p>
+
+            <div class="ptprm-card">
+                <h3><?php esc_html_e( 'Halaman Publikasi & Dokumentasi', 'ptsbi-premium' ); ?></h3>
+                <p class="ptprm-help">
+                    <?php esc_html_e( 'Menu header: Publikasi & Dokumentasi → membuka halaman daftar buku/PDF.', 'ptsbi-premium' ); ?>
+                    <a href="<?php echo esc_url( $pub_url ); ?>" target="_blank" rel="noopener noreferrer"><?php esc_html_e( 'Lihat halaman', 'ptsbi-premium' ); ?></a>
+                </p>
+                <?php $this->t( __( 'Slug halaman (opsional)', 'ptsbi-premium' ), 'pdf_publications_page_slug', $o, $opt ); ?>
+                <?php $this->ta( __( 'Teks pengantar di halaman publikasi', 'ptsbi-premium' ), 'pdf_publications_intro', $o, $opt, 2 ); ?>
+                <p>
+                    <a href="<?php echo esc_url( $setup_url ); ?>" class="button button-secondary"><?php esc_html_e( 'Buat / sinkron halaman & menu', 'ptsbi-premium' ); ?></a>
+                </p>
+            </div>
+
+            <div class="ptprm-card">
+                <h3><?php esc_html_e( 'Daftar dokumen PDF', 'ptsbi-premium' ); ?></h3>
+                <?php $this->number( __( 'Kolom pada kode (2–4)', 'ptsbi-premium' ), 'pdf_lightbox_columns', $o, $opt, 2, 4 ); ?>
+                <p class="ptprm-help"><?php esc_html_e( 'Maksimal 24 dokumen. Simpan perubahan setelah menambah/mengubah PDF agar kode di bawah ikut terbarui.', 'ptsbi-premium' ); ?></p>
+                <?php $this->repeater_pdf_lightbox( $o, $opt ); ?>
+            </div>
+
+            <div class="ptprm-card ptprm-pdf-code-card">
+                <h3><?php esc_html_e( 'Kode shortcode (halaman lain)', 'ptsbi-premium' ); ?></h3>
+                <?php $this->pdf_code_field( __( 'Halaman publikasi (baca + unduh)', 'ptsbi-premium' ), $sc_pub, 'ptprm-pdf-sc-pub' ); ?>
+                <?php $this->pdf_code_field( __( 'Lightbox biasa', 'ptsbi-premium' ), $sc_default, 'ptprm-pdf-sc-default' ); ?>
+                <?php $this->pdf_code_field( __( 'Lightbox hover (overlay pada kartu)', 'ptsbi-premium' ), $sc_hover, 'ptprm-pdf-sc-hover' ); ?>
+            </div>
+
+            <div class="ptprm-card ptprm-pdf-code-card">
+                <h3><?php esc_html_e( 'Kode HTML (blok HTML kustom)', 'ptsbi-premium' ); ?></h3>
+                <p class="ptprm-help"><?php esc_html_e( 'Alternatif jika tidak memakai shortcode. Struktur sama; lightbox tetap aktif lewat atribut data-ptprm-pdf-lightbox.', 'ptsbi-premium' ); ?></p>
+                <?php $this->pdf_code_field( __( 'HTML — biasa', 'ptsbi-premium' ), $html_default, 'ptprm-pdf-html-default', true ); ?>
+                <?php $this->pdf_code_field( __( 'HTML — hover', 'ptsbi-premium' ), $html_hover, 'ptprm-pdf-html-hover', true ); ?>
+            </div>
+        </section>
+        <?php
+    }
+
+    /**
+     * @param bool $multiline
+     */
+    private function pdf_code_field( string $label, string $code, string $id, bool $multiline = false ): void {
+        $rows = $multiline ? max( 6, min( 24, substr_count( $code, "\n" ) + 2 ) ) : 2;
+        ?>
+        <div class="ptprm-pdf-code-row">
+            <div class="ptprm-pdf-code-row-head">
+                <strong><?php echo esc_html( $label ); ?></strong>
+                <button type="button" class="button button-secondary ptprm-copy-code" data-target="<?php echo esc_attr( $id ); ?>"><?php esc_html_e( 'Salin', 'ptsbi-premium' ); ?></button>
+            </div>
+            <textarea id="<?php echo esc_attr( $id ); ?>" class="large-text code ptprm-pdf-code-output" rows="<?php echo (int) $rows; ?>" readonly><?php echo esc_textarea( $code ); ?></textarea>
+        </div>
         <?php
     }
 
@@ -2146,6 +2163,49 @@ JS;
                 <label class="ptprm-field"><span class="ptprm-label">Link profil (opsional)</span>
                     <input type="url" class="regular-text ptprm-repeater-url" data-field="url" value="" placeholder="https://" />
                 </label>
+            </div>
+        </script>
+        <?php
+    }
+
+    private function repeater_pdf_lightbox( $o, $opt ) {
+        $items    = ptprm_get_pdf_lightbox_items( $o );
+        $json     = wp_json_encode( $items, JSON_UNESCAPED_UNICODE );
+        $json_b64 = base64_encode( (string) $json );
+        ?>
+        <input type="hidden" id="ptprm-pdf-items-json" value="" data-ptprm="pdf_lightbox_items" data-ptprm-json-b64="<?php echo esc_attr( $json_b64 ); ?>" />
+        <div class="ptprm-repeater" id="ptprm-pdf-repeater" data-type="pdf" data-tpl="#ptprm-tpl-pdf-row">
+            <p class="ptprm-help"><?php esc_html_e( 'Maksimal 24 dokumen. Unggah file PDF; sampul (cover) opsional — jika kosong, tampil ikon PDF.', 'ptsbi-premium' ); ?></p>
+            <div class="ptprm-repeater-list"></div>
+            <p><button type="button" class="button button-secondary ptprm-repeater-add">+ <?php esc_html_e( 'Tambah PDF', 'ptsbi-premium' ); ?></button></p>
+        </div>
+        <script type="text/template" id="ptprm-tpl-pdf-row">
+            <div class="ptprm-repeater-row ptprm-mini-card" data-index="{{index}}">
+                <div class="ptprm-repeater-row-head">
+                    <strong><?php esc_html_e( 'Dokumen', 'ptsbi-premium' ); ?> {{num}}</strong>
+                    <button type="button" class="button-link-delete ptprm-repeater-remove"><?php esc_html_e( 'Hapus', 'ptsbi-premium' ); ?></button>
+                </div>
+                <label class="ptprm-field"><span class="ptprm-label"><?php esc_html_e( 'Judul', 'ptsbi-premium' ); ?></span>
+                    <input type="text" class="regular-text" data-field="title" value="" />
+                </label>
+                <div class="ptprm-image-field ptprm-repeater-pdf-field">
+                    <span class="ptprm-label"><?php esc_html_e( 'File PDF', 'ptsbi-premium' ); ?></span>
+                    <p class="ptprm-pdf-filename">{{pdf_name}}</p>
+                    <input type="hidden" class="ptprm-pdf-value" data-field="pdf" value="{{pdf}}" />
+                    <p>
+                        <button type="button" class="button ptprm-pdf-pick"><?php esc_html_e( 'Pilih PDF', 'ptsbi-premium' ); ?></button>
+                        <button type="button" class="button ptprm-pdf-clear"><?php esc_html_e( 'Hapus', 'ptsbi-premium' ); ?></button>
+                    </p>
+                </div>
+                <div class="ptprm-image-field ptprm-repeater-image-field">
+                    <span class="ptprm-label"><?php esc_html_e( 'Sampul (opsional)', 'ptsbi-premium' ); ?></span>
+                    <div class="ptprm-image-preview" style="background-image:url({{cover_preview}})"></div>
+                    <input type="hidden" class="ptprm-image-value ptprm-repeater-image" data-field="cover" value="{{cover}}" />
+                    <p>
+                        <button type="button" class="button ptprm-image-pick"><?php esc_html_e( 'Pilih gambar', 'ptsbi-premium' ); ?></button>
+                        <button type="button" class="button ptprm-image-clear"><?php esc_html_e( 'Hapus', 'ptsbi-premium' ); ?></button>
+                    </p>
+                </div>
             </div>
         </script>
         <?php

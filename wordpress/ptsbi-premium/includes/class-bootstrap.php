@@ -121,13 +121,9 @@ class PTPRM_Bootstrap {
         if ( class_exists( 'PTPRM_Admin_Portal' ) ) {
             PTPRM_Admin_Portal::ensure_pages();
         }
-        if ( class_exists( 'PTPRM_Board_Registry' ) ) {
-            PTPRM_Board_Registry::maybe_seed_defaults();
-            PTPRM_Board_Registry::ensure_region_pages();
-        }
-        if ( class_exists( 'PTPRM_Bidang_Registry' ) ) {
-            PTPRM_Bidang_Registry::ensure_categories();
-            PTPRM_Bidang_Registry::ensure_pages();
+        if ( class_exists( 'PTPRM_Pages' ) ) {
+            PTPRM_Pages::setup_publications_front();
+            update_option( 'ptprm_publications_setup_' . PTPRM_VERSION, 1, false );
         }
         PTPRM_Access::ensure_capabilities();
         if ( class_exists( 'PTPRM_Default_Accounts' ) ) {
@@ -201,6 +197,16 @@ class PTPRM_Bootstrap {
             flush_rewrite_rules( false );
             set_transient( 'ptprm_admin_notice', __( 'Halaman portal anggota & pengurus siap dipakai.', 'ptsbi-premium' ), 30 );
             wp_safe_redirect( self::settings_admin_url( [ 'ptprm-member-pages' => '1' ] ) );
+            exit;
+        }
+
+        if ( isset( $_GET['ptprm_setup_publications'] ) && '1' === $_GET['ptprm_setup_publications'] ) {
+            check_admin_referer( 'ptprm_setup_publications' );
+            if ( class_exists( 'PTPRM_Pages' ) ) {
+                PTPRM_Pages::setup_publications_front();
+            }
+            set_transient( 'ptprm_admin_notice', __( 'Halaman Publikasi & Dokumentasi dan menu header disinkronkan.', 'ptsbi-premium' ), 30 );
+            wp_safe_redirect( self::settings_admin_url( [ 'tab' => 'pdf_lightbox' ] ) );
             exit;
         }
 
