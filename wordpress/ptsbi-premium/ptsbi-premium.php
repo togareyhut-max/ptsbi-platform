@@ -87,3 +87,4 @@ function ptprm_maybe_setup_publications_page(): void {
     PTPRM_Pages::setup_publications_front();
     update_option( $flag, 1, false );
 }
+
