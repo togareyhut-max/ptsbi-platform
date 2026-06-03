@@ -16,7 +16,13 @@ bp = Blueprint("membership_api", __name__, url_prefix="/v1")
 
 
 def _integration_key() -> str:
-    return os.environ.get("MEMBERSHIP_API_INTEGRATION_KEY", "").strip()
+    # Terima beberapa nama env agar kompatibel dengan konfigurasi server lama
+    # (.env produksi memakai WP_INTEGRATION_KEY).
+    for name in ("MEMBERSHIP_API_INTEGRATION_KEY", "WP_INTEGRATION_KEY", "INTEGRATION_KEY"):
+        val = os.environ.get(name, "").strip()
+        if val:
+            return val
+    return ""
 
 
 def _require_integration_key():

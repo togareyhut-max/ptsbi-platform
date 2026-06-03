@@ -87,13 +87,17 @@ REMOTE
 
 # --- DEPLOY (rebuild web saja, DB & .env aman) ---
 deploy_remote() {
-  echo "==> Sinkron kode ke ${SSH_HOST}:${REMOTE_DIR} (kecuali .env, data/, *.db, pgdata) ..."
-  rsync -az --delete \
+  echo "==> Sinkron kode ke ${SSH_HOST}:${REMOTE_DIR} (tanpa --delete; .env, data/, backups/, config/ aman) ..."
+  # Tanpa --delete: hanya menambah/memperbarui file, tidak menghapus file server (backup, config, .env).
+  rsync -az \
     --exclude='.env' \
     --exclude='data/' \
+    --exclude='backups/' \
+    --exclude='config/' \
     --exclude='*.db' \
     --exclude='__pycache__/' \
     --exclude='.git/' \
+    --exclude='.cursor/' \
     -e "ssh ${SSH_OPTS[*]}" \
     "${APP_SRC}/" "${SSH_HOST}:${REMOTE_DIR}/"
 
