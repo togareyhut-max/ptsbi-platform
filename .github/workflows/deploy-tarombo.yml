@@ -1,0 +1,40 @@
+name: Deploy Tarombo
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'inspect (read-only) atau deploy (rebuild web saja)'
+        required: true
+        default: 'inspect'
+        type: choice
+        options:
+          - inspect
+          - deploy
+  push:
+    branches: [main]
+    paths:
+      - 'deploy/tarombo-app/**'
+      - '.github/workflows/deploy-tarombo.yml'
+
+concurrency:
+  group: deploy-tarombo
+  cancel-in-progress: false
+
+jobs:
+  tarombo:
+    runs-on: ubuntu-latest
+    env:
+      # Mode default untuk trigger push. Ubah ke "deploy" untuk merilis kode Tarombo terbaru.
+      TAROMBO_PUSH_MODE: inspect
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Jalankan deploy/inspeksi Tarombo
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          DEPLOY_HOST: 5.175.245.78
+          PTPRM_SSH_PORT: '22'
+          TAROMBO_MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.mode || env.TAROMBO_PUSH_MODE }}
+        run: bash deploy/tarombo-app/server-deploy.sh
