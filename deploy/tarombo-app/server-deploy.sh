@@ -110,8 +110,6 @@ echo "== _integration_key terbaca kode app =="
 docker exec ${WEB_CONTAINER} sh -lc 'cd /app && python -c "from services.membership_api import _integration_key as k;print(\"KEY_LEN=\",len(k()))"' 2>/dev/null || echo "(probe kode gagal)"
 echo "== grep WP_INTEGRATION_KEY di kode image =="
 docker exec ${WEB_CONTAINER} sh -lc 'grep -n WP_INTEGRATION_KEY /app/services/membership_api.py || echo "(tidak ada di kode image)"' 2>/dev/null || true
-echo "== Uji /v1/ping dengan key asli dari DALAM container =="
-docker exec ${WEB_CONTAINER} python -c "import os,urllib.request,json;\nk=os.environ.get('WP_INTEGRATION_KEY') or os.environ.get('MEMBERSHIP_API_INTEGRATION_KEY') or '';\nreq=urllib.request.Request('http://127.0.0.1:5000/v1/ping',headers={'X-Integration-Key':k});\nimport sys\ntry:\n  r=urllib.request.urlopen(req,timeout=10);print('PING_AUTH ->',r.status,r.read().decode()[:120])\nexcept Exception as e:\n  print('PING_AUTH ERROR:',e)" 2>/dev/null || echo "(probe ping gagal)"
 echo "== git rev server =="
 git -C "${REMOTE_DIR}" rev-parse --short HEAD 2>/dev/null || echo "(bukan git repo)"
 REMOTE
