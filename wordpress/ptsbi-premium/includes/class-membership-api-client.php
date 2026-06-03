@@ -35,6 +35,92 @@ class PTPRM_Membership_Api_Client {
     }
 
     /**
+     * Uji koneksi ke Membership API (Tarombo) + database, memakai nilai tersimpan.
+     * Tidak bergantung pada flag "enabled" agar bisa dites sebelum diaktifkan.
+     *
+     * @return array{ok:bool,message:string,detail:string}
+     */
+    public static function test_connection(): array {
+        $base = self::base_url();
+        $key  = self::integration_key();
+        if ( $base === '' ) {
+            return [
+                'ok'      => false,
+                'message' => __( 'Belum tersambung: Base URL Membership API masih kosong.', 'ptsbi-premium' ),
+                'detail'  => '',
+            ];
+        }
+        if ( $key === '' ) {
+            return [
+                'ok'      => false,
+                'message' => __( 'Belum tersambung: Integration Key masih kosong.', 'ptsbi-premium' ),
+                'detail'  => '',
+            ];
+        }
+
+        $url = $base . '/ping';
+        $res = wp_remote_get(
+            $url,
+            [
+                'timeout' => self::timeout(),
+                'headers' => [
+                    'Accept'            => 'application/json',
+                    'X-Integration-Key' => $key,
+                ],
+            ]
+        );
+
+        if ( is_wp_error( $res ) ) {
+            return [
+                'ok'      => false,
+                'message' => __( 'Belum tersambung: tidak dapat menghubungi server Tarombo.', 'ptsbi-premium' ),
+                'detail'  => $res->get_error_message(),
+            ];
+        }
+
+        $code = (int) wp_remote_retrieve_response_code( $res );
+        $body = (string) wp_remote_retrieve_body( $res );
+        $json = json_decode( $body, true );
+
+        if ( $code === 200 && is_array( $json ) && ! empty( $json['ok'] ) ) {
+            $db = isset( $json['db'] ) ? (string) $json['db'] : 'connected';
+            return [
+                'ok'      => true,
+                'message' => __( 'Test berhasil — tersambung ke API dan database Tarombo.', 'ptsbi-premium' ),
+                'detail'  => 'db: ' . $db,
+            ];
+        }
+
+        if ( $code === 401 ) {
+            return [
+                'ok'      => false,
+                'message' => __( 'Belum tersambung: Integration Key salah (ditolak server).', 'ptsbi-premium' ),
+                'detail'  => 'HTTP 401',
+            ];
+        }
+        if ( $code === 404 ) {
+            return [
+                'ok'      => false,
+                'message' => __( 'Belum tersambung: endpoint /ping tidak ditemukan (perbarui aplikasi Tarombo).', 'ptsbi-premium' ),
+                'detail'  => 'HTTP 404',
+            ];
+        }
+        if ( $code === 503 && is_array( $json ) ) {
+            return [
+                'ok'      => false,
+                'message' => __( 'Belum tersambung: database Tarombo tidak dapat diakses.', 'ptsbi-premium' ),
+                'detail'  => isset( $json['error'] ) ? (string) $json['error'] : 'HTTP 503',
+            ];
+        }
+
+        return [
+            'ok'      => false,
+            'message' => __( 'Belum tersambung: respons tidak terduga dari server.', 'ptsbi-premium' ),
+            'detail'  => 'HTTP ' . $code,
+        ];
+    }
+
+    /**
      * @param array<string,mixed> $payload
      * @return array<string,mixed>|\WP_Error
      */
@@ -47,14 +133,6 @@ class PTPRM_Membership_Api_Client {
      */
     public static function get( string $path ) {
         return self::request( 'GET', $path, null );
-    }
-
-    /**
-     * @param array<string,mixed>|null $payload
-     * @return array<string,mixed>|\WP_Error
-     */
-    public static function request_json( string $method, string $path, ?array $payload = null ) {
-        return self::request( $method, $path, $payload );
     }
 
     /**

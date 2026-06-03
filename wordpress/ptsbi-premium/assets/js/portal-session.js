@@ -83,4 +83,37 @@
     }
 
     window.setInterval(refresh, 10 * 60 * 1000);
+
+    /**
+     * Peringatan jika menutup jendela/tab sebelum logout (hanya di halaman panel).
+     * Navigasi internal (klik link / submit form) tidak memunculkan peringatan.
+     */
+    (function () {
+        var internalNav = false;
+
+        function allow() {
+            internalNav = true;
+            // Reset agar peringatan tetap aktif bila navigasi dibatalkan.
+            window.setTimeout(function () { internalNav = false; }, 4000);
+        }
+
+        document.addEventListener('click', function (e) {
+            var a = e.target && e.target.closest ? e.target.closest('a[href]') : null;
+            if (!a) { return; }
+            // Logout atau navigasi apa pun = diizinkan tanpa peringatan.
+            if (a.getAttribute('data-ptprm-logout') === '1') { allow(); return; }
+            var href = a.getAttribute('href') || '';
+            if (href && href.charAt(0) !== '#' && !/^javascript:/i.test(href)) { allow(); }
+        }, true);
+
+        document.addEventListener('submit', function () { allow(); }, true);
+
+        window.addEventListener('beforeunload', function (e) {
+            if (internalNav) { return undefined; }
+            // Memicu dialog konfirmasi bawaan browser.
+            e.preventDefault();
+            e.returnValue = 'Anda belum keluar (logout). Tutup halaman tanpa logout?';
+            return e.returnValue;
+        });
+    })();
 })();

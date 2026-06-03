@@ -157,12 +157,49 @@ class PTPRM_Header {
      * @param array<string, mixed> $o Options.
      */
     private function render_header_cta( array $o ): void {
+        // Tombol akun: Masuk (saat di luar) / Panel + Keluar (saat sudah login).
+        $this->render_auth_buttons();
+
         if ( empty( $o['header_show_cta'] ) || empty( $o['header_cta_label'] ) ) {
             return;
         }
-        $cta_url = ptprm_resolve_url( $o['header_cta_url'] ?? '/kontak/' );
+        // Jangan duplikasi: jika CTA hanya mengarah ke halaman login, lewati saat sudah login.
+        $cta_url_raw = (string) ( $o['header_cta_url'] ?? '/kontak/' );
+        if ( is_user_logged_in() && function_exists( 'ptprm_is_rumah_anggota_path' ) ) {
+            $path = trim( (string) wp_parse_url( ptprm_resolve_url( $cta_url_raw ), PHP_URL_PATH ), '/' );
+            if ( ptprm_is_rumah_anggota_path( $path ) ) {
+                return;
+            }
+        }
+        $cta_url = ptprm_resolve_url( $cta_url_raw );
         $cta_cls = 'ptprm-site-header__cta ptprm-site-header__cta--' . sanitize_html_class( $o['header_cta_style'] ?? 'accent' );
         echo '<a class="' . esc_attr( $cta_cls ) . '" href="' . esc_url( $cta_url ) . '">' . esc_html( $o['header_cta_label'] ) . '</a>';
+    }
+
+    /**
+     * Tombol Masuk/Panel/Keluar yang sadar status login.
+     */
+    private function render_auth_buttons(): void {
+        if ( ! class_exists( 'PTPRM_Access' ) ) {
+            return;
+        }
+        if ( ! is_user_logged_in() ) {
+            $login_url = class_exists( 'PTPRM_Login_Portal' )
+                ? PTPRM_Login_Portal::login_url()
+                : wp_login_url();
+            echo '<a class="ptprm-site-header__cta ptprm-site-header__cta--accent ptprm-site-header__login" href="' . esc_url( $login_url ) . '">'
+                . esc_html__( 'Masuk', 'ptsbi-premium' ) . '</a>';
+            return;
+        }
+
+        // Sudah login: tombol ke panel sesuai peran + tombol Keluar.
+        $panel_url = PTPRM_Access::portal_url_for_user();
+        if ( $panel_url && $panel_url !== home_url( '/' ) ) {
+            echo '<a class="ptprm-site-header__cta ptprm-site-header__cta--outline ptprm-site-header__panel" href="' . esc_url( $panel_url ) . '">'
+                . esc_html__( 'Panel Saya', 'ptsbi-premium' ) . '</a>';
+        }
+        echo '<a class="ptprm-site-header__cta ptprm-site-header__cta--ghost ptprm-site-header__logout" href="' . esc_url( PTPRM_Access::logout_url() ) . '" data-ptprm-logout="1">'
+            . esc_html__( 'Keluar', 'ptsbi-premium' ) . '</a>';
     }
 
     /**

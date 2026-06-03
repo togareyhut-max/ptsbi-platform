@@ -37,7 +37,6 @@ class PTPRM_Admin_Portal {
         add_action( 'init', [ __CLASS__, 'maybe_ensure_pages' ], 14 );
         add_action( 'init', [ $this, 'handle_save_settings' ], 20 );
         add_action( 'init', [ $this, 'handle_save_post' ], 20 );
-        add_action( 'template_redirect', [ __CLASS__, 'prevent_portal_cache' ], 0 );
         add_shortcode( 'ptprm_admin_portal', [ $this, 'shortcode_portal' ] );
         add_filter( 'ptprm_subpage_hero_skip', [ $this, 'skip_subpage_hero' ] );
     }
@@ -82,16 +81,6 @@ class PTPRM_Admin_Portal {
         }
         $slug = (string) get_post_field( 'post_name', get_queried_object_id() );
         return $slug === self::portal_slug();
-    }
-
-    public static function prevent_portal_cache(): void {
-        if ( ! self::is_admin_page() ) {
-            return;
-        }
-        if ( ! defined( 'DONOTCACHEPAGE' ) ) {
-            define( 'DONOTCACHEPAGE', true );
-        }
-        nocache_headers();
     }
 
     public static function maybe_ensure_pages(): void {
@@ -160,22 +149,20 @@ class PTPRM_Admin_Portal {
     }
 
     public function handle_save_settings(): void {
-        if ( empty( $_POST['ptprm_admin_settings'] ) ) {
+        if ( empty( $_POST['ptprm_admin_settings'] ) || ! $this->can_access_settings_tab() ) {
             return;
         }
-        if ( ! $this->can_access_settings_tab() ) {
-            wp_safe_redirect( add_query_arg( 'ptprm_save_error', rawurlencode( __( 'Anda tidak punya akses menyimpan pengaturan ini.', 'ptsbi-premium' ) ), self::portal_url( 'informasi' ) ) );
-            exit;
-        }
-        if ( ! isset( $_POST[ self::NONCE_SETTINGS ] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( (string) $_POST[ self::NONCE_SETTINGS ] ) ), 'ptprm_admin_settings' ) ) {
-            wp_safe_redirect( add_query_arg( 'ptprm_save_error', rawurlencode( __( 'Sesi form kedaluwarsa. Muat ulang halaman lalu simpan lagi.', 'ptsbi-premium' ) ), self::portal_url( 'informasi' ) ) );
+        if ( ! function_exists( 'ptprm_verify_portal_form_nonce' ) || ! ptprm_verify_portal_form_nonce( 'ptprm_admin_settings' ) ) {
+            wp_safe_redirect(
+                add_query_arg(
+                    'ptprm_settings_error',
+                    rawurlencode( function_exists( 'ptprm_portal_session_expired_message' ) ? ptprm_portal_session_expired_message() : __( 'Sesi form kedaluwarsa. Muat ulang halaman lalu simpan lagi.', 'ptsbi-premium' ) ),
+                    self::portal_url( 'informasi' )
+                )
+            );
             exit;
         }
 
-        $checkbox_keys = [
-            'members_register_show', 'members_directory_show', 'members_register_auto_approve',
-            'members_register_notify_email', 'members_register_notify_wa', 'membership_api_enabled',
-        ];
         $keys = [
             'org_name', 'whatsapp', 'address', 'hours',
             'members_register_show', 'members_directory_show', 'members_per_page',
@@ -191,11 +178,11 @@ class PTPRM_Admin_Portal {
         $patch    = [];
 
         foreach ( $keys as $key ) {
-            if ( in_array( $key, $checkbox_keys, true ) ) {
-                $patch[ $key ] = ! empty( $_POST[ $key ] ) ? 1 : 0;
+            if ( ! isset( $_POST[ $key ] ) ) {
                 continue;
             }
-            if ( ! isset( $_POST[ $key ] ) ) {
+            if ( in_array( $key, [ 'members_register_show', 'members_directory_show', 'members_register_auto_approve', 'members_register_notify_email', 'members_register_notify_wa', 'membership_api_enabled' ], true ) ) {
+                $patch[ $key ] = ! empty( $_POST[ $key ] ) ? 1 : 0;
                 continue;
             }
             if ( $key === 'members_per_page' ) {
@@ -212,8 +199,10 @@ class PTPRM_Admin_Portal {
         $next = array_merge( $existing, $patch );
         update_option( PTPRM_OPTION, ptprm_normalize_option_for_storage( $next ), true );
         wp_cache_delete( PTPRM_OPTION, 'options' );
-        wp_cache_delete( 'alloptions', 'options' );
-        delete_transient( 'ptprm_storage_repaired_' . PTPRM_VERSION );
+
+        if ( class_exists( 'PTPRM_Membership_Sync' ) ) {
+            PTPRM_Membership_Sync::push_options_patch( $patch );
+        }
 
         // Bypass manual approve: jika auto approve aktif, setujui semua pending.
         if ( ! empty( $next['members_register_auto_approve'] ) && class_exists( 'PTPRM_Members' ) ) {
@@ -231,8 +220,15 @@ class PTPRM_Admin_Portal {
         if ( empty( $_POST['ptprm_admin_post'] ) || ! $this->can_access_posts_tab() ) {
             return;
         }
-        if ( ! isset( $_POST[ self::NONCE_POST ] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( (string) $_POST[ self::NONCE_POST ] ) ), 'ptprm_admin_post' ) ) {
-            return;
+        if ( ! function_exists( 'ptprm_verify_portal_form_nonce' ) || ! ptprm_verify_portal_form_nonce( 'ptprm_admin_post' ) ) {
+            wp_safe_redirect(
+                add_query_arg(
+                    'ptprm_post_error',
+                    rawurlencode( function_exists( 'ptprm_portal_session_expired_message' ) ? ptprm_portal_session_expired_message() : __( 'Sesi form kedaluwarsa. Muat ulang halaman lalu simpan lagi.', 'ptsbi-premium' ) ),
+                    self::portal_url( 'berita' )
+                )
+            );
+            exit;
         }
 
         $post_id = (int) ( $_POST['post_id'] ?? 0 );
@@ -306,6 +302,10 @@ class PTPRM_Admin_Portal {
         echo '<p class="ptprm-portal-greet">' . esc_html( sprintf( __( 'Halo, %s', 'ptsbi-premium' ), $user->display_name ?: $user->user_login ) ) . '</p>';
         echo '</header>';
 
+        if ( class_exists( 'PTPRM_Cache_Purge' ) ) {
+            PTPRM_Cache_Purge::render_purge_toolbar( self::portal_url( $tab ) );
+        }
+
         echo '<nav class="ptprm-portal-tabs">';
         foreach ( $tabs as $key => $label ) {
             $active = $tab === $key ? ' is-active' : '';
@@ -314,6 +314,10 @@ class PTPRM_Admin_Portal {
         echo '</nav>';
 
         echo '<div class="ptprm-portal-panel">';
+        if ( class_exists( 'PTPRM_Cache_Purge' ) ) {
+            PTPRM_Cache_Purge::render_notice();
+        }
+        $this->render_portal_flash_notices( $tab );
         switch ( $tab ) {
             case 'anggota':
             case 'struktur':
@@ -347,17 +351,68 @@ class PTPRM_Admin_Portal {
                 }
                 $this->render_tab_settings();
                 break;
+            case 'dokumen':
+                if ( ! class_exists( 'PTPRM_Pdf_Portal' ) || ! PTPRM_Pdf_Portal::can_manage_pdf() ) {
+                    $this->render_tab_dashboard();
+                    break;
+                }
+                do_action( 'ptprm_admin_portal_tab_dokumen' );
+                break;
+            case 'pengurus':
+            case 'iklan':
+                if ( $tab === 'pengurus' && ! PTPRM_Access::can_manage_org_settings() ) {
+                    $this->render_tab_dashboard();
+                    break;
+                }
+                if ( $tab === 'iklan' && ! PTPRM_Access::can_manage_org_settings() ) {
+                    $this->render_tab_dashboard();
+                    break;
+                }
+                if ( has_action( 'ptprm_admin_portal_tab_' . $tab ) ) {
+                    do_action( 'ptprm_admin_portal_tab_' . $tab );
+                } else {
+                    $this->render_tab_dashboard();
+                }
+                break;
             default:
                 $this->render_tab_dashboard();
         }
         echo '</div>';
 
-        echo '<footer class="ptprm-portal-footbar">';
+        echo '<footer class="ptprm-portal-footbar ptprm-portal-footbar--tools">';
+        if ( class_exists( 'PTPRM_Cache_Purge' ) ) {
+            PTPRM_Cache_Purge::render_purge_button( self::portal_url( $tab ) );
+        }
         PTPRM_Access::render_logout_link();
         echo '</footer>';
         echo '</div>';
 
         return (string) ob_get_clean();
+    }
+
+    /**
+     * Tampilkan pesan error/sukses dari query string (setelah redirect simpan).
+     */
+    private function render_portal_flash_notices( string $tab ): void {
+        $map = [
+            'informasi' => 'ptprm_settings_error',
+            'berita'    => 'ptprm_post_error',
+            'anggota'   => 'ptprm_members_error',
+            'struktur'  => 'ptprm_settings_error',
+            'dokumen'   => 'ptprm_settings_error',
+        ];
+        if ( ! isset( $map[ $tab ] ) ) {
+            return;
+        }
+        $key = $map[ $tab ];
+        if ( ! isset( $_GET[ $key ] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+            return;
+        }
+        $msg = sanitize_text_field( wp_unslash( (string) $_GET[ $key ] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+        if ( $msg === '' ) {
+            return;
+        }
+        echo '<p class="ptprm-member-alert ptprm-member-alert-error">' . esc_html( $msg ) . '</p>';
     }
 
     private function render_tab_dashboard(): void {
@@ -455,8 +510,8 @@ class PTPRM_Admin_Portal {
 
         echo '<div class="ptprm-member-card ptprm-portal-card">';
         echo '<h3 class="ptprm-admin-h3">' . esc_html( $post ? __( 'Edit Berita', 'ptsbi-premium' ) : __( 'Tulis Berita Baru', 'ptsbi-premium' ) ) . '</h3>';
-        echo '<form method="post" class="ptprm-member-form">';
-        wp_nonce_field( 'ptprm_admin_post', self::NONCE_POST );
+        echo '<form method="post" class="ptprm-member-form" action="' . esc_url( self::portal_url( 'berita', $edit_id ? [ 'edit' => $edit_id ] : [] ) ) . '">';
+        wp_nonce_field( 'ptprm_admin_post' );
         echo '<input type="hidden" name="ptprm_admin_post" value="1">';
         echo '<input type="hidden" name="post_id" value="' . esc_attr( (string) ( $post ? $post->ID : 0 ) ) . '">';
         echo '<label><span>' . esc_html__( 'Judul', 'ptsbi-premium' ) . '</span>';
@@ -505,17 +560,11 @@ class PTPRM_Admin_Portal {
         if ( isset( $_GET['ptprm_saved'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
             echo '<p class="ptprm-member-alert ptprm-member-alert-ok">' . esc_html__( 'Informasi disimpan.', 'ptsbi-premium' ) . '</p>';
         }
-        if ( isset( $_GET['ptprm_save_error'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-            $err = sanitize_text_field( wp_unslash( (string) $_GET['ptprm_save_error'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-            if ( $err !== '' ) {
-                echo '<p class="ptprm-member-alert ptprm-member-alert-error">' . esc_html( $err ) . '</p>';
-            }
-        }
 
         echo '<div class="ptprm-member-card ptprm-portal-card">';
-        echo '<p class="ptprm-portal-help">' . esc_html__( 'Informasi penting organisasi (kontak, nama, tampilan anggota). Pengaturan desain & PDF lightbox ada di wp-admin → Premium Plugin.', 'ptsbi-premium' ) . '</p>';
-        echo '<form method="post" class="ptprm-member-form">';
-        wp_nonce_field( 'ptprm_admin_settings', self::NONCE_SETTINGS );
+        echo '<p class="ptprm-portal-help">' . esc_html__( 'Informasi penting organisasi (kontak, nama, tampilan anggota). Pengaturan desain lengkap dapat ditambahkan di sini bertahap.', 'ptsbi-premium' ) . '</p>';
+        echo '<form method="post" class="ptprm-member-form" action="' . esc_url( self::portal_url( 'informasi' ) ) . '">';
+        wp_nonce_field( 'ptprm_admin_settings' );
         echo '<input type="hidden" name="ptprm_admin_settings" value="1">';
         echo '<div class="ptprm-member-grid">';
         echo '<label><span>' . esc_html__( 'Nama organisasi', 'ptsbi-premium' ) . '</span><input type="text" name="org_name" value="' . esc_attr( (string) ( $o['org_name'] ?? '' ) ) . '"></label>';
@@ -536,6 +585,56 @@ class PTPRM_Admin_Portal {
         echo '<label><span>' . esc_html__( 'Timeout API (detik)', 'ptsbi-premium' ) . '</span><input type="number" name="membership_api_timeout_sec" min="5" max="60" value="' . esc_attr( (string) ( $o['membership_api_timeout_sec'] ?? 15 ) ) . '"></label>';
         echo '</div>';
         echo '<button type="submit" class="ptprm-cta ptprm-cta-1 ptprm-cta-size-medium"><span class="ptprm-cta-label">' . esc_html__( 'Simpan Informasi', 'ptsbi-premium' ) . '</span></button>';
-        echo '</form></div>';
+        echo '</form>';
+
+        $this->render_test_connection_box();
+
+        echo '</div>';
+    }
+
+    /**
+     * Kotak Tes Koneksi ke database + API Tarombo (AJAX).
+     */
+    private function render_test_connection_box(): void {
+        $nonce    = wp_create_nonce( 'ptprm_test_membership_api' );
+        $ajax_url = admin_url( 'admin-ajax.php' );
+        ?>
+        <div class="ptprm-conn-test" style="margin-top:16px;padding-top:16px;border-top:1px solid rgba(0,0,0,.08);">
+            <p class="ptprm-portal-help"><?php echo esc_html__( 'Uji apakah WordPress tersambung ke database & API Tarombo (simpan dulu jika baru mengubah URL/Key).', 'ptsbi-premium' ); ?></p>
+            <button type="button" class="ptprm-cta ptprm-cta-2 ptprm-cta-size-medium" id="ptprm-test-conn-btn">
+                <span class="ptprm-cta-label"><?php echo esc_html__( 'Tes Koneksi', 'ptsbi-premium' ); ?></span>
+            </button>
+            <span id="ptprm-test-conn-result" class="ptprm-conn-result" role="status" aria-live="polite" style="margin-left:12px;font-weight:600;"></span>
+        </div>
+        <script>
+        (function () {
+            var btn = document.getElementById('ptprm-test-conn-btn');
+            var out = document.getElementById('ptprm-test-conn-result');
+            if (!btn || !out) { return; }
+            btn.addEventListener('click', function () {
+                btn.disabled = true;
+                out.textContent = <?php echo wp_json_encode( __( 'Menguji…', 'ptsbi-premium' ) ); ?>;
+                out.style.color = '#555';
+                var body = new URLSearchParams();
+                body.set('action', 'ptprm_test_membership_api');
+                body.set('_wpnonce', <?php echo wp_json_encode( $nonce ); ?>);
+                fetch(<?php echo wp_json_encode( $ajax_url ); ?>, {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
+                    body: body.toString()
+                }).then(function (r) { return r.json(); }).then(function (j) {
+                    var d = (j && j.data) ? j.data : {};
+                    var ok = j && j.success;
+                    out.textContent = (d.message || (ok ? 'Test berhasil' : 'Belum tersambung')) + (d.detail ? ' (' + d.detail + ')' : '');
+                    out.style.color = ok ? '#1a7f37' : '#b3261e';
+                }).catch(function () {
+                    out.textContent = <?php echo wp_json_encode( __( 'Belum tersambung: gagal memanggil server.', 'ptsbi-premium' ) ); ?>;
+                    out.style.color = '#b3261e';
+                }).finally(function () { btn.disabled = false; });
+            });
+        })();
+        </script>
+        <?php
     }
 }
