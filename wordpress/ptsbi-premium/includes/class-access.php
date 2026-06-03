@@ -30,6 +30,7 @@ class PTPRM_Access {
         add_filter( 'show_admin_bar', [ __CLASS__, 'hide_admin_bar_on_front' ] );
         add_filter( 'the_content', [ __CLASS__, 'inject_portal_shortcode_if_empty' ], 5 );
         add_filter( 'login_redirect', [ __CLASS__, 'filter_login_redirect' ], 99, 3 );
+        add_action( 'template_redirect', [ __CLASS__, 'redirect_misplaced_portal_user' ], 7 );
     }
 
     /**
@@ -157,7 +158,10 @@ class PTPRM_Access {
         if ( self::is_wp_admin_url( $url ) && ! self::is_site_admin( $user ) ) {
             return self::portal_url_for_user( $user );
         }
-        return $url;
+        if ( self::login_redirect_is_allowed( $user, $url ) ) {
+            return $url;
+        }
+        return self::portal_url_for_user( $user );
     }
 
     /**
@@ -398,6 +402,106 @@ class PTPRM_Access {
         return self::is_manager( $user ) && ! self::is_site_admin( $user ) && ! self::is_org_admin( $user );
     }
 
+
+    /**
+     * Pengurus bidang tanpa akses panel pusat (admin organisasi).
+     */
+    public static function is_bidang_only_user( $user = null ): bool {
+        if ( ! class_exists( 'PTPRM_Bidang_Registry' ) || ! PTPRM_Bidang_Registry::is_bidang_user( $user ) ) {
+            return false;
+        }
+        if ( self::is_site_admin( $user ) ) {
+            return false;
+        }
+        if ( self::can_manage_org_settings( $user ) ) {
+            return false;
+        }
+        return true;
+    }
+
+    public static function is_admin_portal_url( string $url ): bool {
+        if ( ! class_exists( 'PTPRM_Admin_Portal' ) ) {
+            return false;
+        }
+        $path = trailingslashit( (string) wp_parse_url( $url, PHP_URL_PATH ) );
+        $slug = '/' . sanitize_title( PTPRM_Admin_Portal::portal_slug() ) . '/';
+        return strpos( $path, $slug ) !== false;
+    }
+
+    public static function is_bidang_panel_url( string $url, string $bidang_slug = '' ): bool {
+        if ( ! class_exists( 'PTPRM_Bidang_Registry' ) ) {
+            return false;
+        }
+        $path = trailingslashit( (string) wp_parse_url( $url, PHP_URL_PATH ) );
+        foreach ( PTPRM_Bidang_Registry::bidangs() as $meta ) {
+            $panel = '/' . sanitize_title( (string) ( $meta['panel_slug'] ?? '' ) ) . '/';
+            if ( $panel === '//' || strpos( $path, $panel ) === false ) {
+                continue;
+            }
+            if ( $bidang_slug === '' ) {
+                return true;
+            }
+            return sanitize_key( $bidang_slug ) === sanitize_key( (string) ( $meta['slug'] ?? '' ) );
+        }
+        return false;
+    }
+
+    public static function login_redirect_is_allowed( WP_User $user, string $url ): bool {
+        $valid = wp_validate_redirect( $url, false );
+        if ( ! $valid ) {
+            return false;
+        }
+        $canonical = untrailingslashit( self::portal_url_for_user( $user ) );
+        $target    = untrailingslashit( $valid );
+        if ( $target === $canonical || strpos( $target, $canonical . '?' ) === 0 ) {
+            return true;
+        }
+        if ( self::is_site_admin( $user ) && strpos( $target, untrailingslashit( admin_url() ) ) === 0 ) {
+            return true;
+        }
+        if ( self::is_bidang_only_user( $user ) ) {
+            return self::is_bidang_panel_url( $valid, PTPRM_Bidang_Registry::get_user_bidang_slug( $user ) );
+        }
+        if ( self::can_manage_org_settings( $user ) || self::is_manager( $user ) ) {
+            return self::is_admin_portal_url( $valid );
+        }
+        if ( class_exists( 'PTPRM_Member_Portal' ) && PTPRM_Member_Portal::is_anggota( $user ) ) {
+            $member = untrailingslashit( PTPRM_Member_Portal::portal_url() );
+            return strpos( $target, $member ) === 0;
+        }
+        return false;
+    }
+
+    public static function redirect_misplaced_portal_user(): void {
+        if ( ! is_user_logged_in() || is_admin() || wp_doing_ajax() || wp_doing_cron() ) {
+            return;
+        }
+        $user = wp_get_current_user();
+        if ( ! $user instanceof WP_User || ! $user->exists() ) {
+            return;
+        }
+        $uri     = isset( $_SERVER['REQUEST_URI'] ) ? (string) wp_unslash( $_SERVER['REQUEST_URI'] ) : '/';
+        $current = home_url( $uri );
+        $home    = self::portal_url_for_user( $user );
+        if ( untrailingslashit( $current ) === untrailingslashit( $home ) ) {
+            return;
+        }
+        if ( self::is_bidang_only_user( $user ) && self::is_admin_portal_url( $current ) ) {
+            wp_safe_redirect( $home );
+            exit;
+        }
+        if ( class_exists( 'PTPRM_Member_Portal' ) && PTPRM_Member_Portal::is_anggota( $user ) ) {
+            if ( self::is_admin_portal_url( $current ) || self::is_bidang_panel_url( $current ) ) {
+                wp_safe_redirect( $home );
+                exit;
+            }
+        }
+        if ( self::is_bidang_only_user( $user ) && self::is_bidang_panel_url( $current ) && ! self::is_bidang_panel_url( $current, PTPRM_Bidang_Registry::get_user_bidang_slug( $user ) ) ) {
+            wp_safe_redirect( $home );
+            exit;
+        }
+    }
+
     public static function portal_url_for_user( $user = null ): string {
         $user = $user ?: wp_get_current_user();
 
@@ -409,10 +513,22 @@ class PTPRM_Access {
             return PTPRM_Member_Portal::portal_url();
         }
 
-        if ( self::is_organization_user( $user ) || self::is_org_admin( $user ) || self::is_manager( $user ) ) {
+        if ( self::is_site_admin( $user ) && ! self::is_organization_user( $user ) ) {
+            return admin_url();
+        }
+
+        if ( self::is_bidang_only_user( $user ) && class_exists( 'PTPRM_Bidang_Registry' ) ) {
+            return PTPRM_Bidang_Registry::panel_url( PTPRM_Bidang_Registry::get_user_bidang_slug( $user ) );
+        }
+
+        if ( self::can_manage_org_settings( $user ) || self::is_manager( $user ) ) {
             if ( class_exists( 'PTPRM_Admin_Portal' ) ) {
                 return PTPRM_Admin_Portal::portal_url();
             }
+        }
+
+        if ( class_exists( 'PTPRM_Bidang_Registry' ) && PTPRM_Bidang_Registry::is_bidang_user( $user ) ) {
+            return PTPRM_Bidang_Registry::panel_url( PTPRM_Bidang_Registry::get_user_bidang_slug( $user ) );
         }
 
         if ( self::is_site_admin( $user ) ) {

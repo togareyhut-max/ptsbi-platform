@@ -343,11 +343,22 @@ class PTPRM_Admin_Portal {
     }
 
     public function shortcode_portal(): string {
+        if ( is_user_logged_in() && class_exists( 'PTPRM_Access' ) && PTPRM_Access::is_bidang_only_user() ) {
+            ob_start();
+            $slug = PTPRM_Bidang_Registry::get_user_bidang_slug();
+            $url  = PTPRM_Bidang_Registry::panel_url( $slug );
+            echo '<div class="ptprm-member-card ptprm-portal-card">';
+            echo '<p>' . esc_html__( 'Akun bidang Anda menggunakan panel bidang sendiri, bukan panel pusat.', 'ptsbi-premium' ) . '</p>';
+            echo '<a class="ptprm-cta ptprm-cta-1 ptprm-cta-size-medium" href="' . esc_url( $url ) . '">';
+            echo '<span class="ptprm-cta-label">' . esc_html__( 'Buka Panel Bidang Saya', 'ptsbi-premium' ) . '</span></a>';
+            echo '</div>';
+            return (string) ob_get_clean();
+        }
         if ( ! is_user_logged_in() || ! $this->can_access_panel() ) {
             ob_start();
             echo '<div class="ptprm-member-card ptprm-portal-card">';
             echo '<p>' . esc_html__( 'Silakan masuk melalui Rumah Anggota.', 'ptsbi-premium' ) . '</p>';
-            echo '<a class="ptprm-cta ptprm-cta-1 ptprm-cta-size-medium" href="' . esc_url( self::login_url( self::portal_url() ) ) . '">';
+            echo '<a class="ptprm-cta ptprm-cta-1 ptprm-cta-size-medium" href="' . esc_url( self::login_url() ) . '">';
             echo '<span class="ptprm-cta-label">' . esc_html__( 'Rumah Anggota', 'ptsbi-premium' ) . '</span></a>';
             echo '</div>';
             return (string) ob_get_clean();

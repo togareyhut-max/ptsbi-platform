@@ -187,7 +187,6 @@ class PTPRM_Login_Portal {
         if ( $requested !== '' ) {
             return PTPRM_Access::sanitize_redirect_for_user( $user, $requested );
         }
-
         return PTPRM_Access::portal_url_for_user( $user );
     }
 
@@ -247,31 +246,8 @@ class PTPRM_Login_Portal {
             'remember'      => ! empty( $_POST['rememberme'] ),
         ];
 
-        $user = null;
-        if ( class_exists( 'PTPRM_Membership_Sync' ) && PTPRM_Membership_Api_Client::enabled() && is_email( $email_input ) ) {
-            $api = PTPRM_Membership_Sync::auth_login( $email_input, $password );
-            if ( ! is_wp_error( $api ) && ! empty( $api['user'] ) && is_array( $api['user'] ) ) {
-                $synced = PTPRM_Membership_Sync::ensure_wp_user( (array) $api['user'], $password );
-                if ( $synced instanceof WP_User ) {
-                    $user = $synced;
-                    wp_set_current_user( (int) $user->ID );
-                    wp_set_auth_cookie( (int) $user->ID, ! empty( $_POST['rememberme'] ), is_ssl() );
-                    $token = (string) ( $api['access_token'] ?? '' );
-                    if ( $token !== '' ) {
-                        setcookie( 'ptprm_api_access_token', $token, time() + DAY_IN_SECONDS, COOKIEPATH ?: '/', COOKIE_DOMAIN ?: '', is_ssl(), true );
-                    }
-                } elseif ( is_wp_error( $synced ) ) {
-                    wp_safe_redirect(
-                        add_query_arg( 'ptprm_login_error', rawurlencode( $synced->get_error_message() ), self::login_url() )
-                    );
-                    exit;
-                }
-            }
-        }
-
-        if ( ! $user instanceof WP_User ) {
-            $user = wp_signon( $creds, is_ssl() );
-        }
+        // Login utama: WordPress lokal (tidak menunggu API eksternal).
+        $user = wp_signon( $creds, is_ssl() );
 
         // Fallback: verifikasi via email + password (user_login bisa berbeda dari email).
         if ( is_wp_error( $user ) && strpos( $email_input, '@' ) !== false && is_email( $email_input ) ) {
@@ -336,8 +312,8 @@ class PTPRM_Login_Portal {
             exit;
         }
 
-        // Fallback lokal: sinkron token jika login WP saja (admin situs).
-        if ( class_exists( 'PTPRM_Membership_Api_Client' ) && PTPRM_Membership_Api_Client::enabled() && $user instanceof WP_User ) {
+        // Opsional: sinkron token API setelah login lokal sukses (tidak memblokir redirect).
+        if ( class_exists( 'PTPRM_Membership_Api_Client' ) && PTPRM_Membership_Api_Client::enabled() ) {
             $api = PTPRM_Membership_Api_Client::post(
                 '/auth/login',
                 [
@@ -347,8 +323,13 @@ class PTPRM_Login_Portal {
             );
             if ( ! is_wp_error( $api ) ) {
                 $token = (string) ( $api['access_token'] ?? '' );
+                $role  = (string) ( $api['user']['role'] ?? $api['role'] ?? '' );
+                $ttl   = time() + DAY_IN_SECONDS;
                 if ( $token !== '' ) {
-                    setcookie( 'ptprm_api_access_token', $token, time() + DAY_IN_SECONDS, COOKIEPATH ?: '/', COOKIE_DOMAIN ?: '', is_ssl(), true );
+                    setcookie( 'ptprm_api_access_token', $token, $ttl, COOKIEPATH ?: '/', COOKIE_DOMAIN ?: '', is_ssl(), true );
+                }
+                if ( $role !== '' ) {
+                    setcookie( 'ptprm_api_role', $role, $ttl, COOKIEPATH ?: '/', COOKIE_DOMAIN ?: '', is_ssl(), false );
                 }
             }
         }
@@ -380,6 +361,10 @@ class PTPRM_Login_Portal {
             echo '<div class="ptprm-member-card ptprm-portal-card">';
             echo '<h2 class="ptprm-portal-login-title">' . esc_html__( 'Rumah Anggota', 'ptsbi-premium' ) . '</h2>';
             echo '<p>' . esc_html__( 'Anda sudah masuk.', 'ptsbi-premium' ) . '</p>';
+            if ( class_exists( 'PTPRM_Cache_Purge' ) ) {
+                PTPRM_Cache_Purge::render_notice();
+                PTPRM_Cache_Purge::render_purge_toolbar( self::login_url() );
+            }
             echo '<a class="ptprm-cta ptprm-cta-1 ptprm-cta-size-medium" href="' . esc_url( PTPRM_Access::portal_url_for_user( $user ) ) . '">';
             echo '<span class="ptprm-cta-label">' . esc_html( self::panel_label_for_user( $user ) ) . '</span></a>';
             echo '<div class="ptprm-portal-logout-form" style="margin-top:1rem;">';
@@ -407,20 +392,16 @@ class PTPRM_Login_Portal {
             echo '<p class="ptprm-member-alert ptprm-member-alert-ok">' . esc_html__( 'Anda telah keluar.', 'ptsbi-premium' ) . '</p>';
         }
 
-        echo '<form method="post" class="ptprm-member-form ptprm-login-form" action="' . esc_url( self::login_url() ) . '" autocomplete="off">';
+        echo '<form method="post" class="ptprm-member-form ptprm-login-form" action="' . esc_url( self::login_url() ) . '">';
         wp_nonce_field( 'ptprm_portal_login', self::NONCE_LOGIN );
         echo '<input type="hidden" name="' . esc_attr( self::POST_LOGIN ) . '" value="1">';
-        // Field umpan untuk meredam autofill browser (tidak dikirim bermakna).
-        echo '<input type="text" name="ptprm_hp" value="" style="position:absolute;left:-9999px;top:-9999px;" tabindex="-1" aria-hidden="true" autocomplete="off">';
         echo '<label><span>' . esc_html__( 'Email (username)', 'ptsbi-premium' ) . '</span>';
-        echo '<input type="email" name="log" id="ptprm-login-user" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" required></label>';
+        echo '<input type="email" name="log" autocomplete="username" required></label>';
         echo '<label><span>' . esc_html__( 'Password', 'ptsbi-premium' ) . '</span>';
-        echo '<input type="password" name="pwd" id="ptprm-login-pass" autocomplete="new-password" required></label>';
+        echo '<input type="password" name="pwd" autocomplete="current-password" required></label>';
         echo '<label class="ptprm-member-remember"><input type="checkbox" name="rememberme" value="1"> ' . esc_html__( 'Ingat saya', 'ptsbi-premium' ) . '</label>';
         echo '<button type="submit" class="ptprm-cta ptprm-cta-1 ptprm-cta-size-medium"><span class="ptprm-cta-label">' . esc_html__( 'Masuk', 'ptsbi-premium' ) . '</span></button>';
         echo '</form>';
-        // Bersihkan kolom saat halaman dimuat agar tidak ada jejak user/password setelah logout.
-        echo '<script>(function(){function c(){var u=document.getElementById("ptprm-login-user"),p=document.getElementById("ptprm-login-pass");if(u)u.value="";if(p)p.value="";}c();setTimeout(c,300);window.addEventListener("pageshow",c);})();</script>';
 
         echo '<div style="margin-top:1rem;">';
         if ( class_exists( 'PTPRM_Members' ) && PTPRM_Members::registration_enabled() ) {

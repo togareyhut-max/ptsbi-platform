@@ -157,13 +157,11 @@ class PTPRM_Header {
      * @param array<string, mixed> $o Options.
      */
     private function render_header_cta( array $o ): void {
-        // Tombol akun: Masuk (saat di luar) / Panel + Keluar (saat sudah login).
         $this->render_auth_buttons();
 
         if ( empty( $o['header_show_cta'] ) || empty( $o['header_cta_label'] ) ) {
             return;
         }
-        // Jangan duplikasi: jika CTA hanya mengarah ke halaman login, lewati saat sudah login.
         $cta_url_raw = (string) ( $o['header_cta_url'] ?? '/kontak/' );
         if ( is_user_logged_in() && function_exists( 'ptprm_is_rumah_anggota_path' ) ) {
             $path = trim( (string) wp_parse_url( ptprm_resolve_url( $cta_url_raw ), PHP_URL_PATH ), '/' );
@@ -177,7 +175,7 @@ class PTPRM_Header {
     }
 
     /**
-     * Tombol Masuk/Panel/Keluar yang sadar status login.
+     * Tombol Masuk / Panel Saya (sesuai peran) / Keluar.
      */
     private function render_auth_buttons(): void {
         if ( ! class_exists( 'PTPRM_Access' ) ) {
@@ -192,9 +190,8 @@ class PTPRM_Header {
             return;
         }
 
-        // Sudah login: tombol ke panel sesuai peran + tombol Keluar.
         $panel_url = PTPRM_Access::portal_url_for_user();
-        if ( $panel_url && $panel_url !== home_url( '/' ) ) {
+        if ( $panel_url && untrailingslashit( $panel_url ) !== untrailingslashit( home_url( '/' ) ) ) {
             echo '<a class="ptprm-site-header__cta ptprm-site-header__cta--outline ptprm-site-header__panel" href="' . esc_url( $panel_url ) . '">'
                 . esc_html__( 'Panel Saya', 'ptsbi-premium' ) . '</a>';
         }
