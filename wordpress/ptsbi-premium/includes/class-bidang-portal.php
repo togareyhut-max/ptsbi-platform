@@ -11,9 +11,38 @@ class PTPRM_Bidang_Portal {
 
     public function __construct() {
         add_shortcode( 'ptprm_bidang_panel', [ $this, 'shortcode' ] );
+        // Alias kompatibel untuk halaman lama yang memakai nama shortcode berbeda.
+        add_shortcode( 'ptprm_bidang_portal', [ $this, 'shortcode' ] );
         add_action( 'init', [ $this, 'handle_save_content' ], 20 );
         add_action( 'init', [ $this, 'handle_save_post' ], 20 );
         add_filter( 'ptprm_subpage_hero_skip', [ $this, 'skip_hero' ] );
+        add_filter( 'the_content', [ $this, 'inject_panel_on_page' ], 7 );
+    }
+
+    /** Pastikan panel bidang tampil di halaman panel meski konten halaman salah/kosong. */
+    public function inject_panel_on_page( string $content ): string {
+        if ( ! is_singular( 'page' ) || ! class_exists( 'PTPRM_Bidang_Registry' ) ) {
+            return $content;
+        }
+        if ( strpos( $content, 'ptprm-bidang-portal' ) !== false ) {
+            return $content;
+        }
+        $page_slug = (string) get_post_field( 'post_name', get_queried_object_id() );
+        foreach ( PTPRM_Bidang_Registry::bidangs() as $meta ) {
+            if ( (string) $meta['panel_slug'] !== $page_slug ) {
+                continue;
+            }
+            $html = $this->render_panel( (string) $meta['slug'] );
+            if ( $html === '' ) {
+                return $content;
+            }
+            $clean = preg_replace( '/<p>\s*\[ptprm_bidang_p[a-z]*[^\]]*\]\s*<\/p>/iu', '', $content ) ?? $content;
+            if ( trim( wp_strip_all_tags( $clean ) ) === '' ) {
+                return $html;
+            }
+            return $clean . $html;
+        }
+        return $content;
     }
 
     public function skip_hero( bool $skip ): bool {
@@ -61,6 +90,9 @@ class PTPRM_Bidang_Portal {
         echo '<div class="ptprm-portal-wrap ptprm-bidang-portal">';
         echo '<header class="ptprm-portal-head"><h2 class="ptprm-portal-title">' . esc_html( (string) $meta['title'] ) . '</h2>';
         echo '<p class="ptprm-portal-greet">' . esc_html__( 'Panel pengelolaan bidang', 'ptsbi-premium' ) . '</p></header>';
+        if ( class_exists( 'PTPRM_Cache_Purge' ) ) {
+            PTPRM_Cache_Purge::render_purge_toolbar( PTPRM_Bidang_Registry::panel_url( $slug, $tab ) );
+        }
         echo '<nav class="ptprm-portal-tabs">';
         foreach ( $tabs as $key => $label ) {
             $active = $tab === $key ? ' is-active' : '';
@@ -110,30 +142,12 @@ class PTPRM_Bidang_Portal {
             wp_safe_redirect( add_query_arg( 'ptprm_bidang_error', '1', PTPRM_Bidang_Registry::panel_url( $slug, 'konten' ) ) );
             exit;
         }
-
-        $items = [];
-        $judul  = isset( $_POST['program_judul'] ) ? (array) $_POST['program_judul'] : [];
-        $tujuan = isset( $_POST['program_tujuan'] ) ? (array) $_POST['program_tujuan'] : [];
-        $sas    = isset( $_POST['program_sasaran'] ) ? (array) $_POST['program_sasaran'] : [];
-        $waktu  = isset( $_POST['program_waktu'] ) ? (array) $_POST['program_waktu'] : [];
-        $max    = max( count( $judul ), count( $tujuan ), count( $sas ), count( $waktu ) );
-        for ( $i = 0; $i < $max; $i++ ) {
-            $items[] = [
-                'judul'   => wp_unslash( (string) ( $judul[ $i ] ?? '' ) ),
-                'tujuan'  => wp_unslash( (string) ( $tujuan[ $i ] ?? '' ) ),
-                'sasaran' => wp_unslash( (string) ( $sas[ $i ] ?? '' ) ),
-                'waktu'   => wp_unslash( (string) ( $waktu[ $i ] ?? '' ) ),
-            ];
-        }
-
         PTPRM_Bidang_Registry::save_content(
             $slug,
             [
                 'visi'    => wp_unslash( (string) ( $_POST['bidang_visi'] ?? '' ) ),
                 'misi'    => wp_unslash( (string) ( $_POST['bidang_misi'] ?? '' ) ),
-                'program' => wp_unslash( (string) ( $_POST['bidang_program'] ?? '' ) ), // legacy fallback
-                'program_items'    => $items,
-                'undangan_post_id' => (int) ( $_POST['undangan_post_id'] ?? 0 ),
+                'program' => wp_unslash( (string) ( $_POST['bidang_program'] ?? '' ) ),
             ]
         );
         wp_safe_redirect( add_query_arg( 'ptprm_saved', '1', PTPRM_Bidang_Registry::panel_url( $slug, 'konten' ) ) );
@@ -188,52 +202,7 @@ class PTPRM_Bidang_Portal {
         echo '<input type="hidden" name="ptprm_bidang_content_save" value="1"><input type="hidden" name="bidang_slug" value="' . esc_attr( $slug ) . '">';
         echo '<label class="ptprm-member-full"><span>' . esc_html__( 'Visi', 'ptsbi-premium' ) . '</span><textarea name="bidang_visi" rows="4">' . esc_textarea( $c['visi'] ) . '</textarea></label>';
         echo '<label class="ptprm-member-full"><span>' . esc_html__( 'Misi', 'ptsbi-premium' ) . '</span><textarea name="bidang_misi" rows="4">' . esc_textarea( $c['misi'] ) . '</textarea></label>';
-        echo '<h3 class="ptprm-admin-h3" style="margin-top:1rem;">' . esc_html__( 'Program unggulan (terstruktur)', 'ptsbi-premium' ) . '</h3>';
-        echo '<p class="ptprm-portal-help">' . esc_html__( 'Isi waktu dengan format bulan dan tahun, misalnya: Juni 2006 – Desember 2027.', 'ptsbi-premium' ) . '</p>';
-        $items = isset( $c['program_items'] ) && is_array( $c['program_items'] ) ? $c['program_items'] : [];
-        if ( $items === [] ) {
-            $items = [ [ 'judul' => '', 'tujuan' => '', 'sasaran' => '', 'waktu' => '' ] ];
-        }
-        echo '<div class="ptprm-bidang-program-editor">';
-        foreach ( $items as $idx => $it ) {
-            $j = is_array( $it ) ? (string) ( $it['judul'] ?? '' ) : '';
-            $t = is_array( $it ) ? (string) ( $it['tujuan'] ?? '' ) : '';
-            $s = is_array( $it ) ? (string) ( $it['sasaran'] ?? '' ) : '';
-            $w = is_array( $it ) ? (string) ( $it['waktu'] ?? '' ) : '';
-            echo '<div class="ptprm-bidang-program-row">';
-            echo '<label class="ptprm-member-full"><span>' . esc_html__( 'Nama program/kegiatan', 'ptsbi-premium' ) . '</span><input type="text" name="program_judul[]" value="' . esc_attr( $j ) . '"></label>';
-            echo '<label class="ptprm-member-full"><span>' . esc_html__( 'Tujuan', 'ptsbi-premium' ) . '</span><textarea name="program_tujuan[]" rows="2">' . esc_textarea( $t ) . '</textarea></label>';
-            echo '<label class="ptprm-member-full"><span>' . esc_html__( 'Sasaran', 'ptsbi-premium' ) . '</span><textarea name="program_sasaran[]" rows="2">' . esc_textarea( $s ) . '</textarea></label>';
-            echo '<label><span>' . esc_html__( 'Waktu (bulan–tahun)', 'ptsbi-premium' ) . '</span><input type="text" name="program_waktu[]" value="' . esc_attr( $w ) . '" placeholder="Juni 2006 – Desember 2027"></label>';
-            echo '<button type="button" class="button ptprm-bidang-remove" data-ptprm-remove-row style="margin-top:.6rem;">' . esc_html__( 'Hapus baris', 'ptsbi-premium' ) . '</button>';
-            echo '</div>';
-        }
-        echo '<div class="ptprm-bidang-program-actions" data-ptprm-program-actions style="margin:.75rem 0;">';
-        echo '<button type="button" class="button button-secondary" data-ptprm-add-row>' . esc_html__( 'Tambah program', 'ptsbi-premium' ) . '</button>';
-        echo '</div>';
-        echo '</div>';
-
-        echo '<h3 class="ptprm-admin-h3" style="margin-top:1rem;">' . esc_html__( 'Undangan/Pengumuman utama', 'ptsbi-premium' ) . '</h3>';
-        $cat_slug = PTPRM_Bidang_Registry::category_slug( $slug, 'pengumuman' );
-        $term     = get_term_by( 'slug', $cat_slug, 'category' );
-        $selected = (int) ( $c['undangan_post_id'] ?? 0 );
-        echo '<label class="ptprm-member-full"><span>' . esc_html__( 'Pilih postingan pengumuman yang ditampilkan (opsional)', 'ptsbi-premium' ) . '</span>';
-        echo '<select name="undangan_post_id"><option value="0">' . esc_html__( 'Otomatis pakai yang terbaru', 'ptsbi-premium' ) . '</option>';
-        if ( $term instanceof WP_Term ) {
-            $q = new WP_Query( [ 'cat' => (int) $term->term_id, 'posts_per_page' => 20, 'post_status' => 'publish' ] );
-            while ( $q->have_posts() ) {
-                $q->the_post();
-                $pid = (int) get_the_ID();
-                echo '<option value="' . esc_attr( (string) $pid ) . '"' . selected( $selected, $pid, false ) . '>' . esc_html( get_the_title() ) . '</option>';
-            }
-            wp_reset_postdata();
-        }
-        echo '</select></label>';
-
-        echo '<details style="margin-top:1rem;"><summary>' . esc_html__( 'Legacy (opsional)', 'ptsbi-premium' ) . '</summary>';
-        echo '<label class="ptprm-member-full"><span>' . esc_html__( 'Program unggulan (teks lama)', 'ptsbi-premium' ) . '</span><textarea name="bidang_program" rows="6">' . esc_textarea( $c['program'] ) . '</textarea></label>';
-        echo '</details>';
-
+        echo '<label class="ptprm-member-full"><span>' . esc_html__( 'Program unggulan', 'ptsbi-premium' ) . '</span><textarea name="bidang_program" rows="6">' . esc_textarea( $c['program'] ) . '</textarea></label>';
         echo '<button type="submit" class="ptprm-cta ptprm-cta-1"><span class="ptprm-cta-label">' . esc_html__( 'Simpan', 'ptsbi-premium' ) . '</span></button></form></div>';
     }
 

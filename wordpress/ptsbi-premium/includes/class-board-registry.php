@@ -76,18 +76,19 @@ class PTPRM_Board_Registry {
     }
 
     public static function ensure_region_pages(): void {
-        if ( get_option( 'ptprm_board_pages_v1' ) ) {
+        if ( get_option( 'ptprm_board_pages_v3' ) ) {
             return;
         }
         foreach ( self::regions() as $meta ) {
-            $slug = (string) $meta['page_slug'];
-            $existing = get_page_by_path( $slug, OBJECT, 'page' );
+            $slug      = (string) $meta['page_slug'];
+            $canonical = '[ptprm_board region="' . $meta['slug'] . '"]';
+            $existing  = get_page_by_path( $slug, OBJECT, 'page' );
             if ( $existing instanceof WP_Post ) {
-                if ( strpos( (string) $existing->post_content, '[ptprm_board' ) === false ) {
+                if ( ! self::content_is_canonical_board( (string) $existing->post_content, (string) $meta['slug'] ) ) {
                     wp_update_post(
                         [
                             'ID'           => (int) $existing->ID,
-                            'post_content' => '[ptprm_board region="' . esc_attr( $meta['slug'] ) . '"]',
+                            'post_content' => $canonical,
                         ]
                     );
                 }
@@ -97,14 +98,21 @@ class PTPRM_Board_Registry {
                 [
                     'post_title'   => (string) $meta['title'],
                     'post_name'    => $slug,
-                    'post_content' => '[ptprm_board region="' . esc_attr( $meta['slug'] ) . '"]',
+                    'post_content' => $canonical,
                     'post_status'  => 'publish',
                     'post_type'    => 'page',
                 ]
             );
         }
-        update_option( 'ptprm_board_pages_v1', 1, false );
+        update_option( 'ptprm_board_pages_v3', 1, false );
+        delete_option( 'ptprm_board_pages_v1' );
         flush_rewrite_rules( false );
+    }
+
+    /** Konten sudah memakai shortcode lurus yang benar (bukan kutip melengkung / nama lama). */
+    private static function content_is_canonical_board( string $content, string $region ): bool {
+        $needle = '[ptprm_board region="' . $region . '"]';
+        return strpos( $content, $needle ) !== false;
     }
 
     /**
@@ -115,10 +123,13 @@ class PTPRM_Board_Registry {
         if ( ! isset( self::regions()[ $region ] ) ) {
             return [];
         }
-        $o   = ptprm_options();
+        $opts = get_option( PTPRM_OPTION, [] );
+        if ( ! is_array( $opts ) ) {
+            $opts = [];
+        }
         $key = self::option_key( $region );
-        $raw = isset( $o[ $key ] ) ? trim( (string) $o[ $key ] ) : '';
-        if ( $raw === '' ) {
+        $raw = isset( $opts[ $key ] ) ? trim( (string) $opts[ $key ] ) : '';
+        if ( $raw === '' || $raw === '[]' ) {
             $catalog = ptprm_board_default_catalog();
             return ptprm_sanitize_board_items( $catalog[ $region ] ?? [] );
         }
@@ -134,10 +145,22 @@ class PTPRM_Board_Registry {
         if ( ! isset( self::regions()[ $region ] ) ) {
             return;
         }
-        $opts         = (array) get_option( PTPRM_OPTION, [] );
-        $opts[ self::option_key( $region ) ] = wp_json_encode( ptprm_sanitize_board_items( $items ), JSON_UNESCAPED_UNICODE );
+        $items = ptprm_sanitize_board_items( $items );
+        if ( 'pusat' === $region ) {
+            foreach ( $items as $i => $item ) {
+                if ( self::is_featured_item( 'pusat', $item ) ) {
+                    $items[ $i ]['featured'] = 1;
+                }
+            }
+        }
+        $opts = (array) get_option( PTPRM_OPTION, [] );
+        if ( ! is_array( $opts ) ) {
+            $opts = [];
+        }
+        $opts[ self::option_key( $region ) ] = wp_json_encode( $items, JSON_UNESCAPED_UNICODE );
         update_option( PTPRM_OPTION, ptprm_normalize_option_for_storage( $opts ), true );
         wp_cache_delete( PTPRM_OPTION, 'options' );
+        wp_cache_delete( 'alloptions', 'options' );
     }
 
     public static function featured_roles_for_region( string $region ): array {
