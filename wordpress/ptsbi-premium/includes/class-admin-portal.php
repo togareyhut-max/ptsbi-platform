@@ -39,6 +39,83 @@ class PTPRM_Admin_Portal {
         add_action( 'init', [ $this, 'handle_save_post' ], 20 );
         add_shortcode( 'ptprm_admin_portal', [ $this, 'shortcode_portal' ] );
         add_filter( 'ptprm_subpage_hero_skip', [ $this, 'skip_subpage_hero' ] );
+        add_filter( 'the_content', [ $this, 'inject_portal_on_page' ], 8 );
+        add_action( 'wp_ajax_ptprm_test_membership_api', [ $this, 'ajax_test_membership_api' ] );
+    }
+
+    /**
+     * Pastikan panel admin ter-render (shortcode belum diproses / kutip melengkung).
+     *
+     * @param string $content
+     */
+    public function inject_portal_on_page( $content ): string {
+        if ( ! is_page() || ! self::is_admin_page() ) {
+            return (string) $content;
+        }
+        $content = (string) $content;
+        if ( strpos( $content, 'ptprm-admin-portal-wrap' ) !== false ) {
+            return $content;
+        }
+        $normalized = str_replace( [ '“', '”', '„', '‟' ], '"', $content );
+        if ( strpos( $normalized, 'ptprm_admin_portal' ) !== false && strpos( $content, 'ptprm-portal-wrap' ) === false ) {
+            return do_shortcode( $normalized );
+        }
+        if ( trim( wp_strip_all_tags( $content ) ) === '' ) {
+            return do_shortcode( '[ptprm_admin_portal]' );
+        }
+        return $content;
+    }
+
+    public function ajax_test_membership_api(): void {
+        if ( ! is_user_logged_in() || ! $this->can_access_settings_tab() ) {
+            wp_send_json_error(
+                [ 'message' => __( 'Tidak diizinkan.', 'ptsbi-premium' ) ],
+                403
+            );
+        }
+        if ( ! check_ajax_referer( 'ptprm_test_membership_api', '_wpnonce', false ) ) {
+            wp_send_json_error(
+                [ 'message' => __( 'Sesi tidak valid. Muat ulang halaman lalu coba lagi.', 'ptsbi-premium' ) ],
+                403
+            );
+        }
+
+        global $wpdb;
+        $db_ok = (bool) $wpdb->get_var( 'SELECT 1' ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+        if ( ! $db_ok ) {
+            wp_send_json_error(
+                [
+                    'message' => __( 'Belum tersambung: database WordPress tidak dapat diakses.', 'ptsbi-premium' ),
+                    'detail'  => 'wpdb',
+                ]
+            );
+        }
+
+        if ( ! class_exists( 'PTPRM_Membership_Api_Client' ) || ! method_exists( 'PTPRM_Membership_Api_Client', 'test_connection' ) ) {
+            wp_send_json_error(
+                [
+                    'message' => __( 'Belum tersambung: modul API belum dimuat di server.', 'ptsbi-premium' ),
+                    'detail'  => '',
+                ]
+            );
+        }
+
+        $api = PTPRM_Membership_Api_Client::test_connection();
+        if ( ! empty( $api['ok'] ) ) {
+            wp_send_json_success(
+                [
+                    'message' => __( 'Test berhasil: database WordPress & API Tarombo tersambung.', 'ptsbi-premium' ),
+                    'detail'  => (string) ( $api['detail'] ?? '' ),
+                ]
+            );
+        }
+
+        wp_send_json_error(
+            [
+                'message' => (string) ( $api['message'] ?? __( 'Belum tersambung ke API Tarombo.', 'ptsbi-premium' ) ),
+                'detail'  => (string) ( $api['detail'] ?? '' ),
+            ]
+        );
     }
 
     public static function login_slug(): string {
@@ -302,8 +379,8 @@ class PTPRM_Admin_Portal {
         echo '<p class="ptprm-portal-greet">' . esc_html( sprintf( __( 'Halo, %s', 'ptsbi-premium' ), $user->display_name ?: $user->user_login ) ) . '</p>';
         echo '</header>';
 
-        if ( class_exists( 'PTPRM_Cache_Purge' ) ) {
-            PTPRM_Cache_Purge::render_purge_toolbar( self::portal_url( $tab ) );
+        if ( function_exists( 'ptprm_safe_cache_purge_toolbar' ) ) {
+            ptprm_safe_cache_purge_toolbar( self::portal_url( $tab ) );
         }
 
         echo '<nav class="ptprm-portal-tabs">';
@@ -380,8 +457,8 @@ class PTPRM_Admin_Portal {
         echo '</div>';
 
         echo '<footer class="ptprm-portal-footbar ptprm-portal-footbar--tools">';
-        if ( class_exists( 'PTPRM_Cache_Purge' ) ) {
-            PTPRM_Cache_Purge::render_purge_button( self::portal_url( $tab ) );
+        if ( function_exists( 'ptprm_safe_cache_purge_button' ) ) {
+            ptprm_safe_cache_purge_button( self::portal_url( $tab ) );
         }
         PTPRM_Access::render_logout_link();
         echo '</footer>';

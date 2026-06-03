@@ -43,7 +43,7 @@ setup_ssh_key() {
 }
 
 SSH_PORT="${PTPRM_SSH_PORT:-22}"
-SSH_OPTS=(-p "${SSH_PORT}" -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ServerAliveInterval=15 -o ServerAliveCountMax=8)
+SSH_OPTS=(-p "${SSH_PORT}" -o BatchMode=yes -o StrictHostKeyChecking=accept-new)
 if setup_ssh_key; then
   SSH_OPTS+=(-i "${SSH_ID}" -o IdentitiesOnly=yes)
   echo "==> Memakai kunci dari secret SSH_PRIVATE_KEY"
@@ -61,7 +61,7 @@ else
   scp "${SSH_OPTS[@]}" -r "${PLUGIN_SRC}/." "${SSH_HOST}:${REMOTE_DIR}/"
 fi
 
-echo "==> Salin ke container, aktifkan plugin, migrasi halaman, purge cache ..."
+echo "==> Salin ke container, aktifkan plugin, purge cache ..."
 ssh "${SSH_OPTS[@]}" "${SSH_HOST}" bash -s <<REMOTE
 set -euo pipefail
 PLUGIN_PATH="/var/www/html/wp-content/plugins/${PLUGIN_SLUG}"
@@ -70,45 +70,42 @@ docker exec ${WP_CONTAINER} mkdir -p "\${PLUGIN_PATH}"
 docker cp ${REMOTE_DIR}/. ${WP_CONTAINER}:"\${PLUGIN_PATH}/"
 docker exec ${WP_CONTAINER} chown -R www-data:www-data "\${PLUGIN_PATH}"
 docker exec ${WP_CONTAINER} grep -m1 "PTPRM_VERSION" "\${PLUGIN_PATH}/ptsbi-premium.php" || true
+docker exec ${WP_CONTAINER} php -r 'echo method_exists("PTPRM_Cache_Purge","render_purge_toolbar")?"CACHE_PURGE_TOOLBAR=yes\n":"CACHE_PURGE_TOOLBAR=no\n";' 2>/dev/null || true
 
-# Aktifkan plugin (WP-CLI bila ada, jika tidak via PHP).
 if docker exec ${WP_CONTAINER} which wp >/dev/null 2>&1; then
   docker exec ${WP_CONTAINER} wp plugin activate ${PLUGIN_SLUG} --allow-root 2>/dev/null || true
+  docker exec ${WP_CONTAINER} wp cache flush --allow-root 2>/dev/null || true
 else
   docker exec ${WP_CONTAINER} php -r '
 require "/var/www/html/wp-load.php";
 \$f = "${PLUGIN_FILE}";
 \$a = get_option("active_plugins", []);
 if (!is_array(\$a)) { \$a = []; }
-if (!in_array(\$f, \$a, true)) { \$a[] = \$f; sort(\$a); update_option("active_plugins", \$a); echo "PLUGIN_ACTIVATED=1\n"; }
-else { echo "PLUGIN_ALREADY_ACTIVE=1\n"; }
+if (!in_array(\$f, \$a, true)) {
+  \$a[] = \$f;
+  sort(\$a);
+  update_option("active_plugins", \$a);
+  echo "PLUGIN_ACTIVATED=1\n";
+} else {
+  echo "PLUGIN_ALREADY_ACTIVE=1\n";
+}
+if (function_exists("wp_cache_flush")) { wp_cache_flush(); }
 ' 2>/dev/null || echo "PLUGIN_ACTIVATE_FAILED=1"
 fi
 
-# Reset OPcache dulu agar kelas terbaru dipakai migrasi.
-docker exec ${WP_CONTAINER} php -r 'if (function_exists("opcache_reset")) { opcache_reset(); echo "OPCACHE_RESET=1\n"; }' 2>/dev/null || true
-docker exec ${WP_CONTAINER} apachectl -k graceful 2>/dev/null || docker exec ${WP_CONTAINER} service apache2 reload 2>/dev/null || true
-
-# Jalankan migrasi halaman (board + bidang), perbaiki shortcode lama / kutip melengkung, lalu purge cache penuh.
 docker exec ${WP_CONTAINER} php -r '
 require "/var/www/html/wp-load.php";
 echo is_plugin_active("${PLUGIN_FILE}") ? "PLUGIN_ACTIVE=yes\n" : "PLUGIN_ACTIVE=no\n";
-echo "SC_board=" . (shortcode_exists("ptprm_board") ? "1" : "0") . " SC_bidang=" . (shortcode_exists("ptprm_bidang") ? "1" : "0") . " SC_panel=" . (shortcode_exists("ptprm_bidang_panel") ? "1" : "0") . "\n";
-foreach (array("ptprm_board_pages_v1","ptprm_board_pages_v2","ptprm_board_pages_v3","ptprm_bidang_pages_v1","ptprm_bidang_pages_v2","ptprm_bidang_pages_v3") as \$opt) { delete_option(\$opt); }
-if (class_exists("PTPRM_Board_Registry")) { PTPRM_Board_Registry::ensure_region_pages(); echo "BOARD_PAGES_MIGRATED\n"; }
-if (class_exists("PTPRM_Bidang_Registry")) { PTPRM_Bidang_Registry::ensure_pages(); echo "BIDANG_PAGES_MIGRATED\n"; }
-if (class_exists("PTPRM_Cache_Purge")) { \$r = PTPRM_Cache_Purge::purge_all(); echo "PURGE=" . (\$r["ok"] ? "ok" : "no") . "\n"; }
-if (function_exists("wp_cache_flush")) { wp_cache_flush(); }
-echo "MEMBERSHIP_API=" . (class_exists("PTPRM_Membership_Api_Client") && PTPRM_Membership_Api_Client::enabled() ? "enabled" : "disabled") . "\n";
-' 2>&1 || true
+' 2>/dev/null || true
 
-# Verifikasi render shortcode board pusat (harus berisi markup, bukan kosong).
 docker exec ${WP_CONTAINER} php -r '
 require "/var/www/html/wp-load.php";
-\$html = do_shortcode("[ptprm_board region=\"pusat\"]");
-echo "RENDER_BOARD_PUSAT_LEN=" . strlen(\$html) . "\n";
-' 2>&1 || true
-
+if (function_exists("wp_cache_flush")) { wp_cache_flush(); }
+if (has_action("litespeed_purge_all")) { do_action("litespeed_purge_all"); }
+if (function_exists("opcache_reset")) { opcache_reset(); }
+echo "CACHE_OPCACHE_PURGED=1\n";
+' 2>/dev/null || true
+docker exec ${WP_CONTAINER} apachectl -k graceful 2>/dev/null || true
 
 for c in ${WP_CONTAINER} traefik tarombo-web mysql; do
   if docker ps --format '{{.Names}}' | grep -qx "\$c"; then

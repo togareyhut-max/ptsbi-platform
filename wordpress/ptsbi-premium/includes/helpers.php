@@ -123,6 +123,26 @@ function ptprm_portal_nocache_headers(): void {
 }
 
 /**
+ * Toolbar purge cache — aman jika method hilang (regresi deploy / OPcache lama).
+ */
+function ptprm_safe_cache_purge_toolbar( string $return_url ): void {
+    if ( ! class_exists( 'PTPRM_Cache_Purge' ) || ! method_exists( 'PTPRM_Cache_Purge', 'render_purge_toolbar' ) ) {
+        return;
+    }
+    PTPRM_Cache_Purge::render_purge_toolbar( $return_url );
+}
+
+/**
+ * Tombol purge cache di footer portal.
+ */
+function ptprm_safe_cache_purge_button( string $return_url ): void {
+    if ( ! class_exists( 'PTPRM_Cache_Purge' ) || ! method_exists( 'PTPRM_Cache_Purge', 'render_purge_button' ) ) {
+        return;
+    }
+    PTPRM_Cache_Purge::render_purge_button( $return_url );
+}
+
+/**
  * @return array{0:int,1:int,2:int}
  */
 function ptprm_hex_to_rgb( string $hex ): array {

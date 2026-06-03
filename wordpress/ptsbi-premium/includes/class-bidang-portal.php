@@ -90,8 +90,8 @@ class PTPRM_Bidang_Portal {
         echo '<div class="ptprm-portal-wrap ptprm-bidang-portal">';
         echo '<header class="ptprm-portal-head"><h2 class="ptprm-portal-title">' . esc_html( (string) $meta['title'] ) . '</h2>';
         echo '<p class="ptprm-portal-greet">' . esc_html__( 'Panel pengelolaan bidang', 'ptsbi-premium' ) . '</p></header>';
-        if ( class_exists( 'PTPRM_Cache_Purge' ) ) {
-            PTPRM_Cache_Purge::render_purge_toolbar( PTPRM_Bidang_Registry::panel_url( $slug, $tab ) );
+        if ( function_exists( 'ptprm_safe_cache_purge_toolbar' ) ) {
+            ptprm_safe_cache_purge_toolbar( PTPRM_Bidang_Registry::panel_url( $slug, $tab ) );
         }
         echo '<nav class="ptprm-portal-tabs">';
         foreach ( $tabs as $key => $label ) {
@@ -122,8 +122,8 @@ class PTPRM_Bidang_Portal {
                 $this->render_content_form( $slug );
         }
         echo '</div><footer class="ptprm-portal-footbar ptprm-portal-footbar--tools">';
-        if ( class_exists( 'PTPRM_Cache_Purge' ) ) {
-            PTPRM_Cache_Purge::render_purge_button( PTPRM_Bidang_Registry::panel_url( $slug, $tab ) );
+        if ( function_exists( 'ptprm_safe_cache_purge_button' ) ) {
+            ptprm_safe_cache_purge_button( PTPRM_Bidang_Registry::panel_url( $slug, $tab ) );
         }
         PTPRM_Access::render_logout_link();
         echo '</footer></div>';
