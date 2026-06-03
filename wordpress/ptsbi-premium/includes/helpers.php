@@ -18,6 +18,9 @@ function ptprm_portal_session_expired_message(): string {
  * Verifikasi nonce form portal (field WordPress standar `_wpnonce`).
  */
 function ptprm_verify_portal_form_nonce( string $action ): bool {
+    if ( class_exists( 'PTPRM_Portal_Session' ) ) {
+        return PTPRM_Portal_Session::verify_form_nonce( $action );
+    }
     if ( ! isset( $_POST['_wpnonce'] ) ) {
         return false;
     }
@@ -25,6 +28,16 @@ function ptprm_verify_portal_form_nonce( string $action ): bool {
         sanitize_text_field( wp_unslash( (string) $_POST['_wpnonce'] ) ),
         $action
     );
+}
+
+/**
+ * Fallback verifikasi nonce portal (untuk pemanggil lain, mis. purge cache).
+ */
+function ptprm_verify_portal_form_nonce_fallback( string $action ): bool {
+    if ( class_exists( 'PTPRM_Portal_Session' ) ) {
+        return PTPRM_Portal_Session::verify_fallback( $action );
+    }
+    return false;
 }
 
 /**
@@ -97,6 +110,12 @@ function ptprm_portal_nocache_headers(): void {
     }
     if ( ! defined( 'DONOTCACHEOBJECT' ) ) {
         define( 'DONOTCACHEOBJECT', true );
+    }
+    if ( ! defined( 'LSCACHE_NO_CACHE' ) ) {
+        define( 'LSCACHE_NO_CACHE', true );
+    }
+    if ( is_user_logged_in() ) {
+        header( 'Vary: Cookie', false );
     }
     if ( has_action( 'litespeed_control_set_nocache' ) ) {
         do_action( 'litespeed_control_set_nocache', 'ptprm-portal' );

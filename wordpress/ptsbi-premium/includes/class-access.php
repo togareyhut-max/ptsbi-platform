@@ -375,7 +375,7 @@ class PTPRM_Access {
     }
 
     public static function can_manage_org_settings(): bool {
-        return current_user_can( self::CAP_ORG_SETTINGS );
+        return current_user_can( self::CAP_ORG_SETTINGS ) || current_user_can( 'manage_options' );
     }
 
     public static function is_manager( $user = null ): bool {

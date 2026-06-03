@@ -76,13 +76,17 @@ class PTPRM_Cache_Purge {
             return;
         }
 
-        if (
-            ! isset( $_POST[ self::NONCE_FIELD ] )
-            || ! wp_verify_nonce(
+        $purge_nonce_ok = false;
+        if ( isset( $_POST[ self::NONCE_FIELD ] ) ) {
+            $purge_nonce_ok = (bool) wp_verify_nonce(
                 sanitize_text_field( wp_unslash( (string) $_POST[ self::NONCE_FIELD ] ) ),
                 self::NONCE_ACTION
-            )
-        ) {
+            );
+        }
+        if ( ! $purge_nonce_ok && function_exists( 'ptprm_verify_portal_form_nonce_fallback' ) ) {
+            $purge_nonce_ok = ptprm_verify_portal_form_nonce_fallback( self::NONCE_ACTION );
+        }
+        if ( ! $purge_nonce_ok ) {
             $redirect = $this->sanitize_return_url( wp_unslash( (string) ( $_POST['ptprm_purge_return'] ?? '' ) ) );
             wp_safe_redirect(
                 add_query_arg(
