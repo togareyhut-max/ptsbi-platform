@@ -30,8 +30,12 @@ class PTPRM_Members {
     public const META_APPROVED_AT     = 'ptprm_member_reg_approved_at';
     public const PENDING_STATUS_VALUE = 'pending';
 
+    /** @var string */
+    private static $last_api_error = '';
+
     public function __construct() {
         add_action( 'init', [ $this, 'maybe_upgrade' ], 5 );
+        add_action( 'init', [ __CLASS__, 'maybe_handle_export_download' ], 1 );
         add_action( 'template_redirect', [ __CLASS__, 'maybe_handle_export_download' ], 0 );
         add_action( 'init', [ $this, 'handle_front_import_csv' ], 20 );
         add_action( 'init', [ $this, 'handle_front_registration' ], 20 );
@@ -40,10 +44,12 @@ class PTPRM_Members {
     }
 
     /**
-     * Unduh XLSX dari panel admin (jalankan sebelum tema mengirim HTML).
+     * Unduh XLSX dari panel admin (POST di init — andal di frontend tanpa wp-admin).
      */
     public static function maybe_handle_export_download(): void {
-        if ( empty( $_GET['ptprm_export_members'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+        $is_post = ! empty( $_POST['ptprm_export_members'] );
+        $is_get  = ! empty( $_GET['ptprm_export_members'] ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+        if ( ! $is_post && ! $is_get ) {
             return;
         }
 
@@ -57,12 +63,20 @@ class PTPRM_Members {
             wp_die( esc_html__( 'Anda tidak memiliki akses export data anggota.', 'ptsbi-premium' ), 403 );
         }
 
-        $nonce = isset( $_GET['_wpnonce'] ) // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-            ? sanitize_text_field( wp_unslash( (string) $_GET['_wpnonce'] ) )
-            : '';
+        $nonce = $is_post
+            ? ( isset( $_POST['_wpnonce'] ) ? sanitize_text_field( wp_unslash( (string) $_POST['_wpnonce'] ) ) : '' )
+            : ( isset( $_GET['_wpnonce'] ) ? sanitize_text_field( wp_unslash( (string) $_GET['_wpnonce'] ) ) : '' ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
         if ( ! wp_verify_nonce( $nonce, self::EXPORT_NONCE_ACTION ) ) {
             status_header( 403 );
             wp_die( esc_html__( 'Tautan unduh tidak valid atau kedaluwarsa. Muat ulang halaman panel lalu coba lagi.', 'ptsbi-premium' ), 403 );
+        }
+
+        $mode = $is_post
+            ? sanitize_key( wp_unslash( (string) ( $_POST['ptprm_export_members'] ?? 'xlsx' ) ) )
+            : sanitize_key( wp_unslash( (string) ( $_GET['ptprm_export_members'] ?? 'xlsx' ) ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+        if ( $mode === 'print' ) {
+            self::stream_export_print_html();
+            return;
         }
 
         self::stream_export_xlsx();
@@ -93,11 +107,24 @@ class PTPRM_Members {
             $action = PTPRM_Admin_Portal::portal_url( 'anggota' );
         }
 
-        echo '<form method="get" action="' . esc_url( $action ) . '" class="ptprm-export-xlsx-form">';
-        echo '<input type="hidden" name="ptprm_export_members" value="1">';
+        echo '<form method="post" action="' . esc_url( $action ) . '" class="ptprm-export-xlsx-form">';
+        echo '<input type="hidden" name="ptprm_export_members" value="xlsx">';
+        if ( class_exists( 'PTPRM_Admin_Portal' ) ) {
+            echo '<input type="hidden" name="tab" value="anggota">';
+        }
         wp_nonce_field( self::EXPORT_NONCE_ACTION, '_wpnonce', false );
         echo '<button type="submit" class="ptprm-cta ptprm-cta-outline ptprm-cta-size-medium">';
         echo '<span class="ptprm-cta-label">' . esc_html__( 'Unduh XLSX', 'ptsbi-premium' ) . '</span>';
+        echo '</button></form>';
+
+        echo '<form method="post" action="' . esc_url( $action ) . '" class="ptprm-export-xlsx-form" target="_blank" style="display:inline-block;margin-left:8px;">';
+        echo '<input type="hidden" name="ptprm_export_members" value="print">';
+        if ( class_exists( 'PTPRM_Admin_Portal' ) ) {
+            echo '<input type="hidden" name="tab" value="anggota">';
+        }
+        wp_nonce_field( self::EXPORT_NONCE_ACTION, '_wpnonce', false );
+        echo '<button type="submit" class="ptprm-cta ptprm-cta-outline ptprm-cta-size-medium">';
+        echo '<span class="ptprm-cta-label">' . esc_html__( 'Cetak PDF', 'ptsbi-premium' ) . '</span>';
         echo '</button></form>';
     }
 
@@ -114,6 +141,7 @@ class PTPRM_Members {
 
     public function maybe_upgrade(): void {
         self::ensure_roles();
+        self::maybe_enable_tarombo_bridge();
         $schema = (int) get_option( 'ptprm_members_schema', 0 );
         if ( $schema < self::SCHEMA_VERSION ) {
             self::install();
@@ -133,8 +161,7 @@ class PTPRM_Members {
     }
 
     public static function registration_enabled(): bool {
-        $o = ptprm_options();
-        return ! isset( $o['members_register_show'] ) || ! empty( $o['members_register_show'] );
+        return function_exists( 'ptprm_public_registration_form_enabled' ) && ptprm_public_registration_form_enabled();
     }
 
     public static function directory_enabled(): bool {
@@ -145,6 +172,111 @@ class PTPRM_Members {
     public static function registration_auto_approve(): bool {
         $o = ptprm_options();
         return ! empty( $o['members_register_auto_approve'] );
+    }
+
+    /** Nama bukan email / username login. */
+    public static function is_email_like_person_name( string $value ): bool {
+        $value = trim( $value );
+        if ( $value === '' ) {
+            return false;
+        }
+        if ( is_email( $value ) ) {
+            return true;
+        }
+        return (bool) preg_match( '/^[^\s@]+@[^\s@]+\.[^\s@]+$/', $value );
+    }
+
+    /**
+     * Nama lengkap pribadi untuk kepala keluarga (bukan email login).
+     */
+    public static function sanitize_person_name( string $name ): string {
+        $name = trim( preg_replace( '/\s+/u', ' ', sanitize_text_field( $name ) ) );
+        if ( $name === '' || self::is_email_like_person_name( $name ) ) {
+            return '';
+        }
+        return $name;
+    }
+
+    /**
+     * @return string|null Pesan error jika tidak valid.
+     */
+    public static function validate_registration_person_name( string $name ): ?string {
+        $name = self::sanitize_person_name( $name );
+        if ( $name === '' ) {
+            return __( 'Isi nama lengkap pribadi (contoh: Toga Samosir). Email hanya untuk login — jangan ditulis di kolom nama.', 'ptsbi-premium' );
+        }
+        if ( mb_strlen( $name ) < 3 ) {
+            return __( 'Nama lengkap terlalu pendek.', 'ptsbi-premium' );
+        }
+        if ( strpos( $name, ' ' ) === false ) {
+            return __( 'Tulis nama lengkap: nama depan dan marga (mis. Jeremiah Sihombing).', 'ptsbi-premium' );
+        }
+        return null;
+    }
+
+    /**
+     * Nama kepala keluarga untuk tampilan/form — tidak pernah memakai email login.
+     *
+     * @param WP_User|int $user
+     */
+    public static function resolve_kepala_keluarga_for_user( $user ): string {
+        if ( is_numeric( $user ) ) {
+            $user = get_user_by( 'id', (int) $user );
+        }
+        if ( ! $user instanceof WP_User ) {
+            return '';
+        }
+
+        $pending = self::sanitize_person_name( (string) get_user_meta( $user->ID, self::META_PENDING_NAME, true ) );
+        if ( $pending !== '' ) {
+            return $pending;
+        }
+
+        $record = self::get_record_by_user_id( (int) $user->ID );
+        if ( is_array( $record ) ) {
+            $from_row = self::sanitize_person_name( (string) ( $record['kepala_keluarga'] ?? '' ) );
+            if ( $from_row !== '' ) {
+                return $from_row;
+            }
+        }
+
+        $display = self::sanitize_person_name( (string) $user->display_name );
+        if ( $display !== '' && strtolower( $display ) !== strtolower( (string) $user->user_login ) ) {
+            return $display;
+        }
+
+        return '';
+    }
+
+    public static function apply_user_identity_after_registration( int $user_id, string $person_name ): void {
+        $person_name = self::sanitize_person_name( $person_name );
+        if ( $user_id <= 0 || $person_name === '' ) {
+            return;
+        }
+        wp_update_user(
+            [
+                'ID'           => $user_id,
+                'display_name' => $person_name,
+                'nickname'     => $person_name,
+                'first_name'   => $person_name,
+            ]
+        );
+        // Tidak menyimpan data anggota di DB WP; hanya update tampilan nama akun.
+    }
+
+    /**
+     * Aktifkan bridge Tarombo (DB master) pada situs production PTSBI.
+     */
+    public static function maybe_enable_tarombo_bridge(): void {
+        if ( get_option( 'ptprm_tarombo_bridge_v1' ) ) {
+            return;
+        }
+        $o = ptprm_options();
+        $o['membership_api_enabled']         = 1;
+        $o['membership_api_base_url']        = 'https://tarombo.ptsbi.org/v1';
+        $o['membership_api_integration_key'] = 'ptsbi-wp-bridge-2026';
+        update_option( PTPRM_OPTION, ptprm_normalize_option_for_storage( $o ), false );
+        update_option( 'ptprm_tarombo_bridge_v1', 1, false );
     }
 
     public static function is_pending_registration_user( $user_or_id ): bool {
@@ -163,45 +295,50 @@ class PTPRM_Members {
             return false;
         }
 
-        $status = (string) get_user_meta( (int) $user->ID, self::META_PENDING_STATUS, true );
-        return $status === self::PENDING_STATUS_VALUE;
+        if ( class_exists( 'PTPRM_Membership_Api_Client' ) && PTPRM_Membership_Api_Client::enabled() ) {
+            self::$last_api_error = '';
+            $res = PTPRM_Membership_Api_Client::get( '/members/by-wp-user/' . (int) $user->ID );
+            if ( is_wp_error( $res ) ) {
+                self::$last_api_error = $res->get_error_message();
+                return false;
+            }
+            $status = (string) ( $res['user']['member_status'] ?? '' );
+            return $status === 'pending';
+        }
+
+        // Jika API tidak aktif, anggap tidak ada mekanisme pending (API wajib untuk produksi).
+        return false;
     }
 
     /**
      * @return array<int, array{user_id:int,email:string,name:string,wa:string,created_at:string}>
      */
     public static function list_pending_registrations(): array {
-        $q = new WP_User_Query(
-            [
-                'number'  => 50,
-                'orderby' => 'registered',
-                'order'   => 'DESC',
-                'meta_query' => [
-                    [
-                        'key'     => self::META_PENDING_STATUS,
-                        'value'   => self::PENDING_STATUS_VALUE,
-                        'compare' => '=',
-                    ],
-                ],
-            ]
-        );
-
-        $users = (array) ( $q->get_results() ?? [] );
-        $out   = [];
-        foreach ( $users as $u ) {
-            if ( ! $u instanceof WP_User ) {
-                continue;
+        if ( class_exists( 'PTPRM_Membership_Sync' ) && PTPRM_Membership_Api_Client::enabled() ) {
+            self::$last_api_error = '';
+            $rows = PTPRM_Membership_Sync::export_rows();
+            if ( $rows === [] ) {
+                self::$last_api_error = __( 'Data pending tidak bisa dipanggil dari Tarombo. Periksa API / database.', 'ptsbi-premium' );
+                return [];
             }
-            $user_id = (int) $u->ID;
-            $out[]   = [
-                'user_id'    => $user_id,
-                'email'      => (string) $u->user_email,
-                'name'       => (string) get_user_meta( $user_id, self::META_PENDING_NAME, true ),
-                'wa'         => (string) get_user_meta( $user_id, self::META_PENDING_WA, true ),
-                'created_at' => (string) ( get_user_meta( $user_id, self::META_PENDING_CREATED, true ) ?: '' ),
-            ];
+            $out = [];
+            foreach ( $rows as $r ) {
+                $status = (string) ( $r['member_status'] ?? '' );
+                if ( $status !== 'pending' ) {
+                    continue;
+                }
+                $out[] = [
+                    'user_id'    => (int) ( $r['wp_user_id'] ?? 0 ),
+                    'email'      => (string) ( $r['email'] ?? '' ),
+                    'name'       => (string) ( $r['kepala_keluarga'] ?? $r['full_name'] ?? '' ),
+                    'wa'         => (string) ( $r['phone'] ?? '' ),
+                    'created_at' => (string) ( $r['created_at'] ?? '' ),
+                ];
+            }
+            return $out;
         }
-        return $out;
+
+        return [];
     }
 
     public static function approve_pending_registration( int $user_id ): bool {
@@ -213,8 +350,22 @@ class PTPRM_Members {
             return false;
         }
 
-        $name = (string) get_user_meta( $user_id, self::META_PENDING_NAME, true );
-        $wa   = (string) get_user_meta( $user_id, self::META_PENDING_WA, true );
+        if ( ! ( class_exists( 'PTPRM_Membership_Sync' ) && PTPRM_Membership_Api_Client::enabled() ) ) {
+            self::$last_api_error = __( 'Membership API wajib aktif untuk approve.', 'ptsbi-premium' );
+            return false;
+        }
+        if ( ! PTPRM_Membership_Sync::approve( $user_id ) ) {
+            self::$last_api_error = __( 'Gagal approve ke Tarombo. Periksa API / database.', 'ptsbi-premium' );
+            return false;
+        }
+
+        $name = self::sanitize_person_name(
+            (string) $user->display_name
+        );
+        if ( $name === '' ) {
+            $name = self::resolve_kepala_keluarga_for_user( $user );
+        }
+        $wa   = '';
 
         wp_update_user(
             [
@@ -224,42 +375,6 @@ class PTPRM_Members {
             ]
         );
 
-        global $wpdb;
-        $table_members = $wpdb->prefix . self::TABLE_MEMBERS;
-        $row_data      = [
-            'kepala_keluarga' => $name,
-            'phone'           => $wa,
-            'country_name'    => 'Indonesia',
-            'country_code'    => 'ID',
-            'updated_at'      => current_time( 'mysql' ),
-        ];
-        $existing = self::get_record_by_user_id( $user_id );
-        if ( $existing ) {
-            $row_data['kepala_keluarga'] = $name !== '' ? $name : (string) ( $existing['kepala_keluarga'] ?? '' );
-            $row_data['phone']           = $wa !== '' ? $wa : (string) ( $existing['phone'] ?? '' );
-            $merge                        = array_merge( (array) $existing, $row_data );
-            unset( $merge['id'], $merge['user_id'], $merge['created_at'], $merge['created_by'] );
-            $merge['updated_at'] = current_time( 'mysql' );
-            $wpdb->update( $table_members, $merge, [ 'user_id' => $user_id ] );
-        } else {
-            $wpdb->insert(
-                $table_members,
-                array_merge(
-                    $row_data,
-                    [
-                        'user_id'    => $user_id,
-                        'created_by' => $user_id,
-                        'created_at' => current_time( 'mysql' ),
-                    ]
-                )
-            );
-        }
-
-        delete_user_meta( $user_id, self::META_PENDING_STATUS );
-        delete_user_meta( $user_id, self::META_PENDING_NAME );
-        delete_user_meta( $user_id, self::META_PENDING_WA );
-        delete_user_meta( $user_id, self::META_PENDING_CREATED );
-        delete_user_meta( $user_id, 'ptprm_pending_profile' );
         update_user_meta( $user_id, self::META_APPROVED_AT, current_time( 'mysql' ) );
 
         do_action( 'ptprm_member_registered', $user_id );
@@ -280,10 +395,6 @@ class PTPRM_Members {
         if ( ! self::is_pending_registration_user( $user_id ) ) {
             return false;
         }
-
-        global $wpdb;
-        $table = $wpdb->prefix . self::TABLE_MEMBERS;
-        $wpdb->delete( $table, [ 'user_id' => $user_id ], [ '%d' ] );
 
         require_once ABSPATH . 'wp-admin/includes/user.php';
         $deleted = wp_delete_user( $user_id );
@@ -399,6 +510,7 @@ class PTPRM_Members {
         dbDelta( $sql_members );
         dbDelta( $sql_address );
         self::ensure_indexes();
+        self::reset_member_columns_cache();
 
         self::ensure_roles();
     }
@@ -607,7 +719,90 @@ class PTPRM_Members {
             ),
             ARRAY_A
         );
-        return is_array( $row ) ? $row : null;
+        if ( is_array( $row ) ) {
+            return $row;
+        }
+        return self::find_orphan_record_for_user( $user_id, [] );
+    }
+
+    /**
+     * Baris import DAMI tanpa user_id — cocokkan nama kepala / HP.
+     *
+     * @param array<string,mixed> $data
+     * @return array<string,mixed>|null
+     */
+    public static function find_orphan_record_for_user( int $user_id, array $data = [] ): ?array {
+        if ( $user_id <= 0 ) {
+            return null;
+        }
+        global $wpdb;
+        $table = $wpdb->prefix . self::TABLE_MEMBERS;
+        $user  = get_user_by( 'id', $user_id );
+        if ( ! $user instanceof WP_User ) {
+            return null;
+        }
+
+        $name = trim( (string) ( $data['kepala_keluarga'] ?? '' ) );
+        if ( $name === '' ) {
+            $name = trim( (string) $user->display_name );
+        }
+        if ( $name !== '' ) {
+            // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+            $row = $wpdb->get_row(
+                $wpdb->prepare(
+                    "SELECT * FROM {$table} WHERE (user_id IS NULL OR user_id = 0) AND kepala_keluarga = %s ORDER BY id DESC LIMIT 1",
+                    $name
+                ),
+                ARRAY_A
+            );
+            if ( is_array( $row ) ) {
+                return $row;
+            }
+        }
+
+        $phone = trim( (string) ( $data['phone'] ?? '' ) );
+        if ( $phone === '' ) {
+            $phone = trim( (string) get_user_meta( $user_id, self::META_PENDING_WA, true ) );
+        }
+        if ( $phone !== '' ) {
+            // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+            $row = $wpdb->get_row(
+                $wpdb->prepare(
+                    "SELECT * FROM {$table} WHERE (user_id IS NULL OR user_id = 0) AND phone = %s ORDER BY id DESC LIMIT 1",
+                    $phone
+                ),
+                ARRAY_A
+            );
+            if ( is_array( $row ) ) {
+                return $row;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Tautkan baris import ke akun login agar profil & export konsisten.
+     *
+     * @param array<string,mixed> $row
+     */
+    private static function link_orphan_record_to_user( int $user_id, array $row ): void {
+        if ( $user_id <= 0 || empty( $row['id'] ) ) {
+            return;
+        }
+        global $wpdb;
+        $table = $wpdb->prefix . self::TABLE_MEMBERS;
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+        $wpdb->update(
+            $table,
+            [
+                'user_id'    => $user_id,
+                'updated_at' => current_time( 'mysql' ),
+            ],
+            [ 'id' => (int) $row['id'] ],
+            [ '%d', '%s' ],
+            [ '%d' ]
+        );
     }
 
     /**
@@ -622,6 +817,7 @@ class PTPRM_Members {
             'tarombo'         => '',
             'oppu'            => '',
             'nomor_sundut'    => '',
+            'hula_boru'       => '',
             'phone'           => '',
             'country_name'    => 'Indonesia',
             'country_code'    => 'ID',
@@ -639,35 +835,29 @@ class PTPRM_Members {
             'is_overseas'     => 0,
         ];
 
-        $record = self::get_record_by_user_id( $user_id );
-        if ( is_array( $record ) ) {
-            $merged = array_merge( $defaults, $record );
-            $parts  = self::split_address_detail(
-                (string) ( $merged['address_detail'] ?? '' ),
-                (string) ( $merged['street_name'] ?? '' ),
-                (string) ( $merged['house_number'] ?? '' )
-            );
-            $merged['street_name']  = $parts['street'];
-            $merged['house_number'] = $parts['house'];
-            return $merged;
-        }
-
-        if ( self::is_pending_registration_user( $user_id ) ) {
-            $defaults['kepala_keluarga'] = (string) get_user_meta( $user_id, self::META_PENDING_NAME, true );
-            $defaults['phone']           = (string) get_user_meta( $user_id, self::META_PENDING_WA, true );
-            $draft                       = get_user_meta( $user_id, 'ptprm_pending_profile', true );
-            if ( is_string( $draft ) && $draft !== '' ) {
-                $decoded = json_decode( $draft, true );
-                if ( is_array( $decoded ) ) {
-                    $defaults = array_merge( $defaults, $decoded );
-                }
+        if ( class_exists( 'PTPRM_Membership_Sync' ) && PTPRM_Membership_Api_Client::enabled() ) {
+            $remote = PTPRM_Membership_Sync::pull_profile( $user_id );
+            if ( is_array( $remote ) && $remote !== [] ) {
+                $merged = array_merge( $defaults, $remote );
+                $parts  = self::split_address_detail(
+                    (string) ( $merged['address_detail'] ?? '' ),
+                    (string) ( $merged['street_name'] ?? '' ),
+                    (string) ( $merged['house_number'] ?? '' )
+                );
+                $merged['street_name']  = $parts['street'];
+                $merged['house_number'] = $parts['house'];
+                return $merged;
             }
+            $defaults['__ptprm_error'] = __( 'Data profil tidak bisa dipanggil dari Tarombo (API/DB down).', 'ptsbi-premium' );
             return $defaults;
         }
 
         $user = get_user_by( 'id', $user_id );
         if ( $user instanceof WP_User ) {
-            $defaults['kepala_keluarga'] = trim( (string) $user->display_name );
+            $resolved = self::resolve_kepala_keluarga_for_user( $user );
+            if ( $resolved !== '' ) {
+                $defaults['kepala_keluarga'] = $resolved;
+            }
         }
         return $defaults;
     }
@@ -678,16 +868,11 @@ class PTPRM_Members {
      * @param array<string,mixed> $data
      */
     private static function sync_registration_identity( int $user_id, array $data ): void {
-        $kepala = trim( (string) ( $data['kepala_keluarga'] ?? '' ) );
+        $kepala = self::sanitize_person_name( (string) ( $data['kepala_keluarga'] ?? '' ) );
         $phone  = trim( (string) ( $data['phone'] ?? '' ) );
 
         if ( $kepala !== '' ) {
-            wp_update_user(
-                [
-                    'ID'           => $user_id,
-                    'display_name' => $kepala,
-                ]
-            );
+            self::apply_user_identity_after_registration( $user_id, $kepala );
         }
 
         if ( self::is_pending_registration_user( $user_id ) ) {
@@ -750,45 +935,43 @@ class PTPRM_Members {
                 (string) ( $data['address_detail'] ?? '' )
             );
         }
-        global $wpdb;
-        $table = $wpdb->prefix . self::TABLE_MEMBERS;
-
-        if ( function_exists( 'ptprm_members_table_exists' ) && ! ptprm_members_table_exists() ) {
-            self::install();
-        }
-
-        $data  = self::sanitize_member_row( array_merge( $data, [ 'updated_at' => current_time( 'mysql' ) ] ) );
-
+        $data  = self::sanitize_member_row( $data );
         self::sync_registration_identity( $user_id, $data );
 
-        if ( self::is_pending_registration_user( $user_id ) ) {
-            update_user_meta( $user_id, 'ptprm_pending_profile', wp_json_encode( $data ) );
+        if ( ! ( class_exists( 'PTPRM_Membership_Sync' ) && PTPRM_Membership_Api_Client::enabled() ) ) {
+            self::$last_api_error = __( 'Penyimpanan profil membutuhkan Membership API aktif (Tarombo master).', 'ptsbi-premium' );
+            return false;
         }
 
-        // Hindari error "Unknown column" pada DB yang skemanya belum diupgrade penuh.
-        $data = self::filter_to_existing_columns( $data );
+        self::$last_api_error = '';
+        $ok = PTPRM_Membership_Sync::push_profile( $user_id, $data );
+        if ( ! $ok ) {
+            self::$last_api_error = __( 'Gagal menyimpan ke Tarombo (API/DB down).', 'ptsbi-premium' );
+        }
+        return $ok;
+    }
 
-        $existing = self::get_record_by_user_id( $user_id );
-        if ( $existing ) {
-            unset( $data['user_id'], $data['created_at'], $data['created_by'] );
-            if ( $data === [] ) {
-                return true;
+    /**
+     * @param array<string,mixed> $data
+     * @return array<int,string>
+     */
+    private static function member_row_formats( array $data ): array {
+        $formats = [];
+        foreach ( array_keys( $data ) as $key ) {
+            if ( in_array( $key, [ 'user_id', 'created_by', 'is_overseas' ], true ) ) {
+                $formats[] = '%d';
+            } else {
+                $formats[] = '%s';
             }
-            $updated = $wpdb->update( $table, $data, [ 'user_id' => $user_id ], null, [ '%d' ] );
-            if ( false === $updated ) {
-                return false;
-            }
-            return true;
         }
+        return $formats;
+    }
 
-        $data['user_id']    = $user_id;
-        $data['created_by'] = $user_id;
-        $data['created_at'] = current_time( 'mysql' );
-        $inserted           = $wpdb->insert( $table, $data );
-        if ( false === $inserted ) {
-            return self::is_pending_registration_user( $user_id );
-        }
-        return true;
+    /** @var array<int,string>|null */
+    private static $member_columns_cache = null;
+
+    public static function reset_member_columns_cache(): void {
+        self::$member_columns_cache = null;
     }
 
     /**
@@ -797,16 +980,15 @@ class PTPRM_Members {
      * @return array<int,string>
      */
     private static function existing_member_columns(): array {
-        static $cols = null;
-        if ( is_array( $cols ) ) {
-            return $cols;
+        if ( is_array( self::$member_columns_cache ) ) {
+            return self::$member_columns_cache;
         }
         global $wpdb;
         $table = $wpdb->prefix . self::TABLE_MEMBERS;
         // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
         $found = $wpdb->get_col( "SHOW COLUMNS FROM {$table}" );
-        $cols  = is_array( $found ) ? $found : [];
-        return $cols;
+        self::$member_columns_cache = is_array( $found ) ? $found : [];
+        return self::$member_columns_cache;
     }
 
     /**
@@ -1036,20 +1218,71 @@ class PTPRM_Members {
     public static function stream_export_xlsx(): void {
         global $wpdb;
 
+        $headers = [
+            'ID',
+            'Nama Kepala Keluarga',
+            'Nama Istri',
+            'Nama Ayah',
+            'Nama Ibu',
+            'Tarombo',
+            'Oppu (Paroppuon)',
+            'Nomor Sundut',
+            'Alamat',
+            'RT',
+            'RW',
+            'Kecamatan',
+            'Kelurahan',
+            'Wilayah / Kota',
+            'Hula / Boru',
+            'No HP',
+            'Provinsi',
+            'Kode Pos',
+        ];
+
+        $dataset = [];
+        $no      = 1;
+
+        $use_api = class_exists( 'PTPRM_Membership_Sync' ) && PTPRM_Membership_Api_Client::enabled();
+        $wp_total = function_exists( 'ptprm_members_table_exists' ) && ptprm_members_table_exists()
+            ? (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->prefix}" . self::TABLE_MEMBERS )
+            : 0;
+
+        if ( $use_api ) {
+            $api_rows = PTPRM_Membership_Sync::export_rows();
+            if ( ! empty( $api_rows ) && ( $wp_total === 0 || count( $api_rows ) >= $wp_total ) ) {
+                foreach ( $api_rows as $r ) {
+                    $dataset[] = [
+                        (string) ( $r['id'] ?? $no ),
+                        (string) ( $r['kepala_keluarga'] ?? '' ),
+                        (string) ( $r['nama_istri'] ?? '' ),
+                        '',
+                        '',
+                        (string) ( $r['tarombo'] ?? '' ),
+                        (string) ( $r['oppu'] ?? '' ),
+                        (string) ( $r['nomor_sundut'] ?? '' ),
+                        (string) ( $r['address_detail'] ?? '' ),
+                        (string) ( $r['rt'] ?? '' ),
+                        (string) ( $r['rw'] ?? '' ),
+                        (string) ( $r['district'] ?? '' ),
+                        (string) ( $r['subdistrict'] ?? '' ),
+                        (string) ( $r['city'] ?? '' ),
+                        (string) ( $r['hula_boru'] ?? '' ),
+                        (string) ( $r['phone'] ?? '' ),
+                        (string) ( $r['province'] ?? '' ),
+                        (string) ( $r['postal_code'] ?? '' ),
+                    ];
+                    ++$no;
+                }
+                self::stream_xlsx_output( $headers, $dataset );
+                return;
+            }
+        }
+
         if ( ! function_exists( 'ptprm_members_table_exists' ) || ! ptprm_members_table_exists() ) {
             self::redirect_export_error( __( 'Tabel data anggota belum tersedia. Nonaktifkan lalu aktifkan kembali plugin Premium Organization.', 'ptsbi-premium' ) );
         }
 
         $table_members = $wpdb->prefix . self::TABLE_MEMBERS;
-
-        $headers = [
-            'No', 'Nama Kepala Keluarga', 'Nama Istri', 'Tarombo', 'Ompu (Paroppuon)', 'Nomor Sundut',
-            'Alamat', 'RT', 'RW', 'Kecamatan', 'Kelurahan', 'Wilayah / Kota', 'Provinsi', 'Kode Pos',
-            'Negara', 'State / Kota (Luar Negeri)', 'Status', 'No HP',
-        ];
-
-        $dataset = [];
-        $no      = 1;
         $offset  = 0;
 
         while ( true ) {
@@ -1075,9 +1308,11 @@ class PTPRM_Members {
 
             foreach ( $chunk as $r ) {
                 $dataset[] = [
-                    $no++,
+                    (string) ( $r['family_no'] ?? $no ),
                     (string) ( $r['kepala_keluarga'] ?? '' ),
                     (string) ( $r['nama_istri'] ?? '' ),
+                    '',
+                    '',
                     (string) ( $r['tarombo'] ?? '' ),
                     (string) ( $r['oppu'] ?? '' ),
                     (string) ( $r['nomor_sundut'] ?? '' ),
@@ -1087,17 +1322,16 @@ class PTPRM_Members {
                     (string) ( $r['district'] ?? '' ),
                     (string) ( $r['subdistrict'] ?? '' ),
                     (string) ( $r['city'] ?? '' ),
-                    (string) ( $r['province'] ?? '' ),
-                    (string) ( $r['postal_code'] ?? '' ),
-                    (string) ( $r['country_name'] ?? '' ),
-                    (string) ( $r['state_city'] ?? '' ),
                     self::compute_marga_status(
                         (string) ( $r['kepala_keluarga'] ?? '' ),
                         (string) ( $r['nama_istri'] ?? '' ),
                         (string) ( $r['hula_boru'] ?? '' )
                     ),
                     (string) ( $r['phone'] ?? '' ),
+                    (string) ( $r['province'] ?? '' ),
+                    (string) ( $r['postal_code'] ?? '' ),
                 ];
+                ++$no;
             }
 
             if ( count( $chunk ) < self::EXPORT_CHUNK ) {
@@ -1107,8 +1341,20 @@ class PTPRM_Members {
         }
 
         $xlsx = self::build_xlsx_binary( $headers, $dataset );
+        self::stream_xlsx_output( $headers, $dataset, $xlsx );
+    }
+
+    /**
+     * @param array<int,string>             $headers
+     * @param array<int,array<int,mixed>>   $dataset
+     */
+    private static function stream_xlsx_output( array $headers, array $dataset, string $xlsx = '' ): void {
+        if ( $xlsx === '' ) {
+            $xlsx = self::build_xlsx_binary( $headers, $dataset );
+        }
         if ( $xlsx === '' ) {
             self::stream_export_csv_fallback( $headers, $dataset );
+            return;
         }
 
         while ( ob_get_level() > 0 ) {
@@ -1122,6 +1368,100 @@ class PTPRM_Members {
         header( 'Cache-Control: no-store, no-cache, must-revalidate, max-age=0' );
         header( 'Pragma: no-cache' );
         echo $xlsx; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+        exit;
+    }
+
+    /**
+     * Halaman cetak (browser → Simpan sebagai PDF).
+     */
+    public static function stream_export_print_html(): void {
+        global $wpdb;
+
+        if ( ! function_exists( 'ptprm_members_table_exists' ) || ! ptprm_members_table_exists() ) {
+            self::redirect_export_error( __( 'Tabel data anggota belum tersedia.', 'ptsbi-premium' ) );
+        }
+
+        $table_members = $wpdb->prefix . self::TABLE_MEMBERS;
+        $headers       = [
+            'ID', 'Nama Kepala Keluarga', 'Nama Istri', 'Tarombo', 'Oppu', 'Nomor Sundut',
+            'Alamat', 'RT', 'RW', 'Kecamatan', 'Kelurahan', 'Wilayah / Kota', 'Hula / Boru', 'No HP',
+        ];
+        $rows    = [];
+        $no      = 1;
+        $offset  = 0;
+
+        while ( true ) {
+            // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+            $chunk = $wpdb->get_results(
+                $wpdb->prepare(
+                    "SELECT * FROM {$table_members} ORDER BY id ASC LIMIT %d OFFSET %d",
+                    self::EXPORT_CHUNK,
+                    $offset
+                ),
+                ARRAY_A
+            );
+            if ( ! is_array( $chunk ) || $chunk === [] ) {
+                break;
+            }
+            foreach ( $chunk as $r ) {
+                $rows[] = [
+                    (string) ( $r['family_no'] ?? $no ),
+                    (string) ( $r['kepala_keluarga'] ?? '' ),
+                    (string) ( $r['nama_istri'] ?? '' ),
+                    (string) ( $r['tarombo'] ?? '' ),
+                    (string) ( $r['oppu'] ?? '' ),
+                    (string) ( $r['nomor_sundut'] ?? '' ),
+                    (string) ( $r['address_detail'] ?? '' ),
+                    (string) ( $r['rt'] ?? '' ),
+                    (string) ( $r['rw'] ?? '' ),
+                    (string) ( $r['district'] ?? '' ),
+                    (string) ( $r['subdistrict'] ?? '' ),
+                    (string) ( $r['city'] ?? '' ),
+                    self::compute_marga_status(
+                        (string) ( $r['kepala_keluarga'] ?? '' ),
+                        (string) ( $r['nama_istri'] ?? '' ),
+                        (string) ( $r['hula_boru'] ?? '' )
+                    ),
+                    (string) ( $r['phone'] ?? '' ),
+                ];
+                ++$no;
+            }
+            if ( count( $chunk ) < self::EXPORT_CHUNK ) {
+                break;
+            }
+            $offset += self::EXPORT_CHUNK;
+        }
+
+        while ( ob_get_level() > 0 ) {
+            ob_end_clean();
+        }
+        nocache_headers();
+        header( 'Content-Type: text/html; charset=utf-8' );
+        echo '<!DOCTYPE html><html><head><meta charset="utf-8"><title>';
+        echo esc_html__( 'Data Anggota', 'ptsbi-premium' );
+        echo '</title><style>
+            body{font-family:Arial,sans-serif;font-size:11px;margin:16px;color:#111}
+            h1{font-size:16px;margin:0 0 12px}
+            table{border-collapse:collapse;width:100%}
+            th,td{border:1px solid #ccc;padding:4px 6px;text-align:left;vertical-align:top}
+            th{background:#f3f3f3}
+            @media print{button{display:none}}
+        </style></head><body>';
+        echo '<h1>' . esc_html__( 'Data Anggota', 'ptsbi-premium' ) . ' — ' . esc_html( gmdate( 'Y-m-d' ) ) . '</h1>';
+        echo '<p><button type="button" onclick="window.print()">' . esc_html__( 'Cetak / Simpan PDF', 'ptsbi-premium' ) . '</button></p>';
+        echo '<table><thead><tr>';
+        foreach ( $headers as $h ) {
+            echo '<th>' . esc_html( $h ) . '</th>';
+        }
+        echo '</tr></thead><tbody>';
+        foreach ( $rows as $row ) {
+            echo '<tr>';
+            foreach ( $row as $cell ) {
+                echo '<td>' . esc_html( (string) $cell ) . '</td>';
+            }
+            echo '</tr>';
+        }
+        echo '</tbody></table></body></html>';
         exit;
     }
 
@@ -1155,21 +1495,39 @@ class PTPRM_Members {
         if ( ! isset( $_POST['ptprm_member_register'] ) ) {
             return;
         }
+        if ( ! self::registration_enabled() ) {
+            status_header( 403 );
+            wp_die( esc_html__( 'Pendaftaran publik dinonaktifkan.', 'ptsbi-premium' ), '', [ 'response' => 403 ] );
+        }
         if ( ! isset( $_POST[ self::QUERY_VAR_NONCE ] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( (string) $_POST[ self::QUERY_VAR_NONCE ] ) ), 'ptprm_member_register' ) ) {
             return;
         }
 
         $redirect = wp_get_referer() ?: home_url( '/' );
 
-        // Field baru (di Rumah Anggota): name, email, wa, password.
-        // Field lama (masih dibackward kompatibel): username, kepala_keluarga, phone, dll.
-        $name     = sanitize_text_field( wp_unslash( (string) ( $_POST['name'] ?? $_POST['kepala_keluarga'] ?? '' ) ) );
-        $email    = sanitize_email( wp_unslash( (string) ( $_POST['email'] ?? $_POST['username'] ?? '' ) ) );
+        // Field baru: name = nama lengkap pribadi; email = login saja.
+        $name     = self::sanitize_person_name(
+            (string) ( $_POST['name'] ?? $_POST['kepala_keluarga'] ?? '' )
+        );
+        $email    = sanitize_email( wp_unslash( (string) ( $_POST['email'] ?? '' ) ) );
         $phone    = sanitize_text_field( wp_unslash( (string) ( $_POST['phone'] ?? $_POST['wa'] ?? '' ) ) );
         $password = (string) ( $_POST['password'] ?? '' );
 
-        if ( $name === '' || $email === '' || $phone === '' || $password === '' ) {
-            wp_safe_redirect( add_query_arg( 'ptprm_register_error', rawurlencode( __( 'Nama, Email, No HP, dan password wajib diisi.', 'ptsbi-premium' ) ), $redirect ) );
+        if ( $email === '' && isset( $_POST['username'] ) ) {
+            $maybe = sanitize_email( wp_unslash( (string) $_POST['username'] ) );
+            if ( is_email( $maybe ) ) {
+                $email = $maybe;
+            }
+        }
+
+        $name_error = self::validate_registration_person_name( $name );
+        if ( $name_error !== null ) {
+            wp_safe_redirect( add_query_arg( 'ptprm_register_error', rawurlencode( $name_error ), $redirect ) );
+            exit;
+        }
+
+        if ( $email === '' || $phone === '' || $password === '' ) {
+            wp_safe_redirect( add_query_arg( 'ptprm_register_error', rawurlencode( __( 'Email, No HP, dan password wajib diisi.', 'ptsbi-premium' ) ), $redirect ) );
             exit;
         }
         if ( ! is_email( $email ) ) {
@@ -1196,35 +1554,49 @@ class PTPRM_Members {
 
         $auto = self::registration_auto_approve();
 
-        // Buat WP user dulu, supaya admin bisa meng-approve (role/panel) tanpa manipulasi credential.
+        if ( ! ( class_exists( 'PTPRM_Membership_Api_Client' ) && PTPRM_Membership_Api_Client::enabled() ) ) {
+            wp_safe_redirect( add_query_arg( 'ptprm_register_error', rawurlencode( __( 'Pendaftaran membutuhkan Membership API aktif (Tarombo master).', 'ptsbi-premium' ) ), $redirect ) );
+            exit;
+        }
+
+        // Buat WP user (akun autentikasi) lalu WAJIB daftarkan ke Tarombo (master).
         $user_id = wp_create_user( $username, $password, $email );
         if ( is_wp_error( $user_id ) ) {
             wp_safe_redirect( add_query_arg( 'ptprm_register_error', rawurlencode( $user_id->get_error_message() ), $redirect ) );
             exit;
         }
 
+        self::apply_user_identity_after_registration( (int) $user_id, $name );
+
+        $api = PTPRM_Membership_Api_Client::post(
+            '/registrations',
+            [
+                'full_name'    => $name,
+                'email'        => $email,
+                'phone_wa'     => $phone,
+                'password'     => $password,
+                'wp_user_id'   => (int) $user_id,
+                'auto_approve' => (bool) $auto,
+            ]
+        );
+        if ( is_wp_error( $api ) ) {
+            require_once ABSPATH . 'wp-admin/includes/user.php';
+            wp_delete_user( (int) $user_id );
+            wp_safe_redirect(
+                add_query_arg(
+                    'ptprm_register_error',
+                    rawurlencode( __( 'Pendaftaran gagal karena Tarombo (API/DB) tidak dapat diakses. Coba lagi nanti.', 'ptsbi-premium' ) . ' ' . $api->get_error_message() ),
+                    $redirect
+                )
+            );
+            exit;
+        }
+
         if ( $auto ) {
             wp_update_user(
                 [
-                    'ID'           => $user_id,
-                    'role'         => self::ROLE_MEMBER,
-                    'display_name' => $name,
-                ]
-            );
-
-            global $wpdb;
-            $table_members = $wpdb->prefix . self::TABLE_MEMBERS;
-            $wpdb->insert(
-                $table_members,
-                [
-                    'user_id'          => $user_id,
-                    'kepala_keluarga' => $name,
-                    'phone'            => $phone,
-                    'country_name'     => 'Indonesia',
-                    'country_code'     => 'ID',
-                    'created_by'       => $user_id,
-                    'created_at'       => current_time( 'mysql' ),
-                    'updated_at'       => current_time( 'mysql' ),
+                    'ID'   => $user_id,
+                    'role' => self::ROLE_MEMBER,
                 ]
             );
 
@@ -1247,36 +1619,21 @@ class PTPRM_Members {
         // Manual approve: user dibuat pending (tanpa role anggota) dan menunggu approve admin.
         wp_update_user(
             [
-                'ID'           => $user_id,
-                'role'         => 'subscriber',
-                'display_name' => $name,
+                'ID'   => $user_id,
+                'role' => 'subscriber',
             ]
         );
-        update_user_meta( $user_id, self::META_PENDING_STATUS, self::PENDING_STATUS_VALUE );
-        update_user_meta( $user_id, self::META_PENDING_NAME, $name );
-        update_user_meta( $user_id, self::META_PENDING_WA, $phone );
-        update_user_meta( $user_id, self::META_PENDING_CREATED, current_time( 'mysql' ) );
 
         $login_portal = class_exists( 'PTPRM_Login_Portal' ) ? PTPRM_Login_Portal::login_url() : home_url( '/rumah-anggota/' );
-
-        // Opsional: kirim ke API setelah user lokal dibuat (tidak memblokir pendaftaran).
-        if ( class_exists( 'PTPRM_Membership_Api_Client' ) && PTPRM_Membership_Api_Client::enabled() ) {
-            PTPRM_Membership_Api_Client::post(
-                '/registrations',
-                [
-                    'full_name' => $name,
-                    'email'     => $email,
-                    'phone_wa'  => $phone,
-                    'password'  => $password,
-                ]
-            );
-        }
 
         wp_safe_redirect( add_query_arg( 'ptprm_register_pending', '1', $login_portal ) );
         exit;
     }
 
     public function shortcode_registration(): string {
+        if ( ! self::registration_enabled() ) {
+            return '';
+        }
         ob_start();
         $is_logged = is_user_logged_in();
         echo '<div class="ptprm-member-card">';
@@ -1307,8 +1664,10 @@ class PTPRM_Members {
             : esc_html__( 'Pendaftaran menunggu persetujuan admin. Detail bisa dilengkapi setelah login.', 'ptsbi-premium' );
         echo '</p>';
 
-        echo '<label><span>' . esc_html__( 'Nama', 'ptsbi-premium' ) . ' *</span><input type="text" name="name" required></label>';
-        echo '<label><span>' . esc_html__( 'Email (sebagai username)', 'ptsbi-premium' ) . ' *</span><input type="email" name="email" autocomplete="username" required></label>';
+        echo '<label><span>' . esc_html__( 'Nama lengkap (kepala keluarga)', 'ptsbi-premium' ) . ' *</span>';
+        echo '<input type="text" name="name" autocomplete="name" placeholder="' . esc_attr__( 'Contoh: Toga Samosir', 'ptsbi-premium' ) . '" required></label>';
+        echo '<label><span>' . esc_html__( 'Email (untuk login)', 'ptsbi-premium' ) . ' *</span>';
+        echo '<input type="email" name="email" autocomplete="username" placeholder="nama@email.com" required></label>';
         echo '<label><span>' . esc_html__( 'No HP', 'ptsbi-premium' ) . ' *</span><input type="tel" name="phone" autocomplete="tel" required></label>';
         echo '<label><span>' . esc_html__( 'Password', 'ptsbi-premium' ) . ' *</span><input type="password" name="password" minlength="6" required></label>';
         echo '</div>';
@@ -1480,13 +1839,17 @@ class PTPRM_Members {
     public function shortcode_directory(): string {
         ob_start();
         if ( ! is_user_logged_in() ) {
-            $redirect  = home_url( add_query_arg( [], $_SERVER['REQUEST_URI'] ?? '/' ) );
-            $login_url = class_exists( 'PTPRM_Member_Portal' )
-                ? PTPRM_Member_Portal::login_url( $redirect )
-                : wp_login_url( $redirect );
             echo '<div class="ptprm-member-card">';
             echo '<p>' . esc_html__( 'Direktori anggota hanya tersedia setelah login.', 'ptsbi-premium' ) . '</p>';
-            echo '<a class="ptprm-cta ptprm-cta-2 ptprm-cta-size-medium" href="' . esc_url( $login_url ) . '"><span class="ptprm-cta-label">' . esc_html__( 'Rumah Anggota', 'ptsbi-premium' ) . '</span></a>';
+            if ( function_exists( 'ptprm_public_login_form_enabled' ) && ptprm_public_login_form_enabled() ) {
+                $redirect  = home_url( add_query_arg( [], $_SERVER['REQUEST_URI'] ?? '/' ) );
+                $login_url = class_exists( 'PTPRM_Member_Portal' )
+                    ? PTPRM_Member_Portal::login_url( $redirect )
+                    : wp_login_url( $redirect );
+                echo '<a class="ptprm-cta ptprm-cta-2 ptprm-cta-size-medium" href="' . esc_url( $login_url ) . '"><span class="ptprm-cta-label">' . esc_html__( 'Rumah Anggota', 'ptsbi-premium' ) . '</span></a>';
+            } else {
+                echo '<p class="ptprm-portal-help">' . esc_html__( 'Form masuk publik dinonaktifkan. Hubungi sekretariat untuk akses.', 'ptsbi-premium' ) . '</p>';
+            }
             echo '</div>';
             return (string) ob_get_clean();
         }
@@ -1507,6 +1870,7 @@ class PTPRM_Members {
             'nama'      => sanitize_text_field( wp_unslash( (string) ( $_GET['nama'] ?? '' ) ) ), // phpcs:ignore WordPress.Security.NonceVerification.Recommended
             'status'    => sanitize_key( (string) ( $_GET['status'] ?? '' ) ), // phpcs:ignore WordPress.Security.NonceVerification.Recommended
             'oppu'      => sanitize_text_field( wp_unslash( (string) ( $_GET['oppu'] ?? '' ) ) ), // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+            'wilayah'   => sanitize_key( (string) ( $_GET['wilayah'] ?? 'jabodetabek' ) ), // phpcs:ignore WordPress.Security.NonceVerification.Recommended
             'provinsi'  => sanitize_text_field( wp_unslash( (string) ( $_GET['provinsi'] ?? '' ) ) ), // phpcs:ignore WordPress.Security.NonceVerification.Recommended
             'kota'      => sanitize_text_field( wp_unslash( (string) ( $_GET['kota'] ?? '' ) ) ), // phpcs:ignore WordPress.Security.NonceVerification.Recommended
             'kecamatan' => sanitize_text_field( wp_unslash( (string) ( $_GET['kecamatan'] ?? '' ) ) ), // phpcs:ignore WordPress.Security.NonceVerification.Recommended
@@ -1526,6 +1890,10 @@ class PTPRM_Members {
 
         echo '<div class="ptprm-member-card">';
         $this->render_directory_filters( $filters );
+
+        if ( self::$last_api_error !== '' ) {
+            echo '<p class="ptprm-member-alert ptprm-member-alert-error">' . esc_html( self::$last_api_error ) . '</p>';
+        }
 
         if ( $total > 0 ) {
             echo '<p class="ptprm-member-meta">';
@@ -1591,70 +1959,82 @@ class PTPRM_Members {
      * @return array{rows:array<int,array<string,mixed>>,total:int}
      */
     private function search_members( array $filters, int $page, int $per_page, bool $full_columns ): array {
-        global $wpdb;
-        $table = $wpdb->prefix . self::TABLE_MEMBERS;
-        $where = [];
-        $args  = [];
-
-        if ( ! empty( $filters['nama'] ) ) {
-            $where[] = 'kepala_keluarga LIKE %s';
-            $args[]  = '%' . $wpdb->esc_like( $filters['nama'] ) . '%';
+        if ( ! ( class_exists( 'PTPRM_Membership_Sync' ) && class_exists( 'PTPRM_Membership_Api_Client' ) && PTPRM_Membership_Api_Client::enabled() ) ) {
+            self::$last_api_error = __( 'Direktori membutuhkan Tarombo aktif (API/DB).', 'ptsbi-premium' );
+            return [ 'rows' => [], 'total' => 0 ];
         }
-        if ( ! empty( $filters['status'] ) ) {
-            $status_key = $filters['status'];
-            if ( 'anak' === $status_key ) {
-                $where[] = "(hula_boru = 'Anak' OR (" . self::sql_kepala_samosir() . " AND (hula_boru = '' OR hula_boru IS NULL)))";
-            } elseif ( 'boru' === $status_key ) {
-                $where[] = "(hula_boru = 'Boru' OR (" . self::sql_boru_line() . " AND (hula_boru = '' OR hula_boru = 'Boru')))";
-            } elseif ( 'bere' === $status_key ) {
-                $where[] = "hula_boru = 'Bere'";
-            } elseif ( 'ibebere' === $status_key ) {
-                $where[] = "hula_boru = 'Ibebere'";
+
+        self::$last_api_error = '';
+        $all = PTPRM_Membership_Sync::export_rows();
+        if ( $all === [] ) {
+            self::$last_api_error = __( 'Data tidak bisa dipanggil dari Tarombo (API/DB down).', 'ptsbi-premium' );
+            return [ 'rows' => [], 'total' => 0 ];
+        }
+
+        $filtered = [];
+        foreach ( $all as $row ) {
+            // Hanya anggota aktif tampil di direktori.
+            if ( (string) ( $row['member_status'] ?? '' ) !== 'active' ) {
+                continue;
             }
-        }
-        if ( ! empty( $filters['oppu'] ) ) {
-            $where[] = 'oppu = %s';
-            $args[]  = $filters['oppu'];
-        }
-        if ( ! empty( $filters['provinsi'] ) ) {
-            $where[] = 'province = %s';
-            $args[]  = $filters['provinsi'];
-        }
-        if ( ! empty( $filters['kota'] ) ) {
-            $where[] = 'city = %s';
-            $args[]  = $filters['kota'];
-        }
-        if ( ! empty( $filters['kecamatan'] ) ) {
-            $where[] = 'district = %s';
-            $args[]  = $filters['kecamatan'];
-        }
-        if ( ! empty( $filters['kelurahan'] ) ) {
-            $where[] = 'subdistrict = %s';
-            $args[]  = $filters['kelurahan'];
+            $kepala = (string) ( $row['kepala_keluarga'] ?? $row['full_name'] ?? '' );
+            $nama_istri = (string) ( $row['nama_istri'] ?? '' );
+            $oppu  = (string) ( $row['oppu'] ?? '' );
+            $prov  = (string) ( $row['province'] ?? '' );
+            $kota  = (string) ( $row['city'] ?? '' );
+            $kec   = (string) ( $row['district'] ?? '' );
+            $kel   = (string) ( $row['subdistrict'] ?? '' );
+
+            if ( ! empty( $filters['nama'] ) && stripos( $kepala, (string) $filters['nama'] ) === false ) {
+                continue;
+            }
+            if ( ! empty( $filters['oppu'] ) && $oppu !== (string) $filters['oppu'] ) {
+                continue;
+            }
+            if ( ! empty( $filters['provinsi'] ) && $prov !== (string) $filters['provinsi'] ) {
+                continue;
+            }
+            if ( ! empty( $filters['kota'] ) && $kota !== (string) $filters['kota'] ) {
+                continue;
+            }
+            if ( ! empty( $filters['kecamatan'] ) && $kec !== (string) $filters['kecamatan'] ) {
+                continue;
+            }
+            if ( ! empty( $filters['kelurahan'] ) && $kel !== (string) $filters['kelurahan'] ) {
+                continue;
+            }
+            if ( ! empty( $filters['status'] ) ) {
+                $status_label = self::compute_marga_status( $kepala, $nama_istri, (string) ( $row['hula_boru'] ?? '' ) );
+                $want = strtolower( (string) $filters['status'] );
+                if ( $want === 'anak' && strtolower( $status_label ) !== 'anak' ) {
+                    continue;
+                }
+                if ( $want === 'boru' && strtolower( $status_label ) !== 'boru' ) {
+                    continue;
+                }
+                if ( $want === 'bere' && strtolower( $status_label ) !== 'bere' ) {
+                    continue;
+                }
+                if ( $want === 'ibebere' && strtolower( $status_label ) !== 'ibebere' ) {
+                    continue;
+                }
+            }
+
+            $filtered[] = $row;
         }
 
-        $where_sql = $where ? ' WHERE ' . implode( ' AND ', $where ) : '';
-        $cols      = 'id, kepala_keluarga, nama_istri, oppu, nomor_sundut, hula_boru, district, city, province, country_name';
-        if ( $full_columns ) {
-            $cols .= ', subdistrict, address_detail, postal_code, phone, state_city';
-        }
+        usort(
+            $filtered,
+            static function ( $a, $b ) {
+                return strcasecmp( (string) ( $a['kepala_keluarga'] ?? $a['full_name'] ?? '' ), (string) ( $b['kepala_keluarga'] ?? $b['full_name'] ?? '' ) );
+            }
+        );
 
-        $count_sql = "SELECT COUNT(*) FROM {$table}{$where_sql}";
-        if ( $args ) {
-            $total = (int) $wpdb->get_var( $wpdb->prepare( $count_sql, ...$args ) );
-        } else {
-            $total = (int) $wpdb->get_var( $count_sql ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
-        }
+        $total  = count( $filtered );
+        $offset = max( 0, ( $page - 1 ) * $per_page );
+        $rows   = array_slice( $filtered, $offset, $per_page );
 
-        $offset = ( $page - 1 ) * $per_page;
-        $list_sql = "SELECT {$cols} FROM {$table}{$where_sql} ORDER BY kepala_keluarga ASC LIMIT %d OFFSET %d";
-        $list_args = array_merge( $args, [ $per_page, $offset ] );
-        $rows      = $wpdb->get_results( $wpdb->prepare( $list_sql, ...$list_args ), ARRAY_A );
-
-        return [
-            'rows'  => is_array( $rows ) ? $rows : [],
-            'total' => $total,
-        ];
+        return [ 'rows' => $rows, 'total' => $total ];
     }
 
     /**
@@ -1960,7 +2340,7 @@ class PTPRM_Members {
             . '<cellXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/></cellXfs>'
             . '</styleSheet>';
 
-        $tmp_file = wp_tempnam( 'ptprm-members-export' );
+        $tmp_file = tempnam( function_exists( 'get_temp_dir' ) ? get_temp_dir() : sys_get_temp_dir(), 'ptprm-export-' );
         if ( ! $tmp_file ) {
             return '';
         }
