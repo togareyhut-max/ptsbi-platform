@@ -276,12 +276,23 @@ def migrate_schema(db: DbConnection):
     ]
 
     if db.backend == "postgres":
+        # Anti-hang: jangan menunggu lock berlama-lama (penyebab gunicorn WORKER TIMEOUT -> situs down).
+        try:
+            db.execute("SET lock_timeout = '3s'")
+            db.execute("SET statement_timeout = '30s'")
+            db.commit()
+        except Exception:
+            try:
+                db.rollback()
+            except Exception:
+                pass
         for stmt in alters:
             try:
                 db.execute(stmt)
+                db.commit()
             except Exception:
                 try:
-                    db.execute(stmt.replace(" IF NOT EXISTS", ""))
+                    db.rollback()
                 except Exception:
                     pass
         # Pastikan kolom bridge WP — terpisah dari UNIQUE agar migrasi lama tidak gagal diam-diam.
@@ -464,6 +475,35 @@ def migrate_schema(db: DbConnection):
             CREATE INDEX IF NOT EXISTS idx_member_profiles_wp_user ON member_profiles (wp_user_id);
             """
         )
-        migrate_consolidate_spouse_fields(db)
-        migrate_user_roles(db)
-        db.commit()
+        try:
+            db.commit()
+        except Exception:
+            try:
+                db.rollback()
+            except Exception:
+                pass
+        try:
+            migrate_consolidate_spouse_fields(db)
+            db.commit()
+        except Exception:
+            try:
+                db.rollback()
+            except Exception:
+                pass
+        try:
+            migrate_user_roles(db)
+            db.commit()
+        except Exception:
+            try:
+                db.rollback()
+            except Exception:
+                pass
+        try:
+            db.execute("SET lock_timeout = 0")
+            db.execute("SET statement_timeout = 0")
+            db.commit()
+        except Exception:
+            try:
+                db.rollback()
+            except Exception:
+                pass
