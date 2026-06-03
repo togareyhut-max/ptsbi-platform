@@ -11,7 +11,7 @@ class PTPRM_Board_Display {
 
     public function __construct() {
         add_shortcode( 'ptprm_board', [ $this, 'shortcode' ] );
-        add_filter( 'the_content', [ $this, 'inject_board_shortcode' ], 8 );
+        add_filter( 'the_content', [ $this, 'append_board_on_region_pages' ], 25 );
     }
 
     /**
@@ -23,22 +23,51 @@ class PTPRM_Board_Display {
         return self::render( $region );
     }
 
-    public function inject_board_shortcode( string $content ): string {
+    /**
+     * Selalu tampilkan daftar pengurus di halaman wilayah meski konten halaman sudah berisi judul/blok lain.
+     */
+    public function append_board_on_region_pages( string $content ): string {
         if ( ! is_page() || ! in_the_loop() || ! is_main_query() ) {
-            return $content;
-        }
-        if ( trim( wp_strip_all_tags( $content ) ) !== '' ) {
             return $content;
         }
         if ( ! class_exists( 'PTPRM_Board_Registry' ) ) {
             return $content;
         }
-        $slug = (string) get_post_field( 'post_name', get_queried_object_id() );
+
+        $page_slug = (string) get_post_field( 'post_name', get_queried_object_id() );
         foreach ( PTPRM_Board_Registry::regions() as $meta ) {
-            if ( (string) $meta['page_slug'] === $slug ) {
-                return '[ptprm_board region="' . esc_attr( (string) $meta['slug'] ) . '"]';
+            if ( (string) $meta['page_slug'] !== $page_slug ) {
+                continue;
             }
+
+            if ( strpos( $content, 'ptprm-board' ) !== false ) {
+                return $content;
+            }
+
+            $working = $content;
+            if ( strpos( $working, '[ptprm_board' ) !== false ) {
+                $normalized = str_replace(
+                    [ "\u{201C}", "\u{201D}", "\u{201E}", "\u{00AB}", "\u{00BB}", '&#8220;', '&#8221;', '&#8243;' ],
+                    '"',
+                    $working
+                );
+                $working = do_shortcode( $normalized );
+            }
+
+            if ( strpos( $working, 'ptprm-board' ) !== false ) {
+                return $working;
+            }
+
+            $html = self::render( (string) $meta['slug'] );
+            if ( $html === '' ) {
+                return $working;
+            }
+
+            $working = preg_replace( '/<p>\s*\[ptprm_board[^\]]*\]\s*<\/p>/iu', '', $working ) ?? $working;
+
+            return $working . $html;
         }
+
         return $content;
     }
 
@@ -56,13 +85,17 @@ class PTPRM_Board_Display {
 
         ob_start();
         echo '<div class="ptprm-board ptprm-board--' . esc_attr( $region ) . '">';
-        echo '<h2 class="ptprm-board-title">' . esc_html( (string) $meta['title'] ) . '</h2>';
 
         if ( ! empty( $meta['has_featured_photos'] ) ) {
             self::render_featured_row( $region, $items );
         }
 
         self::render_list( $region, $items, ! empty( $meta['has_featured_photos'] ) );
+
+        if ( ! $items ) {
+            echo '<p class="ptprm-portal-help">' . esc_html__( 'Daftar pengurus belum diisi. Admin dapat mengelolanya di Panel Pengurus → Pengurus Wilayah.', 'ptsbi-premium' ) . '</p>';
+        }
+
         echo '</div>';
         return (string) ob_get_clean();
     }
@@ -131,7 +164,7 @@ class PTPRM_Board_Display {
             return '';
         }
         if ( is_numeric( $image ) ) {
-            $url = wp_get_attachment_image_url( (int) $image, 'medium' );
+            $url = wp_get_attachment_image_url( (int) $image, 'medium_large' );
             return $url ? (string) $url : '';
         }
         $url = esc_url_raw( $image );
