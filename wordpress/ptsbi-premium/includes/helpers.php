@@ -18,6 +18,9 @@ function ptprm_portal_session_expired_message(): string {
  * Verifikasi nonce form portal (field WordPress standar `_wpnonce`).
  */
 function ptprm_verify_portal_form_nonce( string $action ): bool {
+    if ( class_exists( 'PTPRM_Portal_Session' ) ) {
+        return PTPRM_Portal_Session::verify_form_nonce( $action );
+    }
     if ( ! isset( $_POST['_wpnonce'] ) ) {
         return false;
     }
@@ -25,6 +28,16 @@ function ptprm_verify_portal_form_nonce( string $action ): bool {
         sanitize_text_field( wp_unslash( (string) $_POST['_wpnonce'] ) ),
         $action
     );
+}
+
+/**
+ * Fallback verifikasi nonce portal (untuk pemanggil lain, mis. purge cache).
+ */
+function ptprm_verify_portal_form_nonce_fallback( string $action ): bool {
+    if ( class_exists( 'PTPRM_Portal_Session' ) ) {
+        return PTPRM_Portal_Session::verify_fallback( $action );
+    }
+    return false;
 }
 
 /**
@@ -39,7 +52,7 @@ function ptprm_portal_page_slugs(): array {
         (string) ( $o['members_login_slug'] ?? 'masuk' ),
         (string) ( $o['members_portal_slug'] ?? 'area-anggota' ),
         (string) ( $o['admin_login_slug'] ?? 'masuk-pengurus' ),
-        (string) ( $o['admin_portal_slug'] ?? 'panel-admin' ),
+        (string) ( $o['admin_portal_slug'] ?? 'panel-pengurus' ),
         'rumah-anggota',
         'masuk',
         'area-anggota',
@@ -98,29 +111,40 @@ function ptprm_portal_nocache_headers(): void {
     if ( ! defined( 'DONOTCACHEOBJECT' ) ) {
         define( 'DONOTCACHEOBJECT', true );
     }
+    if ( ! defined( 'LSCACHE_NO_CACHE' ) ) {
+        define( 'LSCACHE_NO_CACHE', true );
+    }
+    if ( is_user_logged_in() ) {
+        header( 'Vary: Cookie', false );
+    }
     if ( has_action( 'litespeed_control_set_nocache' ) ) {
         do_action( 'litespeed_control_set_nocache', 'ptprm-portal' );
     }
 }
 
 /**
- * @return array{0:int,1:int,2:int}
+ * Toolbar purge cache — aman jika method hilang (regresi deploy / OPcache lama).
  */
-
-/**
- * Kosongkan field sensitif agar tidak ada jejak setelah logout.
- */
-function ptprm_form_autofill_guard_script( string $user_field_id, string $pass_field_id ): void {
-    if ( $user_field_id === '' && $pass_field_id === '' ) {
+function ptprm_safe_cache_purge_toolbar( string $return_url ): void {
+    if ( ! class_exists( 'PTPRM_Cache_Purge' ) || ! method_exists( 'PTPRM_Cache_Purge', 'render_purge_toolbar' ) ) {
         return;
     }
-    printf(
-        '<script>(function(){function c(){var u=document.getElementById(%1$s),p=document.getElementById(%2$s);if(u){u.value="";}if(p){p.value="";}}c();setTimeout(c,300);window.addEventListener("pageshow",c);})();</script>',
-        wp_json_encode( $user_field_id ),
-        wp_json_encode( $pass_field_id )
-    );
+    PTPRM_Cache_Purge::render_purge_toolbar( $return_url );
 }
 
+/**
+ * Tombol purge cache di footer portal.
+ */
+function ptprm_safe_cache_purge_button( string $return_url ): void {
+    if ( ! class_exists( 'PTPRM_Cache_Purge' ) || ! method_exists( 'PTPRM_Cache_Purge', 'render_purge_button' ) ) {
+        return;
+    }
+    PTPRM_Cache_Purge::render_purge_button( $return_url );
+}
+
+/**
+ * @return array{0:int,1:int,2:int}
+ */
 function ptprm_hex_to_rgb( string $hex ): array {
     $hex = ltrim( (string) $hex, '#' );
     if ( strlen( $hex ) === 3 ) {
@@ -761,7 +785,7 @@ function ptprm_defaults() {
         'members_login_slug'     => 'rumah-anggota',
         'members_portal_slug'    => 'area-anggota',
         'admin_login_slug'       => 'masuk-pengurus',
-        'admin_portal_slug'      => 'panel-admin',
+        'admin_portal_slug'      => 'panel-pengurus',
 
         /* -------- PENDAFTARAN ANGGOTA (Approval) -------- */
         // 1 = pendaftaran langsung disetujui (tidak perlu admin menekan approve).
@@ -771,9 +795,9 @@ function ptprm_defaults() {
         'members_register_notify_wa'     => 1,
 
         /* -------- Membership API (service terpisah) -------- */
-        'membership_api_enabled'         => 0,
-        'membership_api_base_url'        => '',
-        'membership_api_integration_key' => '',
+        'membership_api_enabled'         => 1,
+        'membership_api_base_url'        => 'https://tarombo.ptsbi.org/v1',
+        'membership_api_integration_key' => 'ptsbi-wp-bridge-2026',
         'membership_api_timeout_sec'     => 15,
 
         /* -------- HOME ORDER -------- */
@@ -849,6 +873,16 @@ function ptprm_defaults() {
         'gallery_dots'      => 1,        // slider dots
         'gallery_speed'     => 35,       // s (marquee duration)
         'gallery_pause'     => 1,        // pause on hover (both modes)
+
+        /* -------- PDF LIGHTBOX -------- */
+        'pdf_lightbox_show'     => 0,
+        'pdf_lightbox_eyebrow'  => 'DOKUMEN',
+        'pdf_lightbox_title'    => 'Arsip & Publikasi',
+        'pdf_lightbox_subtitle' => 'Unduh atau baca dokumen PDF organisasi.',
+        'pdf_lightbox_items'    => '',
+        'pdf_lightbox_columns'  => 3,
+        'pdf_publications_page_slug' => 'publikasi-dan-dokumentasi',
+        'pdf_publications_intro'     => '',
 
         /* -------- BANNER CTA -------- */
         'banner_show'      => 0,
@@ -934,7 +968,7 @@ function ptprm_retired_home_section_slugs(): array {
  * @return list<string>
  */
 function ptprm_home_section_slugs(): array {
-    return [ 'about', 'values', 'activities', 'gallery', 'stats', 'tarombo_digital', 'visit' ];
+    return [ 'about', 'values', 'activities', 'gallery', 'pdf_lightbox', 'stats', 'tarombo_digital', 'visit' ];
 }
 
 /**
@@ -948,6 +982,7 @@ function ptprm_home_section_labels(): array {
         'values'          => 'Nilai-Nilai',
         'activities'      => 'Kegiatan',
         'gallery'         => 'Galeri',
+        'pdf_lightbox'    => 'Galeri PDF',
         'stats'           => 'Statistik',
         'tarombo_digital' => 'Tarombo Digital',
         'visit'           => 'Kunjungi',
@@ -960,7 +995,7 @@ function ptprm_home_section_labels(): array {
  * @return list<string>
  */
 function ptprm_default_home_sections_order(): array {
-    return [ 'about', 'values', 'activities', 'gallery', 'stats', 'tarombo_digital', 'visit' ];
+    return [ 'about', 'values', 'activities', 'gallery', 'pdf_lightbox', 'stats', 'tarombo_digital', 'visit' ];
 }
 
 /**
@@ -1092,26 +1127,6 @@ function ptprm_normalize_option_for_storage( array $o ): array {
         $o['_site_fingerprint'] = PTPRM_Bootstrap::site_fingerprint();
     }
 
-    if ( class_exists( 'PTPRM_Board_Registry' ) ) {
-        foreach ( PTPRM_Board_Registry::regions() as $slug => $meta ) {
-            unset( $meta );
-            $key = PTPRM_Board_Registry::option_key( $slug );
-            if ( empty( $o[ $key ] ) ) {
-                continue;
-            }
-            $board_raw = $o[ $key ];
-            if ( is_string( $board_raw ) ) {
-                $board_decoded = json_decode( $board_raw, true );
-            } else {
-                $board_decoded = is_array( $board_raw ) ? $board_raw : [];
-            }
-            $o[ $key ] = wp_json_encode(
-                ptprm_sanitize_board_items( is_array( $board_decoded ) ? $board_decoded : [] ),
-                JSON_UNESCAPED_UNICODE
-            );
-        }
-    }
-
     return $o;
 }
 
@@ -1239,6 +1254,86 @@ function ptprm_get_team_items( ?array $o = null ): array {
         }
     }
     return ptprm_migrate_team_from_legacy( $o );
+}
+
+function ptprm_get_pdf_lightbox_items( ?array $o = null ): array {
+    $o = $o ?? ptprm_options();
+    if ( ! empty( $o['pdf_lightbox_items'] ) ) {
+        $decoded = json_decode( (string) $o['pdf_lightbox_items'], true );
+        if ( is_array( $decoded ) ) {
+            return ptprm_sanitize_pdf_lightbox_items( $decoded );
+        }
+    }
+    return [];
+}
+
+function ptprm_sanitize_pdf_lightbox_items( $raw ): array {
+    if ( is_string( $raw ) ) {
+        $decoded = json_decode( wp_unslash( $raw ), true );
+        $raw     = is_array( $decoded ) ? $decoded : [];
+    }
+    if ( ! is_array( $raw ) ) {
+        return [];
+    }
+    $out = [];
+    foreach ( $raw as $row ) {
+        if ( ! is_array( $row ) ) {
+            continue;
+        }
+        $title = sanitize_text_field( $row['title'] ?? '' );
+        $pdf   = $row['pdf'] ?? '';
+        if ( is_numeric( $pdf ) ) {
+            $pdf_id  = (int) $pdf;
+            $pdf_url = $pdf_id > 0 ? (string) wp_get_attachment_url( $pdf_id ) : '';
+        } else {
+            $pdf_id  = 0;
+            $pdf_url = esc_url_raw( (string) $pdf );
+        }
+        if ( $pdf_url === '' ) {
+            continue;
+        }
+        $cover = $row['cover'] ?? '';
+        if ( is_numeric( $cover ) ) {
+            $cover_id  = (int) $cover;
+            $cover_url = $cover_id > 0 ? (string) wp_get_attachment_image_url( $cover_id, 'medium' ) : '';
+        } else {
+            $cover_url = esc_url_raw( (string) $cover );
+        }
+        $out[] = [
+            'title'     => $title !== '' ? $title : basename( (string) parse_url( $pdf_url, PHP_URL_PATH ) ),
+            'pdf'       => $pdf_id > 0 ? (string) $pdf_id : $pdf_url,
+            'pdf_url'   => $pdf_url,
+            'cover'     => is_numeric( $cover ) ? (string) (int) $cover : $cover_url,
+            'cover_url' => $cover_url,
+        ];
+        if ( count( $out ) >= 24 ) {
+            break;
+        }
+    }
+    return $out;
+}
+
+/**
+ * Slug halaman publikasi PDF (dari pengaturan plugin).
+ *
+ * @param array<string,mixed>|null $o
+ */
+function ptprm_publications_page_slug( ?array $o = null ): string {
+    $o    = $o ?? ptprm_options();
+    $slug = sanitize_title( (string) ( $o['pdf_publications_page_slug'] ?? 'publikasi-dan-dokumentasi' ) );
+    return $slug !== '' ? $slug : 'publikasi-dan-dokumentasi';
+}
+
+/**
+ * @param array<string,mixed>|null $o
+ */
+function ptprm_publications_page_url( ?array $o = null ): string {
+    $slug = ptprm_publications_page_slug( $o );
+    $page = get_page_by_path( $slug, OBJECT, 'page' );
+    if ( $page instanceof WP_Post ) {
+        return (string) get_permalink( $page );
+    }
+    return trailingslashit( home_url( '/' . $slug ) );
 }
 
 function ptprm_sanitize_values_items( $raw ): array {

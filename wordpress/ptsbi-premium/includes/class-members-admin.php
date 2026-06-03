@@ -45,7 +45,7 @@ class PTPRM_Members_Admin {
         if ( class_exists( 'PTPRM_Admin_Portal' ) ) {
             return PTPRM_Admin_Portal::portal_url( $tab, $args );
         }
-        return class_exists( 'PTPRM_Admin_Portal' ) ? PTPRM_Admin_Portal::portal_url() : home_url( '/panel-admin/' );
+        return home_url( '/panel-pengurus/' );
     }
 
     public function handle_approve(): void {

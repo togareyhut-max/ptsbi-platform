@@ -11,35 +11,38 @@ class PTPRM_Bidang_Portal {
 
     public function __construct() {
         add_shortcode( 'ptprm_bidang_panel', [ $this, 'shortcode' ] );
+        // Alias kompatibel untuk halaman lama yang memakai nama shortcode berbeda.
         add_shortcode( 'ptprm_bidang_portal', [ $this, 'shortcode' ] );
         add_action( 'init', [ $this, 'handle_save_content' ], 20 );
         add_action( 'init', [ $this, 'handle_save_post' ], 20 );
         add_filter( 'ptprm_subpage_hero_skip', [ $this, 'skip_hero' ] );
-        add_filter( 'the_content', [ $this, 'inject_panel_on_page' ], 9 );
+        add_filter( 'the_content', [ $this, 'inject_panel_on_page' ], 7 );
     }
 
-    /**
-     * Panel bidang di URL program (mis. /sekretariat/) saat pengurus bidang login.
-     *
-     * @param string $content
-     */
-    public function inject_panel_on_page( $content ): string {
-        if ( ! is_page() || ! in_the_loop() || ! is_main_query() ) {
+    /** Pastikan panel bidang tampil di halaman panel meski konten halaman salah/kosong. */
+    public function inject_panel_on_page( string $content ): string {
+        if ( ! is_singular( 'page' ) || ! class_exists( 'PTPRM_Bidang_Registry' ) ) {
             return $content;
         }
-        $slug = PTPRM_Bidang_Registry::bidang_slug_from_panel_page();
-        if ( $slug === '' || ! PTPRM_Bidang_Registry::user_can_manage_bidang( $slug ) ) {
+        if ( strpos( $content, 'ptprm-bidang-portal' ) !== false ) {
             return $content;
         }
-        $content = (string) $content;
-        if ( strpos( $content, 'ptprm-bidang-portal' ) !== false || strpos( $content, 'ptprm-portal-wrap' ) !== false ) {
-            return $content;
+        $page_slug = (string) get_post_field( 'post_name', get_queried_object_id() );
+        foreach ( PTPRM_Bidang_Registry::bidangs() as $meta ) {
+            if ( (string) $meta['panel_slug'] !== $page_slug ) {
+                continue;
+            }
+            $html = $this->render_panel( (string) $meta['slug'] );
+            if ( $html === '' ) {
+                return $content;
+            }
+            $clean = preg_replace( '/<p>\s*\[ptprm_bidang_p[a-z]*[^\]]*\]\s*<\/p>/iu', '', $content ) ?? $content;
+            if ( trim( wp_strip_all_tags( $clean ) ) === '' ) {
+                return $html;
+            }
+            return $clean . $html;
         }
-        $normalized = str_replace( [ '“', '”', '„', '‟' ], '"', $content );
-        if ( strpos( $normalized, 'ptprm_bidang_panel' ) !== false && strpos( $content, 'ptprm-bidang-portal' ) === false ) {
-            return do_shortcode( $normalized );
-        }
-        return $this->render_panel( $slug ) . $content;
+        return $content;
     }
 
     public function skip_hero( bool $skip ): bool {
@@ -87,8 +90,8 @@ class PTPRM_Bidang_Portal {
         echo '<div class="ptprm-portal-wrap ptprm-bidang-portal">';
         echo '<header class="ptprm-portal-head"><h2 class="ptprm-portal-title">' . esc_html( (string) $meta['title'] ) . '</h2>';
         echo '<p class="ptprm-portal-greet">' . esc_html__( 'Panel pengelolaan bidang', 'ptsbi-premium' ) . '</p></header>';
-        if ( class_exists( 'PTPRM_Cache_Purge' ) ) {
-            PTPRM_Cache_Purge::render_purge_toolbar( PTPRM_Bidang_Registry::panel_url( $slug, $tab ) );
+        if ( function_exists( 'ptprm_safe_cache_purge_toolbar' ) ) {
+            ptprm_safe_cache_purge_toolbar( PTPRM_Bidang_Registry::panel_url( $slug, $tab ) );
         }
         echo '<nav class="ptprm-portal-tabs">';
         foreach ( $tabs as $key => $label ) {
@@ -119,8 +122,8 @@ class PTPRM_Bidang_Portal {
                 $this->render_content_form( $slug );
         }
         echo '</div><footer class="ptprm-portal-footbar ptprm-portal-footbar--tools">';
-        if ( class_exists( 'PTPRM_Cache_Purge' ) ) {
-            PTPRM_Cache_Purge::render_purge_button( PTPRM_Bidang_Registry::panel_url( $slug, $tab ) );
+        if ( function_exists( 'ptprm_safe_cache_purge_button' ) ) {
+            ptprm_safe_cache_purge_button( PTPRM_Bidang_Registry::panel_url( $slug, $tab ) );
         }
         PTPRM_Access::render_logout_link();
         echo '</footer></div>';

@@ -23,19 +23,30 @@ class PTPRM_Bidang_Display {
     }
 
     public function inject_shortcode( string $content ): string {
-        if ( ! is_page() || ! in_the_loop() || ! is_main_query() || trim( wp_strip_all_tags( $content ) ) !== '' ) {
+        if ( ! is_singular( 'page' ) ) {
             return $content;
         }
         if ( ! class_exists( 'PTPRM_Bidang_Registry' ) ) {
             return $content;
         }
-        $slug = (string) get_post_field( 'post_name', get_queried_object_id() );
+        if ( strpos( $content, 'ptprm-bidang-public' ) !== false ) {
+            return $content;
+        }
+        $page_slug = (string) get_post_field( 'post_name', get_queried_object_id() );
         foreach ( PTPRM_Bidang_Registry::bidangs() as $meta ) {
-            $page = (string) ( $meta['page_slug'] ?? '' );
-            $panel = (string) ( $meta['panel_slug'] ?? '' );
-            if ( $slug === $page || $slug === $panel ) {
-                return '[ptprm_bidang slug="' . esc_attr( (string) $meta['slug'] ) . '"]';
+            if ( (string) $meta['page_slug'] !== $page_slug ) {
+                continue;
             }
+            $html = self::render_public( (string) $meta['slug'] );
+            if ( $html === '' ) {
+                return $content;
+            }
+            // Buang shortcode mentah (kutip melengkung / kosong) lalu tampilkan konten bidang.
+            $clean = preg_replace( '/<p>\s*\[ptprm_bidang[^\]]*\]\s*<\/p>/iu', '', $content ) ?? $content;
+            if ( trim( wp_strip_all_tags( $clean ) ) === '' ) {
+                return $html;
+            }
+            return $clean . $html;
         }
         return $content;
     }
