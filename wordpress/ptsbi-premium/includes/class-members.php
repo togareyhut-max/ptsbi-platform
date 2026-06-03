@@ -161,7 +161,8 @@ class PTPRM_Members {
     }
 
     public static function registration_enabled(): bool {
-        return function_exists( 'ptprm_public_registration_form_enabled' ) && ptprm_public_registration_form_enabled();
+        $o = ptprm_options();
+        return ! isset( $o['members_register_show'] ) || ! empty( $o['members_register_show'] );
     }
 
     public static function directory_enabled(): bool {
@@ -1074,10 +1075,11 @@ class PTPRM_Members {
     }
 
     public static function render_home_registration_section(): void {
-        $logged_in = is_user_logged_in();
-        if ( ! $logged_in && ! self::registration_enabled() ) {
+        if ( ! self::registration_enabled() ) {
             return;
         }
+
+        $logged_in = is_user_logged_in();
 
         echo '<section id="daftar-anggota" class="ptprm-section ptprm-member-section' . ( $logged_in ? ' ptprm-member-section-portal' : '' ) . '">';
         echo '<div class="ptprm-container">';
@@ -1093,7 +1095,7 @@ class PTPRM_Members {
 
         if ( $logged_in && class_exists( 'PTPRM_Member_Portal' ) ) {
             echo do_shortcode( '[ptprm_member_portal]' );
-        } elseif ( self::registration_enabled() ) {
+        } else {
             echo do_shortcode( '[ptprm_member_registration]' );
         }
 
@@ -1495,10 +1497,6 @@ class PTPRM_Members {
         if ( ! isset( $_POST['ptprm_member_register'] ) ) {
             return;
         }
-        if ( ! self::registration_enabled() ) {
-            status_header( 403 );
-            wp_die( esc_html__( 'Pendaftaran publik dinonaktifkan.', 'ptsbi-premium' ), '', [ 'response' => 403 ] );
-        }
         if ( ! isset( $_POST[ self::QUERY_VAR_NONCE ] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( (string) $_POST[ self::QUERY_VAR_NONCE ] ) ), 'ptprm_member_register' ) ) {
             return;
         }
@@ -1631,9 +1629,6 @@ class PTPRM_Members {
     }
 
     public function shortcode_registration(): string {
-        if ( ! self::registration_enabled() ) {
-            return '';
-        }
         ob_start();
         $is_logged = is_user_logged_in();
         echo '<div class="ptprm-member-card">';
@@ -1653,7 +1648,7 @@ class PTPRM_Members {
             return (string) ob_get_clean();
         }
 
-        echo '<form method="post" class="ptprm-member-form">';
+        echo '<form method="post" class="ptprm-member-form ptprm-register-form" autocomplete="off">';
         wp_nonce_field( 'ptprm_member_register', self::QUERY_VAR_NONCE );
         echo '<input type="hidden" name="ptprm_member_register" value="1">';
         echo '<div class="ptprm-member-grid">';
@@ -1665,14 +1660,17 @@ class PTPRM_Members {
         echo '</p>';
 
         echo '<label><span>' . esc_html__( 'Nama lengkap (kepala keluarga)', 'ptsbi-premium' ) . ' *</span>';
-        echo '<input type="text" name="name" autocomplete="name" placeholder="' . esc_attr__( 'Contoh: Toga Samosir', 'ptsbi-premium' ) . '" required></label>';
+        echo '<input type="text" id="ptprm-reg-name" name="name" value="" autocomplete="off" placeholder="' . esc_attr__( 'Contoh: Toga Samosir', 'ptsbi-premium' ) . '" required></label>';
         echo '<label><span>' . esc_html__( 'Email (untuk login)', 'ptsbi-premium' ) . ' *</span>';
-        echo '<input type="email" name="email" autocomplete="username" placeholder="nama@email.com" required></label>';
-        echo '<label><span>' . esc_html__( 'No HP', 'ptsbi-premium' ) . ' *</span><input type="tel" name="phone" autocomplete="tel" required></label>';
-        echo '<label><span>' . esc_html__( 'Password', 'ptsbi-premium' ) . ' *</span><input type="password" name="password" minlength="6" required></label>';
+        echo '<input type="email" id="ptprm-reg-email" name="email" value="" autocomplete="off" autocapitalize="off" spellcheck="false" inputmode="email" placeholder="nama@email.com" required></label>';
+        echo '<label><span>' . esc_html__( 'No HP', 'ptsbi-premium' ) . ' *</span><input type="tel" id="ptprm-reg-phone" name="phone" value="" autocomplete="off" inputmode="tel" required></label>';
+        echo '<label><span>' . esc_html__( 'Password', 'ptsbi-premium' ) . ' *</span><input type="password" id="ptprm-reg-pass" name="password" value="" autocomplete="new-password" minlength="6" required></label>';
         echo '</div>';
         echo '<button type="submit" class="ptprm-cta ptprm-cta-1 ptprm-cta-size-medium"><span class="ptprm-cta-label">' . esc_html__( 'Daftar Anggota', 'ptsbi-premium' ) . '</span></button>';
         echo '</form>';
+        if ( function_exists( 'ptprm_form_autofill_guard_script' ) ) {
+            ptprm_form_autofill_guard_script( [ 'ptprm-reg-name', 'ptprm-reg-email', 'ptprm-reg-phone', 'ptprm-reg-pass' ] );
+        }
         if ( class_exists( 'PTPRM_Member_Portal' ) ) {
             echo '<p class="ptprm-portal-foot">';
             echo esc_html__( 'Sudah punya akun?', 'ptsbi-premium' ) . ' ';
@@ -1839,17 +1837,13 @@ class PTPRM_Members {
     public function shortcode_directory(): string {
         ob_start();
         if ( ! is_user_logged_in() ) {
+            $redirect  = home_url( add_query_arg( [], $_SERVER['REQUEST_URI'] ?? '/' ) );
+            $login_url = class_exists( 'PTPRM_Member_Portal' )
+                ? PTPRM_Member_Portal::login_url( $redirect )
+                : wp_login_url( $redirect );
             echo '<div class="ptprm-member-card">';
             echo '<p>' . esc_html__( 'Direktori anggota hanya tersedia setelah login.', 'ptsbi-premium' ) . '</p>';
-            if ( function_exists( 'ptprm_public_login_form_enabled' ) && ptprm_public_login_form_enabled() ) {
-                $redirect  = home_url( add_query_arg( [], $_SERVER['REQUEST_URI'] ?? '/' ) );
-                $login_url = class_exists( 'PTPRM_Member_Portal' )
-                    ? PTPRM_Member_Portal::login_url( $redirect )
-                    : wp_login_url( $redirect );
-                echo '<a class="ptprm-cta ptprm-cta-2 ptprm-cta-size-medium" href="' . esc_url( $login_url ) . '"><span class="ptprm-cta-label">' . esc_html__( 'Rumah Anggota', 'ptsbi-premium' ) . '</span></a>';
-            } else {
-                echo '<p class="ptprm-portal-help">' . esc_html__( 'Form masuk publik dinonaktifkan. Hubungi sekretariat untuk akses.', 'ptsbi-premium' ) . '</p>';
-            }
+            echo '<a class="ptprm-cta ptprm-cta-2 ptprm-cta-size-medium" href="' . esc_url( $login_url ) . '"><span class="ptprm-cta-label">' . esc_html__( 'Rumah Anggota', 'ptsbi-premium' ) . '</span></a>';
             echo '</div>';
             return (string) ob_get_clean();
         }

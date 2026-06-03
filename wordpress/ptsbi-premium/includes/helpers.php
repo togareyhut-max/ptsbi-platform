@@ -19,40 +19,42 @@ function ptprm_portal_session_expired_message(): string {
  */
 
 /**
- * Form login publik (email/password di Rumah Anggota). Default: nonaktif.
+ * Pulihkan login/pendaftaran publik setelah perubahan yang menonaktifkan form (sekali).
  */
-function ptprm_public_login_form_enabled(): bool {
-    $o = ptprm_options();
-    return ! empty( $o['public_login_form_show'] );
-}
-
-/**
- * Form pendaftaran anggota publik. Default: nonaktif.
- */
-function ptprm_public_registration_form_enabled(): bool {
-    $o = ptprm_options();
-    return ! empty( $o['members_register_show'] );
-}
-
-/**
- * Matikan form login/pendaftaran publik (sekali per situs).
- */
-function ptprm_maybe_disable_public_auth_forms(): void {
-    if ( get_option( 'ptprm_public_auth_disabled_v1' ) ) {
+function ptprm_maybe_restore_public_auth_forms(): void {
+    if ( get_option( 'ptprm_public_auth_restored_v2' ) ) {
         return;
     }
+    delete_option( 'ptprm_public_auth_disabled_v1' );
     $raw = get_option( PTPRM_OPTION, [] );
     if ( ! is_array( $raw ) ) {
         $raw = [];
     }
-    $raw['public_login_form_show'] = 0;
-    $raw['members_register_show']  = 0;
-    if ( empty( $raw['header_cta_url'] ) || strpos( (string) $raw['header_cta_url'], 'rumah-anggota' ) !== false ) {
-        $raw['header_cta_url'] = '/kontak/';
+    unset( $raw['public_login_form_show'] );
+    $raw['members_register_show'] = 1;
+    $cta = (string) ( $raw['header_cta_url'] ?? '' );
+    if ( $cta === '' || $cta === '/kontak/' ) {
+        $raw['header_cta_url'] = '/rumah-anggota/';
     }
     update_option( PTPRM_OPTION, ptprm_normalize_option_for_storage( $raw ), true );
     wp_cache_delete( PTPRM_OPTION, 'options' );
-    update_option( 'ptprm_public_auth_disabled_v1', 1, false );
+    update_option( 'ptprm_public_auth_restored_v2', 1, false );
+}
+
+/**
+ * Kosongkan field sensitif agar browser tidak mengisi ulang setelah logout.
+ *
+ * @param list<string> $field_ids Element IDs to clear.
+ */
+function ptprm_form_autofill_guard_script( array $field_ids ): void {
+    if ( $field_ids === [] ) {
+        return;
+    }
+    $ids_json = wp_json_encode( array_values( $field_ids ) );
+    printf(
+        '<script>(function(){var IDS=%1$s;function prep(el){if(!el)return;el.setAttribute("autocomplete","off");el.setAttribute("autocapitalize","off");el.setAttribute("spellcheck","false");if(el.type==="password"){el.setAttribute("autocomplete","new-password");}if(!el.dataset.ptprmRo){el.setAttribute("readonly","readonly");el.dataset.ptprmRo="1";el.addEventListener("focus",function(){el.removeAttribute("readonly");},{once:true});}}function clr(){IDS.forEach(function(id){var el=document.getElementById(id);if(!el)return;el.value="";prep(el);});}clr();setTimeout(clr,50);setTimeout(clr,400);window.addEventListener("pageshow",function(){clr();});})();</script>',
+        $ids_json
+    );
 }
 
 function ptprm_verify_portal_form_nonce( string $action ): bool {
@@ -773,7 +775,7 @@ function ptprm_defaults() {
         'header_submenu_max'         => 10,
         'header_show_cta'            => 1,
         'header_cta_label'           => 'Rumah Anggota',
-        'header_cta_url'             => '/kontak/',
+        'header_cta_url'             => '/rumah-anggota/',
         'header_cta_style'           => 'accent',    // accent | outline | ghost
         'header_bg_color'            => '',
         'header_text_color'          => '#FFFFFF',
@@ -816,8 +818,7 @@ function ptprm_defaults() {
         'values_items'     => '', // Diisi otomatis dari migrate jika kosong
 
         /* -------- ANGGOTA (setelah Hero) -------- */
-        'public_login_form_show' => 0,
-        'members_register_show'  => 0,
+        'members_register_show'  => 1,
         'members_directory_show' => 1,
         'members_per_page'       => 25,
         'portal_login_slug'      => 'rumah-anggota',

@@ -10,7 +10,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 class PTPRM_Bootstrap {
 
     public static function init(): void {
-        add_action( 'init', 'ptprm_maybe_disable_public_auth_forms', 3 );
+        add_action( 'init', 'ptprm_maybe_restore_public_auth_forms', 3 );
         add_action( 'after_setup_theme', [ __CLASS__, 'register_menus' ] );
         add_action( 'admin_init', [ __CLASS__, 'admin_actions' ] );
         add_action( 'admin_init', 'ptprm_maybe_repair_stored_option', 5 );
